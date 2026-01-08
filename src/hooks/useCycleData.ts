@@ -85,69 +85,26 @@ export function useCycleData() {
   }, []);
 
   // Complete onboarding
-  const completeOnboarding = useCallback(async (lastPeriodStart: string, cycleLength: number) => {
-    await addCycle({ startDate: lastPeriodStart });
-    await saveSettings({
-      onboardingComplete: true,
+  const completeOnboarding = useCallback(async (lastPeriodStart: string, cycleLength: number, periodLength: number = 5, lastPeriodEnd?: string) => {
+    const newSettings: Settings = {
+      id: 'main',
       lastPeriodStart,
       averageCycleLength: cycleLength,
-    });
-    await loadData();
-  }, [saveSettings, loadData]);
-
-  // Log a day
-  const logDay = useCallback(async (
-    date: string,
-    data: Omit<DailyLog, 'id' | 'date' | 'createdAt' | 'updatedAt'>
-  ) => {
-    await addOrUpdateDailyLog({ date, ...data });
+      averagePeriodLength: periodLength,
+      onboardingComplete: true,
+      darkMode: false,
+    };
+    await saveSettingsToDb(newSettings);
     
-    // If starting a new period, update cycle data
-    if (data.isPeriod) {
-      const previousLog = await getDailyLog(
-        formatDate(new Date(new Date(date).getTime() - 24 * 60 * 60 * 1000))
-      );
-      
-      // If yesterday wasn't a period day, this is a new period start
-      if (!previousLog?.isPeriod) {
-        const latestCycle = await getLatestCycle();
-        if (latestCycle && latestCycle.startDate !== date) {
-          // Calculate cycle length from previous period
-          const prevStart = new Date(latestCycle.startDate);
-          const newStart = new Date(date);
-          const cycleLength = Math.round(
-            (newStart.getTime() - prevStart.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          
-          // Update previous cycle with end date and length
-          latestCycle.cycleLength = cycleLength;
-          
-          // Add new cycle
-          await addCycle({ startDate: date });
-        }
-        
-        await saveSettings({ lastPeriodStart: date });
-      }
-    }
+    // Create initial cycle record
+    const initialCycle: CycleData = {
+      id: `cycle_${Date.now()}`,
+      startDate: lastPeriodStart,
+      endDate: lastPeriodEnd,
+      cycleLength,
+    };
+    await saveCycle(initialCycle);
     
-    await loadData();
-  }, [loadData, saveSettings]);
-
-  // Get log for specific date
-  const getLogForDate = useCallback(async (date: string): Promise<DailyLog | undefined> => {
-    return getDailyLog(date);
-  }, []);
-
-  // Export data for backup
-  const backup = useCallback(async (): Promise<BackupData> => {
-    const data = await exportData();
-    await saveSettings({ lastBackupDate: new Date().toISOString() });
-    return data;
-  }, [saveSettings]);
-
-  // Import data from backup
-  const restore = useCallback(async (data: BackupData): Promise<void> => {
-    await importData(data);
     await loadData();
   }, [loadData]);
 
