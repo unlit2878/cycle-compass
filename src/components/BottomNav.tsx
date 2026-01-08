@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { Home, Calendar, Plus, BarChart3, Settings } from 'lucide-react';
+import { zh } from '@/lib/i18n';
 
 interface BottomNavProps {
   onLogClick: () => void;
@@ -7,10 +8,10 @@ interface BottomNavProps {
 
 export function BottomNav({ onLogClick }: BottomNavProps) {
   const navItems = [
-    { to: '/', icon: Home, label: 'Home' },
-    { to: '/calendar', icon: Calendar, label: 'Calendar' },
-    { to: '/insights', icon: BarChart3, label: 'Insights' },
-    { to: '/settings', icon: Settings, label: 'Settings' },
+    { to: '/', icon: Home, label: zh.nav.home },
+    { to: '/calendar', icon: Calendar, label: zh.nav.calendar },
+    { to: '/insights', icon: BarChart3, label: zh.nav.insights },
+    { to: '/settings', icon: Settings, label: zh.nav.settings },
   ];
 
   return (
@@ -39,7 +40,7 @@ export function BottomNav({ onLogClick }: BottomNavProps) {
           <div className="w-14 h-14 rounded-full gradient-primary shadow-lg flex items-center justify-center">
             <Plus className="w-7 h-7 text-white" />
           </div>
-          <span className="text-xs text-muted-foreground">Log</span>
+          <span className="text-xs text-muted-foreground">{zh.nav.log}</span>
         </button>
 
         {navItems.slice(2).map((item) => (
