@@ -86,25 +86,47 @@ export function useCycleData() {
 
   // Complete onboarding
   const completeOnboarding = useCallback(async (lastPeriodStart: string, cycleLength: number, periodLength: number = 5, lastPeriodEnd?: string) => {
-    const newSettings: Settings = {
-      id: 'main',
+    await updateSettings({
       lastPeriodStart,
       averageCycleLength: cycleLength,
       averagePeriodLength: periodLength,
       onboardingComplete: true,
-      darkMode: false,
-    };
-    await saveSettingsToDb(newSettings);
+    });
     
-    // Create initial cycle record
-    const initialCycle: CycleData = {
-      id: `cycle_${Date.now()}`,
-      startDate: lastPeriodStart,
-      endDate: lastPeriodEnd,
-      cycleLength,
-    };
-    await saveCycle(initialCycle);
+    // Create initial cycle record if we have an end date
+    if (lastPeriodEnd) {
+      await addCycle({
+        startDate: lastPeriodStart,
+        endDate: lastPeriodEnd,
+        cycleLength,
+      });
+    }
     
+    await loadData();
+  }, [loadData]);
+
+  // Log a day (accepts string date in YYYY-MM-DD format)
+  const logDay = useCallback(async (date: string, log: Omit<DailyLog, 'id' | 'date' | 'createdAt' | 'updatedAt'>) => {
+    await addOrUpdateDailyLog({
+      date,
+      ...log,
+    });
+    await loadData();
+  }, [loadData]);
+
+  // Get log for a specific date (accepts string date in YYYY-MM-DD format)
+  const getLogForDate = useCallback(async (date: string): Promise<DailyLog | undefined> => {
+    return getDailyLog(date);
+  }, []);
+
+  // Backup data
+  const backup = useCallback(async (): Promise<BackupData> => {
+    return exportData();
+  }, []);
+
+  // Restore data
+  const restore = useCallback(async (data: BackupData): Promise<void> => {
+    await importData(data);
     await loadData();
   }, [loadData]);
 
