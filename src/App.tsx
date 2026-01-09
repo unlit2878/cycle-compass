@@ -190,7 +190,7 @@ function AppContent() {
     <div className="min-h-screen">
       <Routes>
         <Route path="/" element={
-          <Home phaseInfo={phaseInfo} settings={settings} onLogToday={handleLogToday} onBackupReminder={() => navigate('/settings')} />
+          <Home phaseInfo={phaseInfo} settings={settings} cycles={cycles} onLogToday={handleLogToday} onBackupReminder={() => navigate('/settings')} />
         } />
         <Route path="/calendar" element={
           <CalendarPage settings={settings} dailyLogs={dailyLogs} onDaySelect={handleDaySelect} />

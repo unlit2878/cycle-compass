@@ -2,18 +2,19 @@ import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PhaseInfo, getPhaseEmoji, getPhaseName, getPhaseDescription, formatDisplayDate, isBackupOverdue, getDaysSinceBackup } from '@/lib/cycle-utils';
-import { Settings } from '@/lib/db';
+import { Settings, CycleData } from '@/lib/db';
 import { Plus, AlertCircle } from 'lucide-react';
 import { zh } from '@/lib/i18n';
-
+import { predictNextCycle } from '@/lib/prediction-utils';
 interface HomeProps {
   phaseInfo: PhaseInfo | null;
   settings: Settings | null;
+  cycles: CycleData[];
   onLogToday: () => void;
   onBackupReminder: () => void;
 }
 
-export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: HomeProps) {
+export function Home({ phaseInfo, settings, cycles, onLogToday, onBackupReminder }: HomeProps) {
   const backupOverdue = useMemo(() => {
     if (!settings) return false;
     return isBackupOverdue(settings.lastBackupDate, settings.backupReminderInterval);
@@ -25,14 +26,20 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
     return days === Infinity ? null : days;
   }, [settings]);
 
-  // 获取下次经期日期
-  const nextPeriodDate = useMemo(() => {
-    if (!phaseInfo || !settings?.lastPeriodStart) return null;
+  // 使用统计预测获取下次经期日期（与统计页面统一）
+  const { nextPeriodDate, predictedCycleLength } = useMemo(() => {
+    if (!phaseInfo || !settings?.lastPeriodStart) return { nextPeriodDate: null, predictedCycleLength: 28 };
+    
+    // 使用预测工具计算周期长度
+    const prediction = predictNextCycle(cycles);
+    const cycleLength = cycles.length >= 2 ? prediction.predictedCycleLength : settings.averageCycleLength;
+    
     const lastStart = new Date(settings.lastPeriodStart);
     const nextStart = new Date(lastStart);
-    nextStart.setDate(nextStart.getDate() + settings.averageCycleLength);
-    return nextStart;
-  }, [phaseInfo, settings]);
+    nextStart.setDate(nextStart.getDate() + cycleLength);
+    
+    return { nextPeriodDate: nextStart, predictedCycleLength: cycleLength };
+  }, [phaseInfo, settings, cycles]);
 
   // 生成本周预览
   const weekPreview = useMemo(() => {
@@ -41,13 +48,16 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
     const days = [];
     const today = new Date();
     
+    // 使用预测的周期长度
+    const cycleLength = predictedCycleLength;
+    
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() + i);
       
       const diffFromStart = Math.floor((date.getTime() - new Date(settings.lastPeriodStart).getTime()) / (1000 * 60 * 60 * 24));
-      const dayInCycle = (diffFromStart % settings.averageCycleLength) + 1;
-      const ovulationDay = Math.round(settings.averageCycleLength - 14);
+      const dayInCycle = (diffFromStart % cycleLength) + 1;
+      const ovulationDay = Math.round(cycleLength - 14);
       
       let phase: 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
       if (dayInCycle <= settings.averagePeriodLength) {
