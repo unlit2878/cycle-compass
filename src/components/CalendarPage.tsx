@@ -151,7 +151,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
         
         <div className="flex items-center gap-1">
           <Select value={currentYear.toString()} onValueChange={setYear}>
-            <SelectTrigger className="w-[72px] h-9 border-0 bg-transparent font-bold text-base px-2">
+            <SelectTrigger className="w-[80px] h-9 border-0 bg-transparent font-bold text-base px-2">
               <SelectValue>{currentYear}年</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -163,7 +163,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
             </SelectContent>
           </Select>
           <Select value={currentMonthNum.toString()} onValueChange={setMonth}>
-            <SelectTrigger className="w-[68px] h-9 border-0 bg-transparent font-bold text-base px-2">
+            <SelectTrigger className="w-[72px] h-9 border-0 bg-transparent font-bold text-base px-2">
               <SelectValue>{monthOptions[currentMonthNum]}</SelectValue>
             </SelectTrigger>
             <SelectContent>

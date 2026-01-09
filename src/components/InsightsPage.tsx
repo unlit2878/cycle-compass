@@ -117,19 +117,32 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
     ].filter(d => d.value > 0);
   }, [dailyLogs]);
 
-  // 计算规律性评分
-  const regularityScore = useMemo(() => {
-    if (cycles.length < 3) return null;
+  // 计算规律性评分（使用变异系数，与健康评估统一）
+  const regularityData = useMemo(() => {
+    const cycleLengthData = extractCycleLengths(cycles);
+    const lengths = cycleLengthData.map(d => d.length);
     
-    const lengths = cycles.filter((c) => c.cycleLength).map((c) => c.cycleLength!);
     if (lengths.length < 3) return null;
     
-    const avg = lengths.reduce((a, b) => a + b, 0) / lengths.length;
-    const variance = lengths.reduce((sum, len) => sum + Math.pow(len - avg, 2), 0) / lengths.length;
-    const stdDev = Math.sqrt(variance);
+    const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+    const stdDev = calculateStdDev(lengths);
+    const cv = (stdDev / mean) * 100;
     
-    const score = Math.max(0, Math.min(100, 100 - stdDev * 10));
-    return Math.round(score);
+    let score: number;
+    if (cv < 5) {
+      score = 90 + (5 - cv) * 2;
+    } else if (cv < 10) {
+      score = 75 + (10 - cv) * 3;
+    } else if (cv < 15) {
+      score = 60 + (15 - cv) * 3;
+    } else if (cv < 20) {
+      score = 40 + (20 - cv) * 4;
+    } else {
+      score = Math.max(0, 40 - (cv - 20) * 2);
+    }
+    score = Math.min(100, Math.round(score));
+    
+    return { score, cv, stdDev, lengths };
   }, [cycles]);
 
   // 周期长度范围
@@ -313,9 +326,9 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
               <span className="text-xs text-muted-foreground">规律性评分</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
-              {regularityScore !== null ? (
+              {regularityData !== null ? (
                 <>
-                  {regularityScore}
+                  {regularityData.score}
                   <span className="text-sm font-normal text-muted-foreground ml-1">分</span>
                 </>
               ) : (
@@ -499,6 +512,134 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
           </CardContent>
         </Card>
       )}
+
+      {/* 周期健康评估卡片 - 放在预测准确性分析前面 */}
+      {regularityData && (() => {
+        const lengths = regularityData.lengths;
+        const mean = lengths.reduce((a: number, b: number) => a + b, 0) / lengths.length;
+        const min = Math.min(...lengths);
+        const max = Math.max(...lengths);
+        const variation = max - min;
+        
+        let figoMessages: string[] = [];
+        
+        if (mean >= 24 && mean <= 38) {
+          figoMessages.push('✓ 平均周期在正常范围（24-38天）');
+        } else if (mean < 24) {
+          figoMessages.push('⚠ 平均周期偏短（<24天），建议关注');
+        } else {
+          figoMessages.push('⚠ 平均周期偏长（>38天），建议关注');
+        }
+        
+        if (variation <= 7) {
+          figoMessages.push('✓ 周期变异在正常范围（±7天）');
+        } else if (variation <= 9) {
+          figoMessages.push('△ 周期变异稍大（' + variation + '天）');
+        } else {
+          figoMessages.push('⚠ 周期变异较大（' + variation + '天），建议记录更多周期');
+        }
+        
+        return (
+          <Card className="border-0 shadow-lg mb-6 card-hover">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-phase-menstrual" />
+                  周期健康评估
+                </h3>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="p-1 rounded-full hover:bg-muted transition-colors">
+                      <Info className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>FIGO标准说明</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 text-sm">
+                      <p className="text-muted-foreground">
+                        本评估参考国际妇产科联盟（FIGO）2018年发布的月经周期标准：
+                      </p>
+                      <div className="space-y-3">
+                        <div className="bg-muted/30 p-3 rounded-lg">
+                          <p className="font-medium mb-1">正常周期长度</p>
+                          <p className="text-muted-foreground text-xs">24-38天为正常范围</p>
+                        </div>
+                        <div className="bg-muted/30 p-3 rounded-lg">
+                          <p className="font-medium mb-1">周期规律性</p>
+                          <p className="text-muted-foreground text-xs">周期变异应在±7天以内</p>
+                        </div>
+                        <div className="bg-muted/30 p-3 rounded-lg">
+                          <p className="font-medium mb-1">正常经期</p>
+                          <p className="text-muted-foreground text-xs">经期持续≤8天为正常</p>
+                        </div>
+                      </div>
+                      <div className="bg-primary/10 p-3 rounded-lg">
+                        <p className="font-medium mb-1 flex items-center gap-1">
+                          <Info className="w-3 h-3" />
+                          规律性评分计算
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                          使用变异系数（CV = 标准差/平均值）评估：
+                          <br />• CV &lt; 5%: 非常规律（90-100分）
+                          <br />• CV 5-10%: 规律（75-90分）
+                          <br />• CV 10-15%: 较规律（60-75分）
+                          <br />• CV 15-20%: 轻度不规律（40-60分）
+                          <br />• CV &gt; 20%: 不规律（&lt;40分）
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        📌 此评估仅供参考，如有异常请咨询医生
+                      </p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              {/* 规律性评分 */}
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-muted-foreground">规律性评分</span>
+                    <span className="text-sm font-bold text-foreground">{regularityData.score}分</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all ${
+                        regularityData.score >= 80 ? 'bg-green-500' :
+                        regularityData.score >= 60 ? 'bg-phase-ovulation' :
+                        regularityData.score >= 40 ? 'bg-yellow-500' :
+                        'bg-phase-menstrual'
+                      }`}
+                      style={{ width: `${regularityData.score}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    CV={regularityData.cv.toFixed(1)}% | 标准差={regularityData.stdDev.toFixed(1)}天 | 样本={lengths.length}个周期
+                  </p>
+                </div>
+              </div>
+              
+              {/* FIGO评估结果 */}
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground mb-2">
+                  参考FIGO标准（周期{min}-{max}天，变异{variation}天）：
+                </p>
+                {figoMessages.map((msg, idx) => (
+                  <p key={idx} className={`text-xs ${
+                    msg.startsWith('✓') ? 'text-green-600 dark:text-green-400' :
+                    msg.startsWith('⚠') ? 'text-yellow-600 dark:text-yellow-400' :
+                    'text-muted-foreground'
+                  }`}>
+                    {msg}
+                  </p>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* 预测准确性分析 - 使用统计学方法 */}
       {(() => {
@@ -769,154 +910,6 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
         </Card>
       )}
 
-      {/* 周期健康评估卡片 */}
-      {(() => {
-        const cycleLengthData = extractCycleLengths(cycles);
-        const lengths = cycleLengthData.map(d => d.length);
-        
-        if (lengths.length < 3) return null;
-        
-        const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
-        const stdDev = calculateStdDev(lengths);
-        const cv = (stdDev / mean) * 100;
-        
-        let regularityScore: number;
-        if (cv < 5) {
-          regularityScore = 90 + (5 - cv) * 2;
-        } else if (cv < 10) {
-          regularityScore = 75 + (10 - cv) * 3;
-        } else if (cv < 15) {
-          regularityScore = 60 + (15 - cv) * 3;
-        } else if (cv < 20) {
-          regularityScore = 40 + (20 - cv) * 4;
-        } else {
-          regularityScore = Math.max(0, 40 - (cv - 20) * 2);
-        }
-        regularityScore = Math.min(100, Math.round(regularityScore));
-        
-        const min = Math.min(...lengths);
-        const max = Math.max(...lengths);
-        const variation = max - min;
-        
-        let figoMessages: string[] = [];
-        
-        if (mean >= 24 && mean <= 38) {
-          figoMessages.push('✓ 平均周期在正常范围（24-38天）');
-        } else if (mean < 24) {
-          figoMessages.push('⚠ 平均周期偏短（<24天），建议关注');
-        } else {
-          figoMessages.push('⚠ 平均周期偏长（>38天），建议关注');
-        }
-        
-        if (variation <= 7) {
-          figoMessages.push('✓ 周期变异在正常范围（±7天）');
-        } else if (variation <= 9) {
-          figoMessages.push('△ 周期变异稍大（' + variation + '天）');
-        } else {
-          figoMessages.push('⚠ 周期变异较大（' + variation + '天），建议记录更多周期');
-        }
-        
-        return (
-          <Card className="border-0 shadow-lg mb-6 card-hover">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <Heart className="w-4 h-4 text-phase-menstrual" />
-                  周期健康评估
-                </h3>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button className="p-1 rounded-full hover:bg-muted transition-colors">
-                      <Info className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>FIGO标准说明</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 text-sm">
-                      <p className="text-muted-foreground">
-                        本评估参考国际妇产科联盟（FIGO）2018年发布的月经周期标准：
-                      </p>
-                      <div className="space-y-3">
-                        <div className="bg-muted/30 p-3 rounded-lg">
-                          <p className="font-medium mb-1">正常周期长度</p>
-                          <p className="text-muted-foreground text-xs">24-38天为正常范围</p>
-                        </div>
-                        <div className="bg-muted/30 p-3 rounded-lg">
-                          <p className="font-medium mb-1">周期规律性</p>
-                          <p className="text-muted-foreground text-xs">周期变异应在±7天以内</p>
-                        </div>
-                        <div className="bg-muted/30 p-3 rounded-lg">
-                          <p className="font-medium mb-1">正常经期</p>
-                          <p className="text-muted-foreground text-xs">经期持续≤8天为正常</p>
-                        </div>
-                      </div>
-                      <div className="bg-primary/10 p-3 rounded-lg">
-                        <p className="font-medium mb-1 flex items-center gap-1">
-                          <Info className="w-3 h-3" />
-                          规律性评分计算
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          使用变异系数（CV = 标准差/平均值）评估：
-                          <br />• CV &lt; 5%: 非常规律（90-100分）
-                          <br />• CV 5-10%: 规律（75-90分）
-                          <br />• CV 10-15%: 较规律（60-75分）
-                          <br />• CV 15-20%: 轻度不规律（40-60分）
-                          <br />• CV &gt; 20%: 不规律（&lt;40分）
-                        </p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        📌 此评估仅供参考，如有异常请咨询医生
-                      </p>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              
-              {/* 规律性评分 */}
-              <div className="flex items-center gap-4 mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">规律性评分</span>
-                    <span className="text-sm font-bold text-foreground">{regularityScore}分</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all ${
-                        regularityScore >= 80 ? 'bg-green-500' :
-                        regularityScore >= 60 ? 'bg-phase-ovulation' :
-                        regularityScore >= 40 ? 'bg-yellow-500' :
-                        'bg-phase-menstrual'
-                      }`}
-                      style={{ width: `${regularityScore}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    CV={cv.toFixed(1)}% | 标准差={stdDev.toFixed(1)}天 | 样本={lengths.length}个周期
-                  </p>
-                </div>
-              </div>
-              
-              {/* FIGO评估结果 */}
-              <div className="space-y-1.5">
-                <p className="text-xs text-muted-foreground mb-2">
-                  参考FIGO标准（周期{min}-{max}天，变异{variation}天）：
-                </p>
-                {figoMessages.map((msg, idx) => (
-                  <p key={idx} className={`text-xs ${
-                    msg.startsWith('✓') ? 'text-green-600 dark:text-green-400' :
-                    msg.startsWith('⚠') ? 'text-yellow-600 dark:text-yellow-400' :
-                    'text-muted-foreground'
-                  }`}>
-                    {msg}
-                  </p>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
 
     </div>
   );
