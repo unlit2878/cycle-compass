@@ -331,17 +331,30 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
             </p>
             
             {/* 进度条图表容器 */}
-            <div className="relative">
+            <div className="relative pl-0 pr-12">
               {/* 平均周期虚线 */}
               {(() => {
+                // 计算每个周期的实际周期长度（从当前经期开始到下次经期开始）
+                const sortedCycles = [...filteredCycles].sort((a, b) => 
+                  parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
+                );
+                const cycleLengths = sortedCycles.map((cycle, idx) => {
+                  const nextCycle = sortedCycles[idx + 1];
+                  if (nextCycle) {
+                    return differenceInDays(parseISO(nextCycle.startDate), parseISO(cycle.startDate));
+                  }
+                  return null;
+                }).filter(Boolean) as number[];
+                
                 const maxCycleLength = Math.max(
-                  ...filteredCycles.map(c => c.cycleLength || 0),
-                  statistics.averageCycleLength
+                  ...cycleLengths,
+                  statistics.averageCycleLength,
+                  45 // 最小显示宽度
                 );
                 const avgPosition = (statistics.averageCycleLength / maxCycleLength) * 100;
                 return (
                   <div 
-                    className="absolute top-0 bottom-0 border-l-2 border-dashed border-phase-ovulation z-10"
+                    className="absolute top-0 bottom-0 border-l border-dashed border-phase-ovulation/70 z-10"
                     style={{ left: `${avgPosition}%` }}
                   >
                     <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-phase-ovulation whitespace-nowrap">
@@ -351,98 +364,236 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
                 );
               })()}
               
-              {/* 周期列表 */}
-              <div className="space-y-4 pt-4">
-                {[...filteredCycles].reverse().map((cycle, index) => {
-                  const startDate = parseISO(cycle.startDate);
-                  const endDate = cycle.endDate ? parseISO(cycle.endDate) : null;
-                  const periodDays = endDate 
-                    ? differenceInDays(endDate, startDate) + 1 
-                    : 0;
-                  const cycleLength = cycle.cycleLength || periodDays;
-                  
-                  // 找下一个周期的开始日期来计算完整周期范围
+              {/* 周期列表 - 最新的在上面 */}
+              <div className="space-y-3 pt-4">
+                {(() => {
+                  // 排序：时间早的在后面，时间近的在前面
                   const sortedCycles = [...filteredCycles].sort((a, b) => 
+                    parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime()
+                  );
+                  
+                  // 按时间正序排列用于计算周期长度
+                  const chronologicalCycles = [...filteredCycles].sort((a, b) => 
                     parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
                   );
-                  const currentIndex = sortedCycles.findIndex(c => c.id === cycle.id);
-                  const nextCycle = sortedCycles[currentIndex + 1];
-                  const cycleEndDate = nextCycle 
-                    ? parseISO(nextCycle.startDate)
-                    : null;
                   
+                  // 计算每个周期的实际周期长度
+                  const cycleLengthMap = new Map<string, number>();
+                  chronologicalCycles.forEach((cycle, idx) => {
+                    const nextCycle = chronologicalCycles[idx + 1];
+                    if (nextCycle) {
+                      const length = differenceInDays(parseISO(nextCycle.startDate), parseISO(cycle.startDate));
+                      cycleLengthMap.set(String(cycle.id || cycle.startDate), length);
+                    }
+                  });
+                  
+                  const allCycleLengths = Array.from(cycleLengthMap.values());
                   const maxCycleLength = Math.max(
-                    ...filteredCycles.map(c => c.cycleLength || 0),
-                    statistics.averageCycleLength
+                    ...allCycleLengths,
+                    statistics.averageCycleLength,
+                    45
                   );
-                  const periodPercent = (periodDays / maxCycleLength) * 100;
-                  const cyclePercent = (cycleLength / maxCycleLength) * 100;
                   
-                  const isLatest = index === 0;
+                  const today = new Date();
                   
-                  return (
-                    <div key={cycle.id || index} className="space-y-1">
-                      {/* 日期范围 */}
-                      <div className="text-xs text-muted-foreground">
-                        {isLatest && <span className="text-primary font-medium mr-2">当前周期</span>}
-                        {format(startDate, 'yyyy年M月d日')}
-                        {cycleEndDate ? ` - ${format(cycleEndDate, 'yyyy年M月d日')}` : ' - 进行中'}
-                      </div>
-                      
-                      {/* 进度条 */}
-                      <div className="relative h-6 bg-muted/50 rounded-full overflow-visible">
-                        {/* 经期部分（填充） */}
-                        <div 
-                          className="absolute left-0 top-0 h-full bg-phase-menstrual rounded-l-full transition-all duration-300"
-                          style={{ width: `${periodPercent}%` }}
-                        />
-                        {/* 周期边框（空心） */}
-                        <div 
-                          className="absolute left-0 top-0 h-full border-2 border-muted-foreground/30 rounded-full transition-all duration-300"
-                          style={{ width: `${cyclePercent}%` }}
-                        />
-                        
-                        {/* 标注信息 */}
-                        <div className="absolute inset-0 flex items-center px-3">
-                          <span className="text-xs font-medium text-white drop-shadow-sm">
-                            {periodDays > 0 ? `${periodDays}天` : ''}
+                  return sortedCycles.map((cycle, index) => {
+                    const startDate = parseISO(cycle.startDate);
+                    const endDate = cycle.endDate ? parseISO(cycle.endDate) : null;
+                    const periodDays = endDate 
+                      ? differenceInDays(endDate, startDate) + 1 
+                      : 0;
+                    
+                    // 获取当前周期的实际周期长度
+                    const cycleKey = String(cycle.id || cycle.startDate);
+                    const actualCycleLength = cycleLengthMap.get(cycleKey);
+                    
+                    // 找下一个周期的开始日期
+                    const chronoIndex = chronologicalCycles.findIndex(c => String(c.id || c.startDate) === cycleKey);
+                    const nextCycle = chronologicalCycles[chronoIndex + 1];
+                    const cycleEndDate = nextCycle ? parseISO(nextCycle.startDate) : null;
+                    
+                    // 判断是否是当前周期（包含今天的周期）
+                    const isCurrentCycle = !nextCycle && startDate <= today;
+                    
+                    const periodPercent = actualCycleLength 
+                      ? (periodDays / maxCycleLength) * 100 
+                      : (periodDays / maxCycleLength) * 100;
+                    const cyclePercent = actualCycleLength 
+                      ? (actualCycleLength / maxCycleLength) * 100 
+                      : 0;
+                    
+                    return (
+                      <div key={cycle.id || index} className="space-y-0.5">
+                        {/* 日期范围 */}
+                        <div className="flex items-center gap-2">
+                          {isCurrentCycle && (
+                            <span className="text-[10px] text-primary font-medium bg-primary/10 px-1.5 py-0.5 rounded">
+                              当前周期
+                            </span>
+                          )}
+                          <span className="text-[11px] text-muted-foreground/70">
+                            {format(startDate, 'M月d日', { locale: zhCN })}
+                            {cycleEndDate 
+                              ? ` - ${format(cycleEndDate, 'M月d日', { locale: zhCN })}` 
+                              : ' - 进行中'}
                           </span>
                         </div>
                         
-                        {/* 周期长度标注 */}
-                        {cycleLength > 0 && (
-                          <span 
-                            className="absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground ml-2"
-                            style={{ left: `${cyclePercent}%` }}
+                        {/* 进度条 - 更细更简洁 */}
+                        <div className="relative h-3 flex items-center">
+                          {/* 背景轨道 */}
+                          <div 
+                            className="absolute left-0 h-1.5 bg-muted/30 rounded-full"
+                            style={{ width: actualCycleLength ? `${cyclePercent}%` : `${periodPercent}%` }}
+                          />
+                          {/* 经期部分（填充） */}
+                          <div 
+                            className="absolute left-0 h-1.5 bg-phase-menstrual rounded-full transition-all duration-300"
+                            style={{ width: `${periodPercent}%` }}
+                          />
+                          
+                          {/* 数据标注 - 在右侧 */}
+                          <div 
+                            className="absolute flex items-center gap-1.5 text-[10px]"
+                            style={{ left: `${Math.max(cyclePercent, periodPercent) + 1}%` }}
                           >
-                            周期 {cycleLength}天
-                          </span>
-                        )}
+                            <span className="text-phase-menstrual font-medium">{periodDays}天</span>
+                            {actualCycleLength && (
+                              <>
+                                <span className="text-muted-foreground/50">/</span>
+                                <span className="text-muted-foreground">{actualCycleLength}天</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             </div>
             
             {/* 图例 */}
-            <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-4 mt-4 text-[10px] text-muted-foreground">
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-sm bg-phase-menstrual" />
+                <div className="w-2 h-1.5 rounded-full bg-phase-menstrual" />
                 <span>经期天数</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-sm border-2 border-muted-foreground/30" />
+                <div className="w-2 h-1.5 rounded-full bg-muted/30" />
                 <span>周期长度</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-3 h-0 border-t-2 border-dashed border-phase-ovulation" style={{ width: '12px' }} />
+                <div className="w-2 h-0 border-t border-dashed border-phase-ovulation/70" />
                 <span>平均周期</span>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* 预测准确性分析 */}
+      {(() => {
+        // 计算预测准确性
+        const sortedCycles = [...cycles].sort((a, b) => 
+          parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
+        );
+        
+        const predictions: { 
+          cycleStart: string; 
+          predictedStart: string; 
+          actualStart: string; 
+          diffDays: number;
+        }[] = [];
+        
+        for (let i = 1; i < sortedCycles.length; i++) {
+          const prevCycle = sortedCycles[i - 1];
+          const currentCycle = sortedCycles[i];
+          
+          // 基于上一个周期开始日期 + 平均周期长度预测
+          const predictedDate = new Date(parseISO(prevCycle.startDate));
+          predictedDate.setDate(predictedDate.getDate() + statistics.averageCycleLength);
+          
+          const actualDate = parseISO(currentCycle.startDate);
+          const diff = differenceInDays(actualDate, predictedDate);
+          
+          predictions.push({
+            cycleStart: prevCycle.startDate,
+            predictedStart: format(predictedDate, 'yyyy-MM-dd'),
+            actualStart: currentCycle.startDate,
+            diffDays: diff,
+          });
+        }
+        
+        if (predictions.length === 0) return null;
+        
+        // 计算准确性统计
+        const avgDiff = predictions.reduce((sum, p) => sum + Math.abs(p.diffDays), 0) / predictions.length;
+        const accurateCount = predictions.filter(p => Math.abs(p.diffDays) <= 2).length;
+        const accuracyRate = Math.round((accurateCount / predictions.length) * 100);
+        
+        // 只显示最近的预测记录
+        const recentPredictions = predictions.slice(-6).reverse();
+        
+        return (
+          <Card className="border-0 shadow-lg mb-6 card-hover">
+            <CardContent className="p-4">
+              <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                <Target className="w-4 h-4 text-phase-ovulation" />
+                预测准确性分析
+              </h3>
+              
+              {/* 准确性统计 */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-muted/30 rounded-lg p-3">
+                  <p className="text-[10px] text-muted-foreground mb-1">预测准确率</p>
+                  <p className="text-xl font-bold text-foreground">
+                    {accuracyRate}%
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    ±2天内算准确
+                  </p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-3">
+                  <p className="text-[10px] text-muted-foreground mb-1">平均误差</p>
+                  <p className="text-xl font-bold text-foreground">
+                    {avgDiff.toFixed(1)}
+                    <span className="text-sm font-normal ml-1">天</span>
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    共{predictions.length}次预测
+                  </p>
+                </div>
+              </div>
+              
+              {/* 预测记录 */}
+              <p className="text-xs text-muted-foreground mb-2">最近预测记录</p>
+              <div className="space-y-2">
+                {recentPredictions.map((p, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-[11px] py-1.5 border-b border-muted/30 last:border-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">
+                        {format(parseISO(p.actualStart), 'M月d日')}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-medium ${
+                        Math.abs(p.diffDays) <= 2 
+                          ? 'text-green-500' 
+                          : Math.abs(p.diffDays) <= 5 
+                            ? 'text-yellow-500' 
+                            : 'text-phase-menstrual'
+                      }`}>
+                        {p.diffDays === 0 ? '准确' : p.diffDays > 0 ? `晚${p.diffDays}天` : `早${Math.abs(p.diffDays)}天`}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* 经量分布 + 心情分布 */}
       <div className="grid grid-cols-2 gap-3 mb-6">
