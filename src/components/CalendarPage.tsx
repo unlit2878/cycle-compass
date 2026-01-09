@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getDaysInMonth, formatDate, CyclePhase, getCyclePhase } from '@/lib/cycle-utils';
 import { DailyLog, Settings } from '@/lib/db';
+import { zh, formatMonthYear } from '@/lib/i18n';
 
 interface CalendarPageProps {
   settings: Settings | null;
@@ -20,7 +21,7 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
     const days = getDaysInMonth(year, month);
     const firstDayOfWeek = new Date(year, month, 1).getDay();
     
-    // Create a map of logged days
+    // 创建已记录日期的映射
     const logMap = new Map<string, DailyLog>();
     dailyLogs.forEach(log => logMap.set(log.date, log));
     
@@ -60,11 +61,10 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
   };
 
   const today = formatDate(new Date());
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
     <div className="min-h-screen pb-24 px-4 pt-6">
-      {/* Month Navigation */}
+      {/* 月份导航 */}
       <div className="flex items-center justify-between mb-6">
         <Button
           variant="ghost"
@@ -75,7 +75,7 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
           <ChevronLeft className="w-5 h-5" />
         </Button>
         <h1 className="text-xl font-bold text-foreground">
-          {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          {formatMonthYear(currentMonth)}
         </h1>
         <Button
           variant="ghost"
@@ -87,36 +87,36 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
         </Button>
       </div>
 
-      {/* Legend */}
+      {/* 图例 */}
       <div className="flex flex-wrap gap-3 mb-4 justify-center">
         {(['menstrual', 'follicular', 'ovulation', 'luteal'] as CyclePhase[]).map((phase) => (
           <div key={phase} className="flex items-center gap-1.5">
             <div className={`w-3 h-3 rounded-full ${phaseSolidClass[phase]}`} />
-            <span className="text-xs text-muted-foreground capitalize">{phase}</span>
+            <span className="text-xs text-muted-foreground">{zh.phases[phase]}</span>
           </div>
         ))}
       </div>
 
-      {/* Calendar Grid */}
+      {/* 日历网格 */}
       <Card className="border-0 shadow-lg">
         <CardContent className="p-3">
-          {/* Weekday headers */}
+          {/* 星期标题 */}
           <div className="grid grid-cols-7 mb-2">
-            {weekDays.map((day) => (
+            {zh.calendar.weekdays.map((day) => (
               <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
                 {day}
               </div>
             ))}
           </div>
 
-          {/* Days grid */}
+          {/* 日期网格 */}
           <div className="grid grid-cols-7 gap-1">
-            {/* Empty cells for days before first of month */}
+            {/* 月初之前的空白单元格 */}
             {Array.from({ length: monthData.firstDayOfWeek }).map((_, i) => (
               <div key={`empty-${i}`} className="aspect-square" />
             ))}
 
-            {/* Day cells */}
+            {/* 日期单元格 */}
             {monthData.days.map((date) => {
               const dateStr = formatDate(date);
               const log = monthData.logMap.get(dateStr);
@@ -150,15 +150,15 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
         </CardContent>
       </Card>
 
-      {/* Legend for recorded vs predicted */}
+      {/* 已记录与预测图例 */}
       <div className="flex justify-center gap-6 mt-4">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-phase-menstrual" />
-          <span className="text-xs text-muted-foreground">Recorded period</span>
+          <span className="text-xs text-muted-foreground">已记录经期</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded border-2 border-dashed border-phase-menstrual bg-phase-menstrual/20" />
-          <span className="text-xs text-muted-foreground">Predicted</span>
+          <span className="text-xs text-muted-foreground">预测</span>
         </div>
       </div>
     </div>

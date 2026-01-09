@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { CycleData, DailyLog, Settings } from '@/lib/db';
 import { TrendingUp, Calendar, Activity, Heart } from 'lucide-react';
+import { zh } from '@/lib/i18n';
 
 interface InsightsPageProps {
   settings: Settings | null;
@@ -17,18 +18,18 @@ interface InsightsPageProps {
 }
 
 export function InsightsPage({ settings, cycles, dailyLogs, statistics }: InsightsPageProps) {
-  // Cycle length trend data
+  // 周期长度趋势数据
   const cycleLengthData = useMemo(() => {
     return cycles
       .filter((c) => c.cycleLength)
       .slice(-6)
       .map((c, i) => ({
-        cycle: `Cycle ${i + 1}`,
+        cycle: `第${i + 1}周期`,
         length: c.cycleLength,
       }));
   }, [cycles]);
 
-  // Symptom frequency data
+  // 症状频率数据
   const symptomData = useMemo(() => {
     const symptomCount: Record<string, number> = {};
     dailyLogs.forEach((log) => {
@@ -43,7 +44,7 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
       .map(([symptom, count]) => ({ symptom, count }));
   }, [dailyLogs]);
 
-  // Mood distribution
+  // 心情分布
   const moodData = useMemo(() => {
     const moodCount: Record<string, number> = {};
     dailyLogs.forEach((log) => {
@@ -58,7 +59,7 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
       .map(([mood, count]) => ({ mood, count }));
   }, [dailyLogs]);
 
-  // Calculate regularity score
+  // 计算规律性评分
   const regularityScore = useMemo(() => {
     if (cycles.length < 3) return null;
     
@@ -69,10 +70,16 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
     const variance = lengths.reduce((sum, len) => sum + Math.pow(len - avg, 2), 0) / lengths.length;
     const stdDev = Math.sqrt(variance);
     
-    // Score from 0-100, lower standard deviation = higher score
+    // 评分从0-100，标准差越低评分越高
     const score = Math.max(0, Math.min(100, 100 - stdDev * 10));
     return Math.round(score);
   }, [cycles]);
+
+  // 获取心情表情
+  const getMoodEmoji = (moodLabel: string): string => {
+    const mood = zh.moods.find(m => m.label === moodLabel);
+    return mood?.emoji || '😐';
+  };
 
   const hasData = cycles.length > 0 || dailyLogs.length > 0;
 
@@ -82,9 +89,9 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
         <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
           <TrendingUp className="w-10 h-10 text-muted-foreground" />
         </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">No Data Yet</h2>
+        <h2 className="text-xl font-bold text-foreground mb-2">{zh.insights.noData}</h2>
         <p className="text-muted-foreground text-center max-w-xs">
-          Start logging your cycle to see insights and statistics here.
+          {zh.insights.noDataDesc}
         </p>
       </div>
     );
@@ -92,19 +99,19 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
 
   return (
     <div className="min-h-screen pb-24 px-4 pt-6">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Insights</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">{zh.insights.title}</h1>
 
-      {/* Stats Grid */}
+      {/* 统计网格 */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground">Avg Cycle</span>
+              <span className="text-xs text-muted-foreground">{zh.insights.avgCycleLength}</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
               {statistics.averageCycleLength}
-              <span className="text-sm font-normal text-muted-foreground ml-1">days</span>
+              <span className="text-sm font-normal text-muted-foreground ml-1">{zh.insights.days}</span>
             </p>
           </CardContent>
         </Card>
@@ -113,11 +120,11 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Activity className="w-4 h-4 text-phase-menstrual" />
-              <span className="text-xs text-muted-foreground">Avg Period</span>
+              <span className="text-xs text-muted-foreground">{zh.insights.avgPeriodLength}</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
               {statistics.averagePeriodLength}
-              <span className="text-sm font-normal text-muted-foreground ml-1">days</span>
+              <span className="text-sm font-normal text-muted-foreground ml-1">{zh.insights.days}</span>
             </p>
           </CardContent>
         </Card>
@@ -126,9 +133,12 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-4 h-4 text-phase-ovulation" />
-              <span className="text-xs text-muted-foreground">Cycles Tracked</span>
+              <span className="text-xs text-muted-foreground">{zh.insights.totalCycles}</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{statistics.totalCyclesTracked}</p>
+            <p className="text-2xl font-bold text-foreground">
+              {statistics.totalCyclesTracked}
+              <span className="text-sm font-normal text-muted-foreground ml-1">{zh.insights.cycles}</span>
+            </p>
           </CardContent>
         </Card>
 
@@ -136,7 +146,7 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Heart className="w-4 h-4 text-phase-follicular" />
-              <span className="text-xs text-muted-foreground">Regularity</span>
+              <span className="text-xs text-muted-foreground">规律性</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
               {regularityScore !== null ? (
@@ -145,18 +155,18 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
                   <span className="text-sm font-normal text-muted-foreground ml-1">%</span>
                 </>
               ) : (
-                <span className="text-sm font-normal text-muted-foreground">Need 3+ cycles</span>
+                <span className="text-sm font-normal text-muted-foreground">需要3+周期</span>
               )}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Cycle Length Trend */}
+      {/* 周期长度趋势 */}
       {cycleLengthData.length > 1 && (
         <Card className="border-0 shadow-lg mb-6">
           <CardContent className="p-4">
-            <h3 className="font-semibold text-foreground mb-4">Cycle Length Trend</h3>
+            <h3 className="font-semibold text-foreground mb-4">{zh.insights.cycleLengthTrend}</h3>
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={cycleLengthData}>
@@ -187,11 +197,11 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
         </Card>
       )}
 
-      {/* Top Symptoms */}
+      {/* 常见症状 */}
       {symptomData.length > 0 && (
         <Card className="border-0 shadow-lg mb-6">
           <CardContent className="p-4">
-            <h3 className="font-semibold text-foreground mb-4">Most Common Symptoms</h3>
+            <h3 className="font-semibold text-foreground mb-4">{zh.insights.symptomFrequency}</h3>
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={symptomData} layout="vertical">
@@ -219,28 +229,19 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
         </Card>
       )}
 
-      {/* Mood Patterns */}
+      {/* 心情分布 */}
       {moodData.length > 0 && (
         <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
-            <h3 className="font-semibold text-foreground mb-4">Mood Patterns</h3>
+            <h3 className="font-semibold text-foreground mb-4">{zh.insights.moodPatterns}</h3>
             <div className="space-y-3">
-              {moodData.map((item, i) => (
+              {moodData.map((item) => (
                 <div key={item.mood} className="flex items-center gap-3">
-                  <span className="text-2xl">
-                    {item.mood === 'Happy' && '😊'}
-                    {item.mood === 'Calm' && '😌'}
-                    {item.mood === 'Anxious' && '😰'}
-                    {item.mood === 'Sad' && '😢'}
-                    {item.mood === 'Irritable' && '😤'}
-                    {item.mood === 'Energetic' && '⚡'}
-                    {item.mood === 'Tired' && '😴'}
-                    {item.mood === 'Loving' && '🥰'}
-                  </span>
+                  <span className="text-2xl">{getMoodEmoji(item.mood)}</span>
                   <div className="flex-1">
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-foreground">{item.mood}</span>
-                      <span className="text-muted-foreground">{item.count} days</span>
+                      <span className="text-muted-foreground">{item.count} 天</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { PhaseInfo, getPhaseEmoji, getPhaseName, getPhaseDescription, formatDisplayDate, isBackupOverdue, getDaysSinceBackup } from '@/lib/cycle-utils';
 import { Settings } from '@/lib/db';
 import { Plus, AlertCircle } from 'lucide-react';
+import { zh } from '@/lib/i18n';
 
 interface HomeProps {
   phaseInfo: PhaseInfo | null;
@@ -24,7 +25,7 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
     return days === Infinity ? null : days;
   }, [settings]);
 
-  // Get next period date
+  // 获取下次经期日期
   const nextPeriodDate = useMemo(() => {
     if (!phaseInfo || !settings?.lastPeriodStart) return null;
     const lastStart = new Date(settings.lastPeriodStart);
@@ -33,7 +34,7 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
     return nextStart;
   }, [phaseInfo, settings]);
 
-  // Generate week preview
+  // 生成本周预览
   const weekPreview = useMemo(() => {
     if (!phaseInfo || !settings?.lastPeriodStart) return [];
     
@@ -61,7 +62,7 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
       
       days.push({
         date,
-        dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        dayName: zh.calendar.weekdays[date.getDay()],
         dayNum: date.getDate(),
         phase,
         isToday: i === 0,
@@ -88,7 +89,7 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
   if (!phaseInfo || !settings) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="text-center text-muted-foreground">Loading...</div>
+        <div className="text-center text-muted-foreground">{zh.common.loading}</div>
       </div>
     );
   }
@@ -99,7 +100,7 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
 
   return (
     <div className="min-h-screen pb-24 px-4 pt-6 gradient-soft">
-      {/* Backup reminder */}
+      {/* 备份提醒 */}
       {backupOverdue && (
         <button
           onClick={onBackupReminder}
@@ -107,20 +108,20 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
         >
           <AlertCircle className="w-5 h-5 text-warning flex-shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-foreground">Backup recommended</p>
+            <p className="text-sm font-medium text-foreground">建议备份数据</p>
             <p className="text-xs text-muted-foreground">
               {daysSinceBackup === null 
-                ? "You haven't backed up your data yet"
-                : `Last backup: ${daysSinceBackup} days ago`}
+                ? zh.home.neverBackedUp
+                : `${zh.home.backupReminder} ${daysSinceBackup} ${zh.home.daysAgo}`}
             </p>
           </div>
         </button>
       )}
 
-      {/* Phase Circle */}
+      {/* 阶段圆环 */}
       <div className="flex flex-col items-center mb-8">
         <div className="relative w-56 h-56">
-          {/* Background circle */}
+          {/* 背景圆环 */}
           <svg className="w-full h-full transform -rotate-90">
             <circle
               cx="112"
@@ -144,11 +145,11 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
             />
           </svg>
           
-          {/* Center content */}
+          {/* 中心内容 */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-5xl mb-1">{getPhaseEmoji(phaseInfo.phase)}</span>
-            <span className="text-2xl font-bold text-foreground">Day {phaseInfo.dayInCycle}</span>
-            <span className="text-sm text-muted-foreground">{getPhaseName(phaseInfo.phase)} Phase</span>
+            <span className="text-2xl font-bold text-foreground">第 {phaseInfo.dayInCycle} 天</span>
+            <span className="text-sm text-muted-foreground">{getPhaseName(phaseInfo.phase)}</span>
           </div>
         </div>
         
@@ -157,18 +158,18 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
         </p>
       </div>
 
-      {/* Next Period Card */}
+      {/* 下次经期卡片 */}
       {nextPeriodDate && (
         <Card className="mb-6 border-0 shadow-lg overflow-hidden">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Next period expected</p>
+              <p className="text-sm text-muted-foreground">{zh.home.periodExpected}</p>
               <p className="text-xl font-semibold text-foreground">
                 {phaseInfo.daysUntilNextPeriod === 1 
-                  ? 'Tomorrow' 
+                  ? '明天' 
                   : phaseInfo.daysUntilNextPeriod <= 0 
-                    ? 'Today or any day now'
-                    : `In ${phaseInfo.daysUntilNextPeriod} days`}
+                    ? '今天或即将到来'
+                    : `${phaseInfo.daysUntilNextPeriod} ${zh.home.daysUntil}`}
               </p>
             </div>
             <div className="text-right">
@@ -180,10 +181,10 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
         </Card>
       )}
 
-      {/* Week Preview */}
+      {/* 本周预览 */}
       <Card className="mb-6 border-0 shadow-lg">
         <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground mb-3">This week</p>
+          <p className="text-sm text-muted-foreground mb-3">{zh.home.weekPreview}</p>
           <div className="flex justify-between">
             {weekPreview.map((day, i) => (
               <div key={i} className="flex flex-col items-center gap-1">
@@ -203,13 +204,13 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
         </CardContent>
       </Card>
 
-      {/* Quick Log Button */}
+      {/* 快速记录按钮 */}
       <Button
         onClick={onLogToday}
         className="w-full h-14 text-lg rounded-2xl shadow-lg"
       >
         <Plus className="mr-2 w-5 h-5" />
-        Log Today
+        记录今天
       </Button>
     </div>
   );

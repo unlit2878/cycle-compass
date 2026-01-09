@@ -1,4 +1,5 @@
 import { CycleData, DailyLog } from './db';
+import { zh } from './i18n';
 
 export type CyclePhase = 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
 
@@ -16,9 +17,9 @@ export interface PredictedPeriod {
   isPrediction: boolean;
 }
 
-// Calculate cycle phase based on day in cycle and cycle length
+// 根据周期天数和周期长度计算周期阶段
 export function getCyclePhase(dayInCycle: number, cycleLength: number): CyclePhase {
-  const ovulationDay = Math.round(cycleLength - 14); // Ovulation typically 14 days before next period
+  const ovulationDay = Math.round(cycleLength - 14); // 排卵通常在下次月经前14天
   
   if (dayInCycle <= 5) {
     return 'menstrual';
@@ -44,7 +45,7 @@ export function getPhaseInfo(
   const phase = getCyclePhase(dayInCycle, cycleLength);
   const daysUntilNextPeriod = cycleLength - dayInCycle + 1;
   
-  // Calculate phase-specific day
+  // 计算阶段内的天数
   const ovulationDay = Math.round(cycleLength - 14);
   let phaseDay: number;
   let phaseTotalDays: number;
@@ -78,37 +79,18 @@ export function getPhaseInfo(
 }
 
 export function getPhaseEmoji(phase: CyclePhase): string {
-  switch (phase) {
-    case 'menstrual': return '🔴';
-    case 'follicular': return '🌸';
-    case 'ovulation': return '💜';
-    case 'luteal': return '🌙';
-  }
+  return zh.phaseEmojis[phase];
 }
 
 export function getPhaseName(phase: CyclePhase): string {
-  switch (phase) {
-    case 'menstrual': return 'Menstrual';
-    case 'follicular': return 'Follicular';
-    case 'ovulation': return 'Ovulation';
-    case 'luteal': return 'Luteal';
-  }
+  return zh.phases[phase];
 }
 
 export function getPhaseDescription(phase: CyclePhase): string {
-  switch (phase) {
-    case 'menstrual':
-      return 'Your body is shedding the uterine lining. Rest and self-care are important.';
-    case 'follicular':
-      return 'Energy levels are rising as your body prepares for ovulation.';
-    case 'ovulation':
-      return 'Peak fertility window. You may feel more energetic and social.';
-    case 'luteal':
-      return 'Your body is preparing for the next cycle. PMS symptoms may occur.';
-  }
+  return zh.phaseDescriptions[phase];
 }
 
-// Calculate average cycle length from history
+// 从历史记录计算平均周期长度
 export function calculateAverageCycleLength(cycles: CycleData[]): number {
   if (cycles.length < 2) return 28;
   
@@ -121,12 +103,12 @@ export function calculateAverageCycleLength(cycles: CycleData[]): number {
   return Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length);
 }
 
-// Calculate average period length from daily logs
+// 从每日记录计算平均经期长度
 export function calculateAveragePeriodLength(logs: DailyLog[]): number {
   const periodDays = logs.filter(l => l.isPeriod);
   if (periodDays.length === 0) return 5;
   
-  // Group consecutive period days
+  // 将连续的经期天数分组
   const sortedDates = periodDays.map(l => l.date).sort();
   let periodLengths: number[] = [];
   let currentLength = 1;
@@ -154,7 +136,7 @@ export function calculateAveragePeriodLength(logs: DailyLog[]): number {
   return Math.round(periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length);
 }
 
-// Predict future periods
+// 预测未来经期
 export function predictNextPeriods(
   lastPeriodStart: Date,
   cycleLength: number,
@@ -180,34 +162,32 @@ export function predictNextPeriods(
   return predictions;
 }
 
-// Format date helpers
+// 日期格式化辅助函数
 export function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
 export function formatDisplayDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}月${day}日`;
 }
 
 export function formatFullDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  return `${year}年${month}月${day}日 ${weekdays[date.getDay()]}`;
 }
 
-// Check if date is today
+// 检查是否是今天
 export function isToday(date: Date): boolean {
   const today = new Date();
   return formatDate(date) === formatDate(today);
 }
 
-// Get start of week (Sunday)
+// 获取一周的开始（周日）
 export function getWeekStart(date: Date): Date {
   const d = new Date(date);
   const day = d.getDay();
@@ -215,7 +195,7 @@ export function getWeekStart(date: Date): Date {
   return d;
 }
 
-// Get days in month
+// 获取月份的所有天数
 export function getDaysInMonth(year: number, month: number): Date[] {
   const days: Date[] = [];
   const date = new Date(year, month, 1);
@@ -228,7 +208,7 @@ export function getDaysInMonth(year: number, month: number): Date[] {
   return days;
 }
 
-// Check if backup is overdue
+// 检查备份是否过期
 export function isBackupOverdue(lastBackupDate: string | undefined, interval: 'weekly' | 'monthly'): boolean {
   if (!lastBackupDate) return true;
   

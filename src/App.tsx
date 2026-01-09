@@ -15,6 +15,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { formatDate } from "@/lib/cycle-utils";
 import { BackupData } from "@/lib/db";
 import { toast } from "sonner";
+import { zh } from "@/lib/i18n";
 
 const queryClient = new QueryClient();
 
@@ -40,7 +41,7 @@ function AppContent() {
   const [loggingDate, setLoggingDate] = useState<string | null>(null);
   const [loggingExistingLog, setLoggingExistingLog] = useState<any>(null);
 
-  // Apply dark mode on load
+  // 加载时应用深色模式
   useEffect(() => {
     if (settings?.darkMode) {
       document.documentElement.classList.add('dark');
@@ -49,7 +50,7 @@ function AppContent() {
     }
   }, [settings?.darkMode]);
 
-  // Request persistent storage on first load
+  // 首次加载时请求持久存储
   useEffect(() => {
     if (settings && !settings.persistentStorageGranted) {
       requestPersistence();
@@ -72,7 +73,7 @@ function AppContent() {
   const handleLogSave = async (data: any) => {
     if (loggingDate) {
       await logDay(loggingDate, data);
-      toast.success('Entry saved!');
+      toast.success('记录已保存！');
       setLoggingDate(null);
       setLoggingExistingLog(null);
     }
@@ -89,9 +90,9 @@ function AppContent() {
       const text = await file.text();
       const data = JSON.parse(text) as BackupData;
       await restore(data);
-      toast.success('Data imported successfully!');
+      toast.success('数据导入成功！');
     } catch {
-      toast.error('Failed to import data');
+      toast.error('导入数据失败');
     }
     e.target.value = '';
   };
@@ -101,13 +102,13 @@ function AppContent() {
       <div className="min-h-screen flex items-center justify-center gradient-soft">
         <div className="text-center">
           <div className="w-16 h-16 rounded-full gradient-primary mx-auto mb-4 animate-pulse-soft" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">{zh.common.loading}</p>
         </div>
       </div>
     );
   }
 
-  // Show onboarding if not complete
+  // 如果未完成引导则显示引导页面
   if (!settings?.onboardingComplete) {
     return (
       <>
@@ -117,7 +118,7 @@ function AppContent() {
     );
   }
 
-  // Show logging screen if active
+  // 如果正在记录则显示记录页面
   if (loggingDate) {
     return (
       <LoggingScreen

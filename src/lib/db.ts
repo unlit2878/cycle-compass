@@ -1,16 +1,16 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
-// Types
+// 类型定义
 export interface CycleData {
   id?: number;
-  startDate: string; // ISO date string
+  startDate: string; // ISO 日期字符串
   endDate?: string;
   cycleLength?: number;
 }
 
 export interface DailyLog {
   id?: number;
-  date: string; // ISO date string (YYYY-MM-DD)
+  date: string; // ISO 日期字符串 (YYYY-MM-DD)
   isPeriod: boolean;
   flowIntensity?: 'light' | 'medium' | 'heavy';
   symptoms: string[];
@@ -64,7 +64,7 @@ export async function getDB(): Promise<IDBPDatabase<MyCycleDB>> {
 
   dbInstance = await openDB<MyCycleDB>(DB_NAME, DB_VERSION, {
     upgrade(db) {
-      // Cycles store
+      // 周期存储
       if (!db.objectStoreNames.contains('cycles')) {
         const cyclesStore = db.createObjectStore('cycles', {
           keyPath: 'id',
@@ -73,7 +73,7 @@ export async function getDB(): Promise<IDBPDatabase<MyCycleDB>> {
         cyclesStore.createIndex('by-startDate', 'startDate');
       }
 
-      // Daily logs store
+      // 每日记录存储
       if (!db.objectStoreNames.contains('dailyLogs')) {
         const logsStore = db.createObjectStore('dailyLogs', {
           keyPath: 'id',
@@ -82,7 +82,7 @@ export async function getDB(): Promise<IDBPDatabase<MyCycleDB>> {
         logsStore.createIndex('by-date', 'date');
       }
 
-      // Settings store
+      // 设置存储
       if (!db.objectStoreNames.contains('settings')) {
         db.createObjectStore('settings', { keyPath: 'id' });
       }
@@ -92,7 +92,7 @@ export async function getDB(): Promise<IDBPDatabase<MyCycleDB>> {
   return dbInstance;
 }
 
-// Settings operations
+// 设置操作
 export async function getSettings(): Promise<Settings> {
   const db = await getDB();
   const settings = await db.get('settings', 1);
@@ -126,7 +126,7 @@ export async function updateSettings(updates: Partial<Settings>): Promise<Settin
   return updated;
 }
 
-// Cycle operations
+// 周期操作
 export async function addCycle(cycle: Omit<CycleData, 'id'>): Promise<number> {
   const db = await getDB();
   return db.add('cycles', cycle as CycleData);
@@ -150,7 +150,7 @@ export async function getLatestCycle(): Promise<CycleData | undefined> {
   return cycles[cycles.length - 1];
 }
 
-// Daily log operations
+// 每日记录操作
 export async function addOrUpdateDailyLog(log: Omit<DailyLog, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
   const db = await getDB();
   const existing = await db.getFromIndex('dailyLogs', 'by-date', log.date);
@@ -187,7 +187,7 @@ export async function getDailyLogsInRange(startDate: string, endDate: string): P
   return allLogs.filter(log => log.date >= startDate && log.date <= endDate);
 }
 
-// Backup and restore
+// 备份和恢复
 export interface BackupData {
   version: number;
   exportDate: string;
@@ -215,21 +215,21 @@ export async function exportData(): Promise<BackupData> {
 export async function importData(data: BackupData): Promise<void> {
   const db = await getDB();
   
-  // Clear existing data
+  // 清除现有数据
   await db.clear('cycles');
   await db.clear('dailyLogs');
   
-  // Import cycles
+  // 导入周期
   for (const cycle of data.cycles) {
     await db.add('cycles', cycle);
   }
   
-  // Import daily logs
+  // 导入每日记录
   for (const log of data.dailyLogs) {
     await db.add('dailyLogs', log);
   }
   
-  // Update settings (preserve some local settings)
+  // 更新设置（保留部分本地设置）
   const currentSettings = await getSettings();
   await updateSettings({
     ...data.settings,
@@ -238,7 +238,7 @@ export async function importData(data: BackupData): Promise<void> {
   });
 }
 
-// Request persistent storage
+// 请求持久存储
 export async function requestPersistentStorage(): Promise<boolean> {
   if (navigator.storage && navigator.storage.persist) {
     const granted = await navigator.storage.persist();
