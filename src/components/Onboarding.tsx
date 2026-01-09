@@ -4,6 +4,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Sparkles, ArrowRight, ArrowLeft, Upload } from 'lucide-react';
+import { zh, formatDateChinese } from '@/lib/i18n';
 
 interface OnboardingProps {
   onComplete: (lastPeriodStart: string, cycleLength: number) => void;
@@ -33,7 +34,7 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 gradient-soft">
-      {/* Progress indicator */}
+      {/* 进度指示器 */}
       <div className="flex gap-2 mb-8">
         {[0, 1, 2].map((i) => (
           <div
@@ -45,20 +46,22 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
         ))}
       </div>
 
-      {/* Step content */}
+      {/* 步骤内容 */}
       <div className="w-full max-w-md">
         {step === 0 && (
           <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="w-24 h-24 mx-auto rounded-full gradient-primary flex items-center justify-center animate-float">
               <Sparkles className="w-12 h-12 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground">Welcome to MyCycle</h1>
+            <h1 className="text-3xl font-bold text-foreground">{zh.onboarding.welcome.title}</h1>
             <p className="text-muted-foreground text-lg">
-              Your personal, private menstrual cycle companion. All your data stays on your device.
+              {zh.onboarding.welcome.subtitle}
+              <br />
+              {zh.onboarding.welcome.description}
             </p>
             <div className="pt-4 space-y-3">
               <Button onClick={handleNext} className="w-full h-14 text-lg rounded-2xl">
-                Get Started
+                {zh.onboarding.welcome.getStarted}
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
               <Button
@@ -67,7 +70,7 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
                 className="w-full text-muted-foreground"
               >
                 <Upload className="mr-2 w-4 h-4" />
-                Import existing data
+                {zh.onboarding.welcome.importData}
               </Button>
             </div>
           </div>
@@ -76,9 +79,9 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-foreground">When did your last period start?</h2>
+              <h2 className="text-2xl font-bold text-foreground">{zh.onboarding.lastPeriodStart.title}</h2>
               <p className="text-muted-foreground mt-2">
-                This helps us predict your cycle
+                {zh.onboarding.lastPeriodStart.subtitle}
               </p>
             </div>
             <Card className="border-0 shadow-lg">
@@ -94,11 +97,7 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
             </Card>
             {selectedDate && (
               <p className="text-center text-primary font-medium">
-                Selected: {selectedDate.toLocaleDateString('en-US', { 
-                  month: 'long', 
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
+                已选择：{formatDateChinese(selectedDate)}
               </p>
             )}
           </div>
@@ -107,14 +106,14 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
         {step === 2 && (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-foreground">How long is your typical cycle?</h2>
+              <h2 className="text-2xl font-bold text-foreground">{zh.onboarding.cycleLength.title}</h2>
               <p className="text-muted-foreground mt-2">
-                Most cycles are between 21-35 days
+                {zh.onboarding.cycleLength.subtitle}
               </p>
             </div>
             <div className="text-center">
               <div className="text-6xl font-bold text-primary mb-2">{cycleLength}</div>
-              <div className="text-muted-foreground">days</div>
+              <div className="text-muted-foreground">{zh.onboarding.cycleLength.days}</div>
             </div>
             <div className="px-4">
               <Slider
@@ -126,15 +125,15 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
                 className="w-full"
               />
               <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                <span>21 days</span>
-                <span>40 days</span>
+                <span>21 {zh.onboarding.cycleLength.days}</span>
+                <span>40 {zh.onboarding.cycleLength.days}</span>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Navigation buttons */}
+      {/* 导航按钮 */}
       {step > 0 && (
         <div className="w-full max-w-md mt-8 flex gap-3">
           <Button
@@ -143,14 +142,14 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
             className="flex-1 h-14 rounded-2xl"
           >
             <ArrowLeft className="mr-2 w-5 h-5" />
-            Back
+            {zh.onboarding.back}
           </Button>
           <Button
             onClick={handleNext}
             disabled={!canProceed}
             className="flex-1 h-14 rounded-2xl"
           >
-            {step === 2 ? 'Start Tracking' : 'Next'}
+            {step === 2 ? zh.onboarding.complete : zh.onboarding.next}
             <ArrowRight className="ml-2 w-5 h-5" />
           </Button>
         </div>

@@ -31,7 +31,7 @@ export function useCycleData() {
   const [loading, setLoading] = useState(true);
   const [phaseInfo, setPhaseInfo] = useState<PhaseInfo | null>(null);
 
-  // Load all data
+  // 加载所有数据
   const loadData = useCallback(async () => {
     try {
       const [settingsData, cyclesData, logsData] = await Promise.all([
@@ -44,7 +44,7 @@ export function useCycleData() {
       setCycles(cyclesData);
       setDailyLogs(logsData);
 
-      // Calculate current phase if we have data
+      // 如果有数据则计算当前阶段
       if (settingsData.lastPeriodStart) {
         const info = getPhaseInfo(
           new Date(),
@@ -55,7 +55,7 @@ export function useCycleData() {
         setPhaseInfo(info);
       }
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error('加载数据失败:', error);
     } finally {
       setLoading(false);
     }
@@ -65,12 +65,12 @@ export function useCycleData() {
     loadData();
   }, [loadData]);
 
-  // Update settings
+  // 更新设置
   const saveSettings = useCallback(async (updates: Partial<Settings>) => {
     const updated = await updateSettings(updates);
     setSettings(updated);
     
-    // Recalculate phase info if relevant settings changed
+    // 如果相关设置变更则重新计算阶段信息
     if (updates.lastPeriodStart || updates.averageCycleLength || updates.averagePeriodLength) {
       const info = getPhaseInfo(
         new Date(),
@@ -84,7 +84,7 @@ export function useCycleData() {
     return updated;
   }, []);
 
-  // Complete onboarding
+  // 完成引导设置
   const completeOnboarding = useCallback(async (lastPeriodStart: string, cycleLength: number, periodLength: number = 5, lastPeriodEnd?: string) => {
     await updateSettings({
       lastPeriodStart,
@@ -93,7 +93,7 @@ export function useCycleData() {
       onboardingComplete: true,
     });
     
-    // Create initial cycle record if we have an end date
+    // 如果有结束日期则创建初始周期记录
     if (lastPeriodEnd) {
       await addCycle({
         startDate: lastPeriodStart,
@@ -105,7 +105,7 @@ export function useCycleData() {
     await loadData();
   }, [loadData]);
 
-  // Log a day (accepts string date in YYYY-MM-DD format)
+  // 记录某一天（接受 YYYY-MM-DD 格式的日期字符串）
   const logDay = useCallback(async (date: string, log: Omit<DailyLog, 'id' | 'date' | 'createdAt' | 'updatedAt'>) => {
     await addOrUpdateDailyLog({
       date,
@@ -114,23 +114,23 @@ export function useCycleData() {
     await loadData();
   }, [loadData]);
 
-  // Get log for a specific date (accepts string date in YYYY-MM-DD format)
+  // 获取特定日期的记录（接受 YYYY-MM-DD 格式的日期字符串）
   const getLogForDate = useCallback(async (date: string): Promise<DailyLog | undefined> => {
     return getDailyLog(date);
   }, []);
 
-  // Backup data
+  // 备份数据
   const backup = useCallback(async (): Promise<BackupData> => {
     return exportData();
   }, []);
 
-  // Restore data
+  // 恢复数据
   const restore = useCallback(async (data: BackupData): Promise<void> => {
     await importData(data);
     await loadData();
   }, [loadData]);
 
-  // Request persistent storage
+  // 请求持久存储
   const requestPersistence = useCallback(async (): Promise<boolean> => {
     const granted = await requestPersistentStorage();
     if (granted) {
@@ -139,7 +139,7 @@ export function useCycleData() {
     return granted;
   }, [saveSettings]);
 
-  // Calculate statistics
+  // 计算统计数据
   const statistics = {
     averageCycleLength: calculateAverageCycleLength(cycles),
     averagePeriodLength: calculateAveragePeriodLength(dailyLogs),

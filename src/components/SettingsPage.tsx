@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Settings as SettingsType, BackupData } from '@/lib/db';
 import { getDaysSinceBackup } from '@/lib/cycle-utils';
+import { zh } from '@/lib/i18n';
 
 interface SettingsPageProps {
   settings: SettingsType | null;
@@ -38,13 +39,12 @@ export function SettingsPage({
   const [importing, setImporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
   const [importSuccess, setImportSuccess] = useState(false);
-  const [persistenceRequested, setPersistenceRequested] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!settings) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Loading settings...</p>
+        <p className="text-muted-foreground">{zh.common.loading}</p>
       </div>
     );
   }
@@ -66,7 +66,7 @@ export function SettingsPage({
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3000);
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error('导出失败:', error);
     } finally {
       setExporting(false);
     }
@@ -89,8 +89,8 @@ export function SettingsPage({
       setImportSuccess(true);
       setTimeout(() => setImportSuccess(false), 3000);
     } catch (error) {
-      console.error('Import failed:', error);
-      alert('Failed to import data. Please check the file format.');
+      console.error('导入失败:', error);
+      alert('导入数据失败，请检查文件格式。');
     } finally {
       setImporting(false);
       e.target.value = '';
@@ -99,35 +99,34 @@ export function SettingsPage({
 
   const handleRequestPersistence = async () => {
     const granted = await onRequestPersistence();
-    setPersistenceRequested(true);
     if (!granted) {
-      alert('Persistent storage was not granted. Your data may be cleared when storage is low.');
+      alert('持久存储权限未授予。当存储空间不足时，您的数据可能会被清除。');
     }
   };
 
   const daysSinceBackup = getDaysSinceBackup(settings.lastBackupDate);
   const backupStatusText =
     daysSinceBackup === Infinity
-      ? 'Never backed up'
+      ? '从未备份'
       : daysSinceBackup === 0
-        ? 'Backed up today'
-        : `Last backup: ${daysSinceBackup} day${daysSinceBackup === 1 ? '' : 's'} ago`;
+        ? '今天已备份'
+        : `上次备份：${daysSinceBackup} 天前`;
 
   return (
     <div className="min-h-screen pb-24 px-4 pt-6">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Settings</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">{zh.settings.title}</h1>
 
-      {/* Reminders Section */}
+      {/* 提醒设置 */}
       <div className="mb-6">
-        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">REMINDERS</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">通知提醒</h2>
         <Card className="border-0 shadow-lg">
           <CardContent className="p-0 divide-y divide-border">
-            {/* Period Approaching */}
+            {/* 经期临近提醒 */}
             <div className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
                   <Bell className="w-5 h-5 text-primary" />
-                  <span className="font-medium text-foreground">Period Approaching</span>
+                  <span className="font-medium text-foreground">{zh.settings.periodReminder}</span>
                 </div>
                 <Switch
                   checked={settings.reminderPeriodApproaching}
@@ -139,7 +138,7 @@ export function SettingsPage({
               {settings.reminderPeriodApproaching && (
                 <div className="ml-8 mt-3">
                   <p className="text-sm text-muted-foreground mb-2">
-                    Notify {settings.reminderPeriodDays} days before
+                    提前 {settings.reminderPeriodDays} 天提醒
                   </p>
                   <Slider
                     value={[settings.reminderPeriodDays]}
@@ -153,11 +152,11 @@ export function SettingsPage({
               )}
             </div>
 
-            {/* Ovulation Reminder */}
+            {/* 排卵期提醒 */}
             <div className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Bell className="w-5 h-5 text-phase-ovulation" />
-                <span className="font-medium text-foreground">Ovulation Reminder</span>
+                <span className="font-medium text-foreground">排卵期提醒</span>
               </div>
               <Switch
                 checked={settings.reminderOvulation}
@@ -165,11 +164,11 @@ export function SettingsPage({
               />
             </div>
 
-            {/* Daily Log Reminder */}
+            {/* 每日记录提醒 */}
             <div className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Bell className="w-5 h-5 text-phase-follicular" />
-                <span className="font-medium text-foreground">Daily Log Reminder</span>
+                <span className="font-medium text-foreground">{zh.settings.dailyReminder}</span>
               </div>
               <Switch
                 checked={settings.reminderDailyLog}
@@ -180,16 +179,16 @@ export function SettingsPage({
         </Card>
       </div>
 
-      {/* Data Management Section */}
+      {/* 数据管理 */}
       <div className="mb-6">
-        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">DATA MANAGEMENT</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">{zh.settings.dataManagement}</h2>
         <Card className="border-0 shadow-lg">
           <CardContent className="p-0 divide-y divide-border">
-            {/* Backup Status */}
+            {/* 备份状态 */}
             <div className="p-4">
               <div className="flex items-center gap-3 mb-1">
                 <Database className="w-5 h-5 text-primary" />
-                <span className="font-medium text-foreground">Backup Status</span>
+                <span className="font-medium text-foreground">备份状态</span>
               </div>
               <p className="ml-8 text-sm text-muted-foreground flex items-center gap-2">
                 {daysSinceBackup !== Infinity && daysSinceBackup <= 7 ? (
@@ -201,7 +200,7 @@ export function SettingsPage({
               </p>
             </div>
 
-            {/* Export Data */}
+            {/* 导出数据 */}
             <button
               onClick={handleExport}
               disabled={exporting}
@@ -210,7 +209,7 @@ export function SettingsPage({
               <div className="flex items-center gap-3">
                 <Download className="w-5 h-5 text-primary" />
                 <span className="font-medium text-foreground">
-                  {exporting ? 'Exporting...' : exportSuccess ? 'Exported!' : 'Export Data'}
+                  {exporting ? '导出中...' : exportSuccess ? '导出成功！' : zh.settings.exportData}
                 </span>
               </div>
               {exportSuccess ? (
@@ -220,7 +219,7 @@ export function SettingsPage({
               )}
             </button>
 
-            {/* Import Data */}
+            {/* 导入数据 */}
             <button
               onClick={handleImportClick}
               disabled={importing}
@@ -229,7 +228,7 @@ export function SettingsPage({
               <div className="flex items-center gap-3">
                 <Upload className="w-5 h-5 text-primary" />
                 <span className="font-medium text-foreground">
-                  {importing ? 'Importing...' : importSuccess ? 'Imported!' : 'Import Data'}
+                  {importing ? '导入中...' : importSuccess ? '导入成功！' : zh.settings.importData}
                 </span>
               </div>
               {importSuccess ? (
@@ -246,30 +245,30 @@ export function SettingsPage({
               className="hidden"
             />
 
-            {/* Backup Reminder Interval */}
+            {/* 备份提醒间隔 */}
             <div className="p-4">
               <div className="flex items-center gap-3 mb-3">
                 <Bell className="w-5 h-5 text-primary" />
-                <span className="font-medium text-foreground">Backup Reminder</span>
+                <span className="font-medium text-foreground">{zh.settings.backupReminder}</span>
               </div>
               <div className="ml-8 flex gap-2">
                 {(['weekly', 'monthly'] as const).map((interval) => (
                   <button
                     key={interval}
                     onClick={() => onUpdateSettings({ backupReminderInterval: interval })}
-                    className={`px-4 py-2 rounded-xl text-sm capitalize transition-all ${
+                    className={`px-4 py-2 rounded-xl text-sm transition-all ${
                       settings.backupReminderInterval === interval
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted text-muted-foreground'
                     }`}
                   >
-                    {interval}
+                    {interval === 'weekly' ? '每周' : '每月'}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Persistent Storage */}
+            {/* 持久存储 */}
             <button
               onClick={handleRequestPersistence}
               disabled={settings.persistentStorageGranted}
@@ -278,11 +277,11 @@ export function SettingsPage({
               <div className="flex items-center gap-3">
                 <Shield className="w-5 h-5 text-primary" />
                 <div className="text-left">
-                  <span className="font-medium text-foreground block">Persistent Storage</span>
+                  <span className="font-medium text-foreground block">{zh.settings.persistentStorage}</span>
                   <span className="text-xs text-muted-foreground">
                     {settings.persistentStorageGranted
-                      ? 'Storage protection enabled'
-                      : 'Request browser to protect your data'}
+                      ? '存储保护已启用'
+                      : zh.settings.persistentStorageDesc}
                   </span>
                 </div>
               </div>
@@ -296,9 +295,9 @@ export function SettingsPage({
         </Card>
       </div>
 
-      {/* Display Section */}
+      {/* 显示设置 */}
       <div className="mb-6">
-        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">DISPLAY</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">{zh.settings.display}</h2>
         <Card className="border-0 shadow-lg">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -307,7 +306,7 @@ export function SettingsPage({
               ) : (
                 <Sun className="w-5 h-5 text-primary" />
               )}
-              <span className="font-medium text-foreground">Dark Mode</span>
+              <span className="font-medium text-foreground">{zh.settings.darkMode}</span>
             </div>
             <Switch
               checked={settings.darkMode}
@@ -324,15 +323,15 @@ export function SettingsPage({
         </Card>
       </div>
 
-      {/* About Section */}
+      {/* 关于 */}
       <div>
-        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">ABOUT</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">{zh.settings.about}</h2>
         <Card className="border-0 shadow-lg">
           <CardContent className="p-4 flex items-center gap-3">
             <Info className="w-5 h-5 text-primary" />
             <div>
-              <span className="font-medium text-foreground block">MyCycle</span>
-              <span className="text-sm text-muted-foreground">Version 1.0.0</span>
+              <span className="font-medium text-foreground block">{zh.appName}</span>
+              <span className="text-sm text-muted-foreground">{zh.settings.version} 1.0.0</span>
             </div>
           </CardContent>
         </Card>
