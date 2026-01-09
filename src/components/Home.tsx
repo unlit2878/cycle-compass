@@ -99,12 +99,12 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
   const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
 
   return (
-    <div className="min-h-screen pb-24 px-4 pt-6 gradient-soft">
+    <div className="min-h-screen pb-24 px-4 pt-6 gradient-soft page-enter">
       {/* 备份提醒 */}
       {backupOverdue && (
         <button
           onClick={onBackupReminder}
-          className="w-full mb-4 p-3 rounded-xl bg-warning/10 border border-warning/30 flex items-center gap-3 text-left"
+          className="w-full mb-4 p-3 rounded-xl bg-warning/10 border border-warning/30 flex items-center gap-3 text-left btn-press card-hover"
         >
           <AlertCircle className="w-5 h-5 text-warning flex-shrink-0" />
           <div className="flex-1">
@@ -160,7 +160,7 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
 
       {/* 下次经期卡片 */}
       {nextPeriodDate && (
-        <Card className="mb-6 border-0 shadow-lg overflow-hidden">
+        <Card className="mb-6 border-0 shadow-lg overflow-hidden card-hover">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">{zh.home.periodExpected}</p>
@@ -182,7 +182,7 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
       )}
 
       {/* 本周预览 */}
-      <Card className="mb-6 border-0 shadow-lg">
+      <Card className="mb-6 border-0 shadow-lg card-hover">
         <CardContent className="p-4">
           <p className="text-sm text-muted-foreground mb-3">{zh.home.weekPreview}</p>
           <div className="flex justify-between">
@@ -190,7 +190,7 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
               <div key={i} className="flex flex-col items-center gap-1">
                 <span className="text-xs text-muted-foreground">{day.dayName}</span>
                 <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 hover:scale-110 ${
                     day.isToday 
                       ? `${phaseColorClass[day.phase]} text-white ring-2 ring-offset-2 ring-primary` 
                       : `${phaseColorClass[day.phase]}/20 text-foreground`
@@ -207,7 +207,7 @@ export function Home({ phaseInfo, settings, onLogToday, onBackupReminder }: Home
       {/* 快速记录按钮 */}
       <Button
         onClick={onLogToday}
-        className="w-full h-14 text-lg rounded-2xl shadow-lg"
+        className="w-full h-14 text-lg rounded-2xl shadow-lg btn-press transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5"
       >
         <Plus className="mr-2 w-5 h-5" />
         记录今天
