@@ -40,11 +40,11 @@
 
     --radius: 1rem;
 
-    /* Cycle phase colors */
-    --phase-menstrual: 350 70% 65%;
-    --phase-follicular: 340 60% 75%;
-    --phase-ovulation: 280 50% 70%;
-    --phase-luteal: 300 40% 75%;
+    /* Cycle phase colors - enhanced contrast */
+    --phase-menstrual: 350 75% 55%;
+    --phase-follicular: 170 55% 50%;
+    --phase-ovulation: 45 85% 55%;
+    --phase-luteal: 260 50% 60%;
 
     /* Additional semantic colors */
     --success: 145 60% 45%;
@@ -80,11 +80,11 @@
     --input: 280 15% 20%;
     --ring: 340 60% 60%;
 
-    /* Cycle phase colors - dark mode */
-    --phase-menstrual: 350 60% 55%;
-    --phase-follicular: 340 50% 60%;
-    --phase-ovulation: 280 45% 60%;
-    --phase-luteal: 300 35% 55%;
+    /* Cycle phase colors - dark mode enhanced contrast */
+    --phase-menstrual: 350 70% 50%;
+    --phase-follicular: 170 50% 45%;
+    --phase-ovulation: 45 80% 50%;
+    --phase-luteal: 260 45% 55%;
 
     --success: 145 50% 40%;
     --warning: 35 80% 50%;

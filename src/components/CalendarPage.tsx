@@ -55,17 +55,17 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
   };
 
   const phaseColorClass: Record<CyclePhase, string> = {
-    menstrual: 'bg-phase-menstrual/20 border-phase-menstrual',
-    follicular: 'bg-phase-follicular/20 border-phase-follicular',
-    ovulation: 'bg-phase-ovulation/20 border-phase-ovulation',
-    luteal: 'bg-phase-luteal/20 border-phase-luteal',
+    menstrual: 'bg-phase-menstrual/25 border-phase-menstrual/60',
+    follicular: 'bg-phase-follicular/25 border-phase-follicular/60',
+    ovulation: 'bg-phase-ovulation/25 border-phase-ovulation/60',
+    luteal: 'bg-phase-luteal/25 border-phase-luteal/60',
   };
 
   const phaseSolidClass: Record<CyclePhase, string> = {
-    menstrual: 'bg-phase-menstrual text-white',
-    follicular: 'bg-phase-follicular text-white',
-    ovulation: 'bg-phase-ovulation text-white',
-    luteal: 'bg-phase-luteal text-white',
+    menstrual: 'bg-phase-menstrual text-white shadow-sm',
+    follicular: 'bg-phase-follicular text-white shadow-sm',
+    ovulation: 'bg-phase-ovulation text-foreground shadow-sm',
+    luteal: 'bg-phase-luteal text-white shadow-sm',
   };
 
   const navigateMonth = (delta: number) => {
@@ -287,7 +287,9 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
                     isRecordedPeriod
                       ? 'bg-phase-menstrual text-white font-bold shadow-md'
                       : phase
-                        ? `${phaseColorClass[phase]} ${isPast ? 'border border-dashed' : 'border border-dashed opacity-60'}`
+                        ? isPast 
+                          ? `${phaseColorClass[phase]} border-2 border-dashed`
+                          : `bg-gradient-to-br from-${phase === 'menstrual' ? 'phase-menstrual' : phase === 'follicular' ? 'phase-follicular' : phase === 'ovulation' ? 'phase-ovulation' : 'phase-luteal'}/10 to-${phase === 'menstrual' ? 'phase-menstrual' : phase === 'follicular' ? 'phase-follicular' : phase === 'ovulation' ? 'phase-ovulation' : 'phase-luteal'}/30 border-2 border-dotted ${phaseColorClass[phase].split(' ')[1]} opacity-70`
                         : 'bg-muted/30 hover:bg-muted/50'
                   } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''}`}
                 >
@@ -308,14 +310,18 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
       </Card>
 
       {/* 已记录与预测图例 */}
-      <div className="flex justify-center gap-6 mt-4">
+      <div className="flex flex-wrap justify-center gap-4 mt-4">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-phase-menstrual" />
+          <div className="w-4 h-4 rounded bg-phase-menstrual shadow-sm" />
           <span className="text-xs text-muted-foreground">已记录经期</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded border-2 border-dashed border-phase-menstrual bg-phase-menstrual/20" />
-          <span className="text-xs text-muted-foreground">预测</span>
+          <div className="w-4 h-4 rounded border-2 border-dashed border-phase-menstrual/60 bg-phase-menstrual/25" />
+          <span className="text-xs text-muted-foreground">已过去预测</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded border-2 border-dotted border-phase-menstrual/60 bg-gradient-to-br from-phase-menstrual/10 to-phase-menstrual/30" />
+          <span className="text-xs text-muted-foreground">未来预测</span>
         </div>
       </div>
     </div>
