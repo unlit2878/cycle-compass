@@ -5,7 +5,7 @@ import {
   Tooltip, PieChart, Pie, Legend
 } from 'recharts';
 import { CycleData, DailyLog, Settings } from '@/lib/db';
-import { TrendingUp, Calendar, Activity, Heart, Droplets, Target, Zap, Moon, ChevronDown } from 'lucide-react';
+import { TrendingUp, Calendar, Activity, Heart, Droplets, Target, Zap, Moon, ChevronDown, Info } from 'lucide-react';
 import { zh } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format, parseISO, differenceInDays, getYear } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { predictNextCycle, evaluatePredictionAccuracy, getMethodName } from '@/lib/prediction-utils';
 
 interface InsightsPageProps {
   settings: Settings | null;
@@ -432,9 +433,9 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
                             </span>
                           )}
                           <span className="text-[11px] text-muted-foreground/70">
-                            {format(startDate, 'M月d日', { locale: zhCN })}
+                            {format(startDate, 'yyyy年M月d日', { locale: zhCN })}
                             {cycleEndDate 
-                              ? ` - ${format(cycleEndDate, 'M月d日', { locale: zhCN })}` 
+                              ? ` - ${format(cycleEndDate, 'yyyy年M月d日', { locale: zhCN })}` 
                               : ' - 进行中'}
                           </span>
                         </div>
@@ -492,48 +493,16 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
         </Card>
       )}
 
-      {/* 预测准确性分析 */}
+      {/* 预测准确性分析 - 使用统计学方法 */}
       {(() => {
-        // 计算预测准确性
-        const sortedCycles = [...cycles].sort((a, b) => 
-          parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
-        );
+        // 使用新的统计预测方法
+        const prediction = predictNextCycle(cycles);
+        const accuracy = evaluatePredictionAccuracy(cycles);
         
-        const predictions: { 
-          cycleStart: string; 
-          predictedStart: string; 
-          actualStart: string; 
-          diffDays: number;
-        }[] = [];
-        
-        for (let i = 1; i < sortedCycles.length; i++) {
-          const prevCycle = sortedCycles[i - 1];
-          const currentCycle = sortedCycles[i];
-          
-          // 基于上一个周期开始日期 + 平均周期长度预测
-          const predictedDate = new Date(parseISO(prevCycle.startDate));
-          predictedDate.setDate(predictedDate.getDate() + statistics.averageCycleLength);
-          
-          const actualDate = parseISO(currentCycle.startDate);
-          const diff = differenceInDays(actualDate, predictedDate);
-          
-          predictions.push({
-            cycleStart: prevCycle.startDate,
-            predictedStart: format(predictedDate, 'yyyy-MM-dd'),
-            actualStart: currentCycle.startDate,
-            diffDays: diff,
-          });
-        }
-        
-        if (predictions.length === 0) return null;
-        
-        // 计算准确性统计
-        const avgDiff = predictions.reduce((sum, p) => sum + Math.abs(p.diffDays), 0) / predictions.length;
-        const accurateCount = predictions.filter(p => Math.abs(p.diffDays) <= 2).length;
-        const accuracyRate = Math.round((accurateCount / predictions.length) * 100);
+        if (accuracy.predictions.length === 0) return null;
         
         // 只显示最近的预测记录
-        const recentPredictions = predictions.slice(-6).reverse();
+        const recentPredictions = accuracy.predictions.slice(-6).reverse();
         
         return (
           <Card className="border-0 shadow-lg mb-6 card-hover">
@@ -543,48 +512,78 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
                 预测准确性分析
               </h3>
               
-              {/* 准确性统计 */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-muted/30 rounded-lg p-3">
-                  <p className="text-[10px] text-muted-foreground mb-1">预测准确率</p>
-                  <p className="text-xl font-bold text-foreground">
-                    {accuracyRate}%
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    ±2天内算准确
-                  </p>
+              {/* 预测方法说明 */}
+              <div className="bg-muted/30 rounded-lg p-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div className="text-[11px] text-muted-foreground">
+                    <p className="font-medium text-foreground mb-1">
+                      当前使用: {getMethodName(prediction.method)}
+                    </p>
+                    <p>
+                      预测周期: {prediction.predictedCycleLength} 天
+                      (置信区间: {prediction.lowerBound}-{prediction.upperBound} 天)
+                    </p>
+                    <p className="mt-1 opacity-80">
+                      {prediction.method === 'sma' && '周期非常规律，使用简单移动平均'}
+                      {prediction.method === 'weighted' && '周期较规律，使用加权移动平均给近期更高权重'}
+                      {prediction.method === 'ewma' && '周期波动较大，使用指数加权平均更重视近期数据'}
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-muted/30 rounded-lg p-3">
-                  <p className="text-[10px] text-muted-foreground mb-1">平均误差</p>
-                  <p className="text-xl font-bold text-foreground">
-                    {avgDiff.toFixed(1)}
-                    <span className="text-sm font-normal ml-1">天</span>
+              </div>
+              
+              {/* 准确性统计 */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="bg-muted/30 rounded-lg p-2.5 text-center">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">准确率</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {accuracy.accuracyRate}%
                   </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    共{predictions.length}次预测
+                  <p className="text-[9px] text-muted-foreground">±2天内</p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-2.5 text-center">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">平均误差</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {accuracy.avgError.toFixed(1)}
+                    <span className="text-xs font-normal ml-0.5">天</span>
                   </p>
+                  <p className="text-[9px] text-muted-foreground">绝对值</p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-2.5 text-center">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">置信度</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {Math.round(prediction.confidence * 100)}%
+                  </p>
+                  <p className="text-[9px] text-muted-foreground">统计估算</p>
                 </div>
               </div>
               
               {/* 预测记录 */}
-              <p className="text-xs text-muted-foreground mb-2">最近预测记录</p>
+              <p className="text-xs text-muted-foreground mb-2">最近预测记录（使用统计方法回测）</p>
               <div className="space-y-2">
                 {recentPredictions.map((p, idx) => (
                   <div key={idx} className="flex items-center justify-between text-[11px] py-1.5 border-b border-muted/30 last:border-0">
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">
-                        {format(parseISO(p.actualStart), 'M月d日')}
+                        {format(parseISO(p.cycleDate), 'yyyy年M月d日', { locale: zhCN })}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground/60">
+                        ({p.method === 'sma' ? 'SMA' : p.method === 'ewma' ? 'EWMA' : 'WMA'})
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`font-medium ${
-                        Math.abs(p.diffDays) <= 2 
+                      <span className="text-muted-foreground/70 text-[10px]">
+                        预测{p.predicted}天 / 实际{p.actual}天
+                      </span>
+                      <span className={`font-medium min-w-[50px] text-right ${
+                        Math.abs(p.error) <= 2 
                           ? 'text-green-500' 
-                          : Math.abs(p.diffDays) <= 5 
+                          : Math.abs(p.error) <= 4 
                             ? 'text-yellow-500' 
                             : 'text-phase-menstrual'
                       }`}>
-                        {p.diffDays === 0 ? '准确' : p.diffDays > 0 ? `晚${p.diffDays}天` : `早${Math.abs(p.diffDays)}天`}
+                        {p.error === 0 ? '准确' : p.error > 0 ? `+${p.error}天` : `${p.error}天`}
                       </span>
                     </div>
                   </div>
