@@ -90,13 +90,25 @@ export function getPhaseDescription(phase: CyclePhase): string {
   return zh.phaseDescriptions[phase];
 }
 
-// 从历史记录计算平均周期长度
+// 从历史记录计算平均周期长度（基于相邻周期开始日期之差）
 export function calculateAverageCycleLength(cycles: CycleData[]): number {
   if (cycles.length < 2) return 28;
   
-  const lengths = cycles
-    .filter(c => c.cycleLength)
-    .map(c => c.cycleLength!);
+  // 按开始日期排序
+  const sorted = [...cycles].sort((a, b) => 
+    new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+  );
+  
+  // 计算相邻周期之间的天数
+  const lengths: number[] = [];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const start1 = new Date(sorted[i].startDate);
+    const start2 = new Date(sorted[i + 1].startDate);
+    const diffDays = Math.round((start2.getTime() - start1.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays > 0 && diffDays <= 60) { // 过滤异常值
+      lengths.push(diffDays);
+    }
+  }
   
   if (lengths.length === 0) return 28;
   
