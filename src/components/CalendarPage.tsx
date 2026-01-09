@@ -42,16 +42,40 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
     return { days, firstDayOfWeek, logMap };
   }, [currentMonth, dailyLogs]);
 
+  // 获取所有经期记录的日期映射（用于显示历史记录）
+  const periodDates = useMemo(() => {
+    const dates = new Set<string>();
+    dailyLogs.filter(log => log.isPeriod).forEach(log => dates.add(log.date));
+    return dates;
+  }, [dailyLogs]);
+
   const getPhaseForDate = (date: Date): CyclePhase | null => {
     if (!settings?.lastPeriodStart) return null;
+    
+    const dateStr = formatDate(date);
+    
+    // 如果这一天有经期记录，返回 menstrual
+    if (periodDates.has(dateStr)) {
+      return 'menstrual';
+    }
     
     const lastStart = new Date(settings.lastPeriodStart);
     const diffDays = Math.floor((date.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24));
     
-    if (diffDays < 0) return null;
+    // 对于过去的日期，也进行周期预测（向前推算）
+    const cycleLength = settings.averageCycleLength;
+    let dayInCycle: number;
     
-    const dayInCycle = (diffDays % settings.averageCycleLength) + 1;
-    return getCyclePhase(dayInCycle, settings.averageCycleLength);
+    if (diffDays >= 0) {
+      dayInCycle = (diffDays % cycleLength) + 1;
+    } else {
+      // 向前推算：计算在哪个历史周期的第几天
+      const cyclesBefore = Math.ceil(Math.abs(diffDays) / cycleLength);
+      const adjustedDiff = diffDays + cyclesBefore * cycleLength;
+      dayInCycle = (adjustedDiff % cycleLength) + 1;
+    }
+    
+    return getCyclePhase(dayInCycle, cycleLength);
   };
 
   const phaseColorClass: Record<CyclePhase, string> = {
@@ -278,6 +302,21 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
                 periodDayNum = Math.floor((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
               }
 
+              // 未来预测样式：更明显的虚线+淡色背景
+              const futureStyle = phase 
+                ? `border-2 border-dotted opacity-60 ${
+                    phase === 'menstrual' ? 'border-phase-menstrual bg-phase-menstrual/15' :
+                    phase === 'follicular' ? 'border-phase-follicular bg-phase-follicular/15' :
+                    phase === 'ovulation' ? 'border-phase-ovulation bg-phase-ovulation/15' :
+                    'border-phase-luteal bg-phase-luteal/15'
+                  }`
+                : '';
+              
+              // 已过去预测样式：实线边框+深色背景
+              const pastStyle = phase 
+                ? `${phaseColorClass[phase]} border border-solid`
+                : '';
+
               return (
                 <button
                   key={dateStr}
@@ -288,8 +327,8 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
                       ? 'bg-phase-menstrual text-white font-bold shadow-md'
                       : phase
                         ? isPast 
-                          ? `${phaseColorClass[phase]} border-2 border-dashed`
-                          : `bg-gradient-to-br from-${phase === 'menstrual' ? 'phase-menstrual' : phase === 'follicular' ? 'phase-follicular' : phase === 'ovulation' ? 'phase-ovulation' : 'phase-luteal'}/10 to-${phase === 'menstrual' ? 'phase-menstrual' : phase === 'follicular' ? 'phase-follicular' : phase === 'ovulation' ? 'phase-ovulation' : 'phase-luteal'}/30 border-2 border-dotted ${phaseColorClass[phase].split(' ')[1]} opacity-70`
+                          ? pastStyle
+                          : futureStyle
                         : 'bg-muted/30 hover:bg-muted/50'
                   } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''}`}
                 >
@@ -316,11 +355,11 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
           <span className="text-xs text-muted-foreground">已记录经期</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded border-2 border-dashed border-phase-menstrual/60 bg-phase-menstrual/25" />
-          <span className="text-xs text-muted-foreground">已过去预测</span>
+          <div className="w-4 h-4 rounded border border-solid border-phase-menstrual/60 bg-phase-menstrual/25" />
+          <span className="text-xs text-muted-foreground">已过去</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded border-2 border-dotted border-phase-menstrual/60 bg-gradient-to-br from-phase-menstrual/10 to-phase-menstrual/30" />
+          <div className="w-4 h-4 rounded border-2 border-dotted border-phase-menstrual opacity-60 bg-phase-menstrual/15" />
           <span className="text-xs text-muted-foreground">未来预测</span>
         </div>
       </div>
