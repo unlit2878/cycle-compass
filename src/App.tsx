@@ -79,6 +79,59 @@ function AppContent() {
     }
   };
 
+  // 标记经期开始：自动填充未来n天
+  const handleStartPeriod = async (date: string, autoFillDays: number) => {
+    const startDate = new Date(date + 'T12:00:00');
+    
+    // 更新设置中的最后经期开始日期
+    await saveSettings({ lastPeriodStart: date });
+    
+    // 填充经期天数
+    for (let i = 0; i < autoFillDays; i++) {
+      const currentDate = new Date(startDate);
+      currentDate.setDate(currentDate.getDate() + i);
+      const dateStr = formatDate(currentDate);
+      
+      await logDay(dateStr, {
+        isPeriod: true,
+        flowIntensity: i === 0 || i === autoFillDays - 1 ? 'light' : 'medium',
+        symptoms: [],
+      });
+    }
+    
+    toast.success(`已标记经期开始，自动填充了${autoFillDays}天`);
+    setLoggingDate(null);
+    setLoggingExistingLog(null);
+  };
+
+  // 标记经期结束：清除当天之后的经期标记
+  const handleEndPeriod = async (date: string) => {
+    const endDate = new Date(date + 'T12:00:00');
+    
+    // 将当天之后（不包括当天）的经期记录清除
+    for (const log of dailyLogs) {
+      const logDate = new Date(log.date + 'T12:00:00');
+      if (log.isPeriod && logDate > endDate) {
+        await logDay(log.date, {
+          ...log,
+          isPeriod: false,
+          flowIntensity: undefined,
+        });
+      }
+    }
+    
+    // 确保当天是经期
+    await logDay(date, {
+      isPeriod: true,
+      flowIntensity: 'light',
+      symptoms: [],
+    });
+    
+    toast.success('已标记经期结束');
+    setLoggingDate(null);
+    setLoggingExistingLog(null);
+  };
+
   const handleImportFromOnboarding = () => {
     fileInputRef.current?.click();
   };
@@ -124,7 +177,10 @@ function AppContent() {
       <LoggingScreen
         date={loggingDate}
         existingLog={loggingExistingLog}
+        settings={settings}
         onSave={handleLogSave}
+        onStartPeriod={handleStartPeriod}
+        onEndPeriod={handleEndPeriod}
         onBack={() => { setLoggingDate(null); setLoggingExistingLog(null); }}
       />
     );

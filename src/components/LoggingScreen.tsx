@@ -3,21 +3,32 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { ChevronLeft, Droplets, Save } from 'lucide-react';
-import { DailyLog } from '@/lib/db';
+import { ChevronLeft, Droplets, Save, Play, Square, Calendar } from 'lucide-react';
+import { DailyLog, Settings } from '@/lib/db';
 import { formatFullDate } from '@/lib/cycle-utils';
 import { zh } from '@/lib/i18n';
 
 interface LoggingScreenProps {
   date: string;
   existingLog?: DailyLog;
+  settings?: Settings | null;
   onSave: (data: Omit<DailyLog, 'id' | 'date' | 'createdAt' | 'updatedAt'>) => void;
+  onStartPeriod?: (date: string, autoFillDays: number) => void;
+  onEndPeriod?: (date: string) => void;
   onBack: () => void;
 }
 
 type FlowIntensity = 'light' | 'medium' | 'heavy';
 
-export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScreenProps) {
+export function LoggingScreen({ 
+  date, 
+  existingLog, 
+  settings,
+  onSave, 
+  onStartPeriod,
+  onEndPeriod,
+  onBack 
+}: LoggingScreenProps) {
   const [isPeriod, setIsPeriod] = useState(existingLog?.isPeriod ?? false);
   const [flowIntensity, setFlowIntensity] = useState<FlowIntensity | undefined>(
     existingLog?.flowIntensity
@@ -25,8 +36,10 @@ export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScre
   const [symptoms, setSymptoms] = useState<string[]>(existingLog?.symptoms ?? []);
   const [mood, setMood] = useState<string | undefined>(existingLog?.mood);
   const [notes, setNotes] = useState(existingLog?.notes ?? '');
+  const [showPeriodOptions, setShowPeriodOptions] = useState(false);
 
   const displayDate = new Date(date + 'T12:00:00');
+  const avgPeriodLength = settings?.averagePeriodLength || 5;
 
   const toggleSymptom = (symptom: string) => {
     setSymptoms((prev) =>
@@ -42,6 +55,18 @@ export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScre
       mood,
       notes: notes.trim() || undefined,
     });
+  };
+
+  const handleStartPeriod = () => {
+    if (onStartPeriod) {
+      onStartPeriod(date, avgPeriodLength);
+    }
+  };
+
+  const handleEndPeriod = () => {
+    if (onEndPeriod) {
+      onEndPeriod(date);
+    }
   };
 
   const flowOptions: { value: FlowIntensity; label: string; drops: number }[] = [
@@ -64,6 +89,44 @@ export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScre
       </div>
 
       <div className="space-y-6">
+        {/* 快捷操作：标记经期开始/结束 */}
+        {(onStartPeriod || onEndPeriod) && (
+          <Card className="border-0 shadow-lg overflow-hidden bg-gradient-to-r from-phase-menstrual/10 to-phase-menstrual/5">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <Calendar className="w-5 h-5 text-phase-menstrual" />
+                <span className="font-medium text-foreground">快捷操作</span>
+              </div>
+              <div className="flex gap-2">
+                {onStartPeriod && (
+                  <Button
+                    onClick={handleStartPeriod}
+                    className="flex-1 bg-phase-menstrual hover:bg-phase-menstrual/90 text-white gap-2"
+                  >
+                    <Play className="w-4 h-4" />
+                    标记经期开始
+                  </Button>
+                )}
+                {onEndPeriod && (
+                  <Button
+                    onClick={handleEndPeriod}
+                    variant="outline"
+                    className="flex-1 border-phase-menstrual text-phase-menstrual hover:bg-phase-menstrual/10 gap-2"
+                  >
+                    <Square className="w-4 h-4" />
+                    标记经期结束
+                  </Button>
+                )}
+              </div>
+              {onStartPeriod && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  点击"标记经期开始"将自动填充未来 {avgPeriodLength} 天为经期
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* 月经开关 */}
         <Card className="border-0 shadow-lg overflow-hidden card-hover">
           <CardContent className="p-4">

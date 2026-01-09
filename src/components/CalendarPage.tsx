@@ -113,10 +113,10 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
           <ChevronLeft className="w-5 h-5" />
         </Button>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Select value={currentYear.toString()} onValueChange={setYear}>
-            <SelectTrigger className="w-20 h-9 border-0 bg-transparent font-bold text-lg">
-              <SelectValue />
+            <SelectTrigger className="w-[72px] h-9 border-0 bg-transparent font-bold text-base px-2">
+              <SelectValue>{currentYear}年</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {yearOptions.map((year) => (
@@ -127,8 +127,8 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
             </SelectContent>
           </Select>
           <Select value={currentMonthNum.toString()} onValueChange={setMonth}>
-            <SelectTrigger className="w-20 h-9 border-0 bg-transparent font-bold text-lg">
-              <SelectValue />
+            <SelectTrigger className="w-[68px] h-9 border-0 bg-transparent font-bold text-base px-2">
+              <SelectValue>{monthOptions[currentMonthNum]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {monthOptions.map((month, i) => (
@@ -231,18 +231,18 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
 
       {/* 日历网格 */}
       <Card className="border-0 shadow-lg">
-        <CardContent className="p-3">
+        <CardContent className="p-2">
           {/* 星期标题 */}
-          <div className="grid grid-cols-7 mb-2">
+          <div className="grid grid-cols-7 mb-1">
             {zh.calendar.weekdays.map((day) => (
-              <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
+              <div key={day} className="text-center text-[10px] font-medium text-muted-foreground py-1">
                 {day}
               </div>
             ))}
           </div>
 
           {/* 日期网格 */}
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-0.5">
             {/* 月初之前的空白单元格 */}
             {Array.from({ length: monthData.firstDayOfWeek }).map((_, i) => (
               <div key={`empty-${i}`} className="aspect-square" />
@@ -256,25 +256,49 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
               const isToday = dateStr === today;
               const isPast = date <= new Date();
               const isRecordedPeriod = log?.isPeriod;
+              
+              // 计算经期第几天
+              let periodDayNum: number | null = null;
+              if (isRecordedPeriod && settings?.lastPeriodStart) {
+                // 找到这段经期的开始日期
+                const currentDate = new Date(dateStr);
+                let startDate = new Date(dateStr);
+                // 向前查找这段经期的开始
+                for (let i = 1; i <= 14; i++) {
+                  const prevDate = new Date(currentDate);
+                  prevDate.setDate(prevDate.getDate() - i);
+                  const prevDateStr = formatDate(prevDate);
+                  const prevLog = monthData.logMap.get(prevDateStr);
+                  if (prevLog?.isPeriod) {
+                    startDate = prevDate;
+                  } else {
+                    break;
+                  }
+                }
+                periodDayNum = Math.floor((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+              }
 
               return (
                 <button
                   key={dateStr}
                   onClick={() => onDaySelect(dateStr)}
-                  className={`aspect-square rounded-xl flex flex-col items-center justify-center text-sm relative
+                  className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative
                     transition-all duration-200 hover:scale-105 active:scale-95 ${
                     isRecordedPeriod
                       ? 'bg-phase-menstrual text-white font-bold shadow-md'
                       : phase
-                        ? `${phaseColorClass[phase]} ${isPast ? 'border-2 border-dashed' : 'border border-dashed opacity-60'}`
+                        ? `${phaseColorClass[phase]} ${isPast ? 'border border-dashed' : 'border border-dashed opacity-60'}`
                         : 'bg-muted/30 hover:bg-muted/50'
                   } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''}`}
                 >
-                  <span className={isRecordedPeriod ? 'text-white' : 'text-foreground'}>
+                  <span className={`${isRecordedPeriod ? 'text-white' : 'text-foreground'} ${periodDayNum ? 'text-[10px]' : ''}`}>
                     {date.getDate()}
                   </span>
+                  {periodDayNum && (
+                    <span className="text-[8px] text-white/80 leading-none">第{periodDayNum}天</span>
+                  )}
                   {log && !isRecordedPeriod && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary absolute bottom-1" />
+                    <div className="w-1 h-1 rounded-full bg-primary absolute bottom-0.5" />
                   )}
                 </button>
               );

@@ -219,23 +219,104 @@ export async function importData(data: BackupData): Promise<void> {
   await db.clear('cycles');
   await db.clear('dailyLogs');
   
-  // 导入周期
+  // 导入周期，同时为每个周期创建对应的dailyLogs记录
   for (const cycle of data.cycles) {
-    await db.add('cycles', cycle);
+    // 兼容旧格式（可能有duration字段但没有cycleLength）
+    const cycleToAdd = {
+      ...cycle,
+      cycleLength: cycle.cycleLength || (cycle as any).duration,
+    };
+    await db.add('cycles', cycleToAdd);
+    
+    // 如果有开始和结束日期，自动创建对应的每日经期记录
+    if (cycle.startDate && cycle.endDate) {
+      const start = new Date(cycle.startDate);
+      const end = new Date(cycle.endDate);
+      const now = new Date().toISOString();
+      
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        // 检查是否已存在该日期的记录
+        const existing = await db.getFromIndex('dailyLogs', 'by-date', dateStr);
+        if (!existing) {
+          await db.add('dailyLogs', {
+            date: dateStr,
+            isPeriod: true,
+            flowIntensity: 'medium',
+            symptoms: [],
+            createdAt: now,
+            updatedAt: now,
+          } as DailyLog);
+        }
+      }
+    }
   }
   
-  // 导入每日记录
-  for (const log of data.dailyLogs) {
-    await db.add('dailyLogs', log);
+  // 导入每日记录（覆盖已存在的）
+  for (const log of data.dailyLogs || []) {
+    const existing = await db.getFromIndex('dailyLogs', 'by-date', log.date);
+    if (existing) {
+      await db.put('dailyLogs', { ...existing, ...log });
+    } else {
+      await db.add('dailyLogs', log);
+    }
   }
   
   // 更新设置（保留部分本地设置）
   const currentSettings = await getSettings();
-  await updateSettings({
-    ...data.settings,
-    id: 1,
-    persistentStorageGranted: currentSettings.persistentStorageGranted,
-  });
+  
+  // 如果导入的数据有settings，使用它；否则基于cycles计算
+  if (data.settings) {
+    await updateSettings({
+      ...data.settings,
+      id: 1,
+      persistentStorageGranted: currentSettings.persistentStorageGranted,
+    });
+  } else if (data.cycles && data.cycles.length > 0) {
+    // 自动计算设置
+    const sortedCycles = [...data.cycles].sort((a, b) => 
+      new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    );
+    const latestCycle = sortedCycles[0];
+    
+    // 计算平均周期长度
+    let avgCycleLength = 28;
+    if (sortedCycles.length >= 2) {
+      const lengths: number[] = [];
+      for (let i = 0; i < sortedCycles.length - 1; i++) {
+        const diff = Math.floor(
+          (new Date(sortedCycles[i].startDate).getTime() - new Date(sortedCycles[i + 1].startDate).getTime()) 
+          / (1000 * 60 * 60 * 24)
+        );
+        if (diff > 0 && diff < 60) lengths.push(diff);
+      }
+      if (lengths.length > 0) {
+        avgCycleLength = Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length);
+      }
+    }
+    
+    // 计算平均经期长度
+    let avgPeriodLength = 5;
+    const periodLengths = data.cycles
+      .filter(c => c.startDate && c.endDate)
+      .map(c => {
+        const start = new Date(c.startDate);
+        const end = new Date(c.endDate!);
+        return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      })
+      .filter(l => l > 0 && l < 15);
+    if (periodLengths.length > 0) {
+      avgPeriodLength = Math.round(periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length);
+    }
+    
+    await updateSettings({
+      onboardingComplete: true,
+      lastPeriodStart: latestCycle.startDate,
+      averageCycleLength: avgCycleLength,
+      averagePeriodLength: avgPeriodLength,
+      persistentStorageGranted: currentSettings.persistentStorageGranted,
+    });
+  }
 }
 
 // 请求持久存储
