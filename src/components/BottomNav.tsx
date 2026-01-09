@@ -22,8 +22,8 @@ export function BottomNav({ onLogClick }: BottomNavProps) {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-1 px-4 py-2 transition-colors ${
-                isActive ? 'text-primary' : 'text-muted-foreground'
+              `nav-btn flex flex-col items-center gap-1 px-4 py-2 ${
+                isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`
             }
           >
@@ -37,7 +37,7 @@ export function BottomNav({ onLogClick }: BottomNavProps) {
           onClick={onLogClick}
           className="flex flex-col items-center gap-1 -mt-4"
         >
-          <div className="w-14 h-14 rounded-full gradient-primary shadow-lg flex items-center justify-center">
+          <div className="log-btn w-14 h-14 rounded-full gradient-primary shadow-lg flex items-center justify-center">
             <Plus className="w-7 h-7 text-white" />
           </div>
           <span className="text-xs text-muted-foreground">{zh.nav.log}</span>
@@ -48,8 +48,8 @@ export function BottomNav({ onLogClick }: BottomNavProps) {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-1 px-4 py-2 transition-colors ${
-                isActive ? 'text-primary' : 'text-muted-foreground'
+              `nav-btn flex flex-col items-center gap-1 px-4 py-2 ${
+                isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`
             }
           >

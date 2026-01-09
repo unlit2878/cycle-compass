@@ -4,6 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
   Bell,
   Database,
   Moon,
@@ -15,6 +22,7 @@ import {
   ChevronRight,
   Check,
   AlertCircle,
+  HelpCircle,
 } from 'lucide-react';
 import { Settings as SettingsType, BackupData } from '@/lib/db';
 import { getDaysSinceBackup } from '@/lib/cycle-utils';
@@ -220,23 +228,100 @@ export function SettingsPage({
             </button>
 
             {/* 导入数据 */}
-            <button
-              onClick={handleImportClick}
-              disabled={importing}
-              className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
+            <div className="p-4 flex items-center justify-between">
+              <button
+                onClick={handleImportClick}
+                disabled={importing}
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+              >
                 <Upload className="w-5 h-5 text-primary" />
                 <span className="font-medium text-foreground">
                   {importing ? '导入中...' : importSuccess ? '导入成功！' : zh.settings.importData}
                 </span>
+              </button>
+              <div className="flex items-center gap-2">
+                {importSuccess ? (
+                  <Check className="w-5 h-5 text-success" />
+                ) : (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button className="p-1.5 rounded-full hover:bg-muted transition-colors">
+                        <HelpCircle className="w-5 h-5 text-muted-foreground" />
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>导入数据格式说明</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 text-sm">
+                        <p className="text-muted-foreground">
+                          导入文件必须是JSON格式，包含以下结构：
+                        </p>
+                        <div className="bg-muted p-3 rounded-lg font-mono text-xs overflow-x-auto">
+                          <pre>{`{
+  "version": 1,
+  "exportDate": "2026-01-09T12:00:00Z",
+  "settings": {
+    "id": 1,
+    "onboardingComplete": true,
+    "lastPeriodStart": "2025-12-28",
+    "averageCycleLength": 28,
+    "averagePeriodLength": 5,
+    ...其他设置
+  },
+  "cycles": [
+    {
+      "id": 1767373323381,
+      "startDate": "2025-11-28",
+      "endDate": "2025-12-04",
+      "cycleLength": 28
+    }
+  ],
+  "dailyLogs": [
+    {
+      "id": 1,
+      "date": "2025-12-28",
+      "isPeriod": true,
+      "flowIntensity": "medium",
+      "symptoms": ["头痛", "疲劳"],
+      "mood": "一般",
+      "notes": "备注内容",
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ]
+}`}</pre>
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="font-medium">字段说明：</h4>
+                          <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                            <li><code className="text-primary">cycles</code>：周期记录数组
+                              <ul className="list-disc pl-4 mt-1">
+                                <li><code>startDate</code>：经期开始日期（必需）</li>
+                                <li><code>endDate</code>：经期结束日期（可选）</li>
+                                <li><code>cycleLength</code>：周期长度（可选）</li>
+                              </ul>
+                            </li>
+                            <li><code className="text-primary">dailyLogs</code>：每日记录数组
+                              <ul className="list-disc pl-4 mt-1">
+                                <li><code>date</code>：日期，格式YYYY-MM-DD</li>
+                                <li><code>isPeriod</code>：是否经期</li>
+                                <li><code>flowIntensity</code>：light/medium/heavy</li>
+                                <li><code>symptoms</code>：症状数组</li>
+                                <li><code>mood</code>：心情</li>
+                              </ul>
+                            </li>
+                          </ul>
+                        </div>
+                        <p className="text-muted-foreground text-xs">
+                          💡 提示：最简单的方式是先导出现有数据，查看格式后再修改导入。
+                        </p>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
-              {importSuccess ? (
-                <Check className="w-5 h-5 text-success" />
-              ) : (
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              )}
-            </button>
+            </div>
             <input
               ref={fileInputRef}
               type="file"

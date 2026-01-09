@@ -51,10 +51,10 @@ export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScre
   ];
 
   return (
-    <div className="min-h-screen pb-24 px-4 pt-6">
+    <div className="min-h-screen pb-24 px-4 pt-6 page-enter">
       {/* 头部 */}
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full">
+        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full btn-press">
           <ChevronLeft className="w-5 h-5" />
         </Button>
         <div>
@@ -65,7 +65,7 @@ export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScre
 
       <div className="space-y-6">
         {/* 月经开关 */}
-        <Card className="border-0 shadow-lg overflow-hidden">
+        <Card className="border-0 shadow-lg overflow-hidden card-hover">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -128,7 +128,7 @@ export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScre
         </Card>
 
         {/* 症状 */}
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg card-hover">
           <CardContent className="p-4">
             <p className="font-medium text-foreground mb-3">{zh.logging.symptoms}</p>
             <div className="flex flex-wrap gap-2">
@@ -136,10 +136,10 @@ export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScre
                 <button
                   key={symptom}
                   onClick={() => toggleSymptom(symptom)}
-                  className={`px-3 py-2 rounded-full text-sm transition-all ${
+                  className={`px-3 py-2 rounded-full text-sm transition-all duration-200 btn-press ${
                     symptoms.includes(symptom)
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
+                      ? 'bg-primary text-primary-foreground scale-105'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   }`}
                 >
                   {symptom}
@@ -150,7 +150,7 @@ export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScre
         </Card>
 
         {/* 心情 */}
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg card-hover">
           <CardContent className="p-4">
             <p className="font-medium text-foreground mb-3">{zh.logging.howFeeling}</p>
             <div className="grid grid-cols-4 gap-2">
@@ -158,10 +158,10 @@ export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScre
                 <button
                   key={m.label}
                   onClick={() => setMood(mood === m.label ? undefined : m.label)}
-                  className={`py-3 rounded-xl transition-all flex flex-col items-center gap-1 ${
+                  className={`py-3 rounded-xl transition-all duration-200 btn-press flex flex-col items-center gap-1 ${
                     mood === m.label
-                      ? 'bg-primary/10 ring-2 ring-primary'
-                      : 'bg-muted'
+                      ? 'bg-primary/10 ring-2 ring-primary scale-105'
+                      : 'bg-muted hover:bg-muted/80'
                   }`}
                 >
                   <span className="text-2xl">{m.emoji}</span>
@@ -173,7 +173,7 @@ export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScre
         </Card>
 
         {/* 备注 */}
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg card-hover">
           <CardContent className="p-4">
             <p className="font-medium text-foreground mb-3">{zh.logging.notes}</p>
             <Textarea
@@ -186,7 +186,7 @@ export function LoggingScreen({ date, existingLog, onSave, onBack }: LoggingScre
         </Card>
 
         {/* 保存按钮 */}
-        <Button onClick={handleSave} className="w-full h-14 text-lg rounded-2xl">
+        <Button onClick={handleSave} className="w-full h-14 text-lg rounded-2xl btn-press transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5">
           <Save className="mr-2 w-5 h-5" />
           {zh.logging.save}
         </Button>
