@@ -15,19 +15,113 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, HelpCircle, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, HelpCircle, CalendarDays, Heart, Info, ExternalLink } from 'lucide-react';
 import { getDaysInMonth, formatDate, CyclePhase, getCyclePhase } from '@/lib/cycle-utils';
-import { DailyLog, Settings } from '@/lib/db';
+import { DailyLog, Settings, CycleData } from '@/lib/db';
 import { zh, formatMonthYear } from '@/lib/i18n';
+import { predictNextCycle, extractCycleLengths, calculateStdDev } from '@/lib/prediction-utils';
 
 interface CalendarPageProps {
   settings: Settings | null;
   dailyLogs: DailyLog[];
+  cycles: CycleData[];
   onDaySelect: (date: string) => void;
 }
 
-export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageProps) {
+export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: CalendarPageProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // 使用统计预测获取周期长度（与首页统一）
+  const predictedCycleLength = useMemo(() => {
+    if (cycles.length >= 2) {
+      const prediction = predictNextCycle(cycles);
+      return prediction.predictedCycleLength;
+    }
+    return settings?.averageCycleLength || 28;
+  }, [cycles, settings]);
+
+  // 计算规律性评分和FIGO健康评估
+  const healthAssessment = useMemo(() => {
+    const cycleLengthData = extractCycleLengths(cycles);
+    const lengths = cycleLengthData.map(d => d.length);
+    
+    if (lengths.length < 3) {
+      return null;
+    }
+    
+    const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+    const stdDev = calculateStdDev(lengths);
+    const cv = (stdDev / mean) * 100; // 变异系数
+    
+    // 规律性评分：基于变异系数
+    // CV < 5%: 非常规律 90-100分
+    // CV 5-10%: 规律 75-90分
+    // CV 10-15%: 较规律 60-75分
+    // CV 15-20%: 轻度不规律 40-60分
+    // CV > 20%: 不规律 0-40分
+    let regularityScore: number;
+    if (cv < 5) {
+      regularityScore = 90 + (5 - cv) * 2;
+    } else if (cv < 10) {
+      regularityScore = 75 + (10 - cv) * 3;
+    } else if (cv < 15) {
+      regularityScore = 60 + (15 - cv) * 3;
+    } else if (cv < 20) {
+      regularityScore = 40 + (20 - cv) * 4;
+    } else {
+      regularityScore = Math.max(0, 40 - (cv - 20) * 2);
+    }
+    regularityScore = Math.min(100, Math.round(regularityScore));
+    
+    // FIGO标准评估
+    // 正常周期：24-38天
+    // 正常经期：≤8天
+    // 周期变异：±7天以内
+    const min = Math.min(...lengths);
+    const max = Math.max(...lengths);
+    const variation = max - min;
+    
+    let figoStatus: 'normal' | 'irregular' | 'warning';
+    let figoMessages: string[] = [];
+    
+    // 周期长度评估
+    if (mean >= 24 && mean <= 38) {
+      figoMessages.push('✓ 平均周期在正常范围（24-38天）');
+    } else if (mean < 24) {
+      figoMessages.push('⚠ 平均周期偏短（<24天），建议关注');
+      figoStatus = 'warning';
+    } else {
+      figoMessages.push('⚠ 平均周期偏长（>38天），建议关注');
+      figoStatus = 'warning';
+    }
+    
+    // 周期变异评估
+    if (variation <= 7) {
+      figoMessages.push('✓ 周期变异在正常范围（±7天）');
+    } else if (variation <= 9) {
+      figoMessages.push('△ 周期变异稍大（' + variation + '天）');
+    } else {
+      figoMessages.push('⚠ 周期变异较大（' + variation + '天），建议记录更多周期');
+    }
+    
+    // 综合状态
+    if (!figoStatus) {
+      figoStatus = variation <= 9 ? 'normal' : 'irregular';
+    }
+    
+    return {
+      regularityScore,
+      cv: cv.toFixed(1),
+      stdDev: stdDev.toFixed(1),
+      mean: mean.toFixed(1),
+      min,
+      max,
+      variation,
+      figoStatus,
+      figoMessages,
+      sampleSize: lengths.length,
+    };
+  }, [cycles]);
 
   const monthData = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -62,8 +156,8 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
     const lastStart = new Date(settings.lastPeriodStart);
     const diffDays = Math.floor((date.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24));
     
-    // 对于过去的日期，也进行周期预测（向前推算）
-    const cycleLength = settings.averageCycleLength;
+    // 使用统计预测的周期长度
+    const cycleLength = predictedCycleLength;
     let dayInCycle: number;
     
     if (diffDays >= 0) {
@@ -302,19 +396,19 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
                 periodDayNum = Math.floor((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
               }
 
-              // 未来预测样式：更明显的虚线+淡色背景
+              // 未来预测样式：更明显的虚线边框+淡色背景+动画
               const futureStyle = phase 
-                ? `border-2 border-dotted opacity-60 ${
-                    phase === 'menstrual' ? 'border-phase-menstrual bg-phase-menstrual/15' :
-                    phase === 'follicular' ? 'border-phase-follicular bg-phase-follicular/15' :
-                    phase === 'ovulation' ? 'border-phase-ovulation bg-phase-ovulation/15' :
-                    'border-phase-luteal bg-phase-luteal/15'
+                ? `border-2 border-dashed animate-pulse ${
+                    phase === 'menstrual' ? 'border-phase-menstrual/70 bg-phase-menstrual/10' :
+                    phase === 'follicular' ? 'border-phase-follicular/70 bg-phase-follicular/10' :
+                    phase === 'ovulation' ? 'border-phase-ovulation/70 bg-phase-ovulation/10' :
+                    'border-phase-luteal/70 bg-phase-luteal/10'
                   }`
                 : '';
               
-              // 已过去预测样式：实线边框+深色背景
-              const pastStyle = phase 
-                ? `${phaseColorClass[phase]} border border-solid`
+              // 已记录样式（已过去的日期）：使用较淡的填充色
+              const pastRecordedStyle = phase 
+                ? `${phaseColorClass[phase]}`
                 : '';
 
               return (
@@ -327,8 +421,8 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
                       ? 'bg-phase-menstrual text-white font-bold shadow-md'
                       : phase
                         ? isPast 
-                          ? pastStyle
-                          : futureStyle
+                          ? pastRecordedStyle  // 已过去的使用已记录样式
+                          : futureStyle        // 未来使用虚线预测样式
                         : 'bg-muted/30 hover:bg-muted/50'
                   } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''}`}
                 >
@@ -348,21 +442,123 @@ export function CalendarPage({ settings, dailyLogs, onDaySelect }: CalendarPageP
         </CardContent>
       </Card>
 
-      {/* 已记录与预测图例 */}
+      {/* 图例 */}
       <div className="flex flex-wrap justify-center gap-4 mt-4">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-phase-menstrual shadow-sm" />
           <span className="text-xs text-muted-foreground">已记录经期</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded border border-solid border-phase-menstrual/60 bg-phase-menstrual/25" />
-          <span className="text-xs text-muted-foreground">已过去</span>
+          <div className="w-4 h-4 rounded bg-phase-menstrual/25 border-phase-menstrual/60" />
+          <span className="text-xs text-muted-foreground">历史周期</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded border-2 border-dotted border-phase-menstrual opacity-60 bg-phase-menstrual/15" />
+          <div className="w-4 h-4 rounded border-2 border-dashed border-phase-menstrual/70 bg-phase-menstrual/10" />
           <span className="text-xs text-muted-foreground">未来预测</span>
         </div>
       </div>
+
+      {/* 健康评估卡片 */}
+      {healthAssessment && (
+        <Card className="mt-4 border-0 shadow-lg">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <Heart className="w-4 h-4 text-phase-menstrual" />
+                周期健康评估
+              </h3>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button className="p-1 rounded-full hover:bg-muted transition-colors">
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>FIGO标准说明</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 text-sm">
+                    <p className="text-muted-foreground">
+                      本评估参考国际妇产科联盟（FIGO）2018年发布的月经周期标准：
+                    </p>
+                    <div className="space-y-3">
+                      <div className="bg-muted/30 p-3 rounded-lg">
+                        <p className="font-medium mb-1">正常周期长度</p>
+                        <p className="text-muted-foreground text-xs">24-38天为正常范围</p>
+                      </div>
+                      <div className="bg-muted/30 p-3 rounded-lg">
+                        <p className="font-medium mb-1">周期规律性</p>
+                        <p className="text-muted-foreground text-xs">周期变异应在±7天以内</p>
+                      </div>
+                      <div className="bg-muted/30 p-3 rounded-lg">
+                        <p className="font-medium mb-1">正常经期</p>
+                        <p className="text-muted-foreground text-xs">经期持续≤8天为正常</p>
+                      </div>
+                    </div>
+                    <div className="bg-primary/10 p-3 rounded-lg">
+                      <p className="font-medium mb-1 flex items-center gap-1">
+                        <Info className="w-3 h-3" />
+                        规律性评分计算
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        使用变异系数（CV = 标准差/平均值）评估：
+                        <br />• CV &lt; 5%: 非常规律（90-100分）
+                        <br />• CV 5-10%: 规律（75-90分）
+                        <br />• CV 10-15%: 较规律（60-75分）
+                        <br />• CV 15-20%: 轻度不规律（40-60分）
+                        <br />• CV &gt; 20%: 不规律（&lt;40分）
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      📌 此评估仅供参考，如有异常请咨询医生
+                    </p>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+            
+            {/* 规律性评分 */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground">规律性评分</span>
+                  <span className="text-sm font-bold text-foreground">{healthAssessment.regularityScore}分</span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all ${
+                      healthAssessment.regularityScore >= 80 ? 'bg-green-500' :
+                      healthAssessment.regularityScore >= 60 ? 'bg-phase-ovulation' :
+                      healthAssessment.regularityScore >= 40 ? 'bg-yellow-500' :
+                      'bg-phase-menstrual'
+                    }`}
+                    style={{ width: `${healthAssessment.regularityScore}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  CV={healthAssessment.cv}% | 标准差={healthAssessment.stdDev}天 | 样本={healthAssessment.sampleSize}个周期
+                </p>
+              </div>
+            </div>
+            
+            {/* FIGO评估结果 */}
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground mb-2">
+                参考FIGO标准（周期{healthAssessment.min}-{healthAssessment.max}天，变异{healthAssessment.variation}天）：
+              </p>
+              {healthAssessment.figoMessages.map((msg, idx) => (
+                <p key={idx} className={`text-xs ${
+                  msg.startsWith('✓') ? 'text-green-600 dark:text-green-400' :
+                  msg.startsWith('⚠') ? 'text-yellow-600 dark:text-yellow-400' :
+                  'text-muted-foreground'
+                }`}>
+                  {msg}
+                </p>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

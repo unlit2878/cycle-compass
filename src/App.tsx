@@ -193,7 +193,7 @@ function AppContent() {
           <Home phaseInfo={phaseInfo} settings={settings} cycles={cycles} onLogToday={handleLogToday} onBackupReminder={() => navigate('/settings')} />
         } />
         <Route path="/calendar" element={
-          <CalendarPage settings={settings} dailyLogs={dailyLogs} onDaySelect={handleDaySelect} />
+          <CalendarPage settings={settings} dailyLogs={dailyLogs} cycles={cycles} onDaySelect={handleDaySelect} />
         } />
         <Route path="/insights" element={
           <InsightsPage settings={settings} cycles={cycles} dailyLogs={dailyLogs} statistics={statistics} />
