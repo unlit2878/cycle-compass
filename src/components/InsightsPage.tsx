@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   XAxis, YAxis, ResponsiveContainer, BarChart, Bar, Cell, 
-  Tooltip, PieChart, Pie, ComposedChart, ReferenceLine, Legend
+  Tooltip, PieChart, Pie, Legend
 } from 'recharts';
 import { CycleData, DailyLog, Settings } from '@/lib/db';
-import { TrendingUp, Calendar, Activity, Heart, Droplets, Target, Zap, Moon, Clock, ChevronDown } from 'lucide-react';
+import { TrendingUp, Calendar, Activity, Heart, Droplets, Target, Zap, Moon, ChevronDown } from 'lucide-react';
 import { zh } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { format, parseISO, differenceInDays, getMonth, getYear, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { format, parseISO, differenceInDays, getYear } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
 interface InsightsPageProps {
@@ -60,30 +60,6 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
         return filtered;
     }
   }, [cycles, timeRange, selectedYear]);
-
-  // 综合周期图表数据（堆叠柱状图）
-  const combinedCycleData = useMemo(() => {
-    return filteredCycles.map((c) => {
-      const startDate = parseISO(c.startDate);
-      const endDate = c.endDate ? parseISO(c.endDate) : null;
-      const periodDays = endDate 
-        ? differenceInDays(endDate, startDate) + 1
-        : null;
-      const nonPeriodDays = c.cycleLength && periodDays 
-        ? c.cycleLength - periodDays 
-        : null;
-
-      return {
-        label: format(startDate, 'yyyy年M月', { locale: zhCN }),
-        shortLabel: format(startDate, 'M月', { locale: zhCN }),
-        startDate: c.startDate,
-        periodDays: periodDays || 0,
-        nonPeriodDays: nonPeriodDays || 0,
-        cycleLength: c.cycleLength || 0,
-        periodEndDate: c.endDate ? format(parseISO(c.endDate), 'M/d') : '-',
-      };
-    });
-  }, [filteredCycles]);
 
   // 症状频率数据
   const symptomData = useMemo(() => {
@@ -173,22 +149,6 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
     };
   }, [filteredCycles]);
 
-  // 记录天数分布（按月统计）
-  const monthlyLogData = useMemo(() => {
-    const monthCount: Record<string, number> = {};
-    dailyLogs.forEach((log) => {
-      const monthKey = format(parseISO(log.date), 'yyyy-MM');
-      monthCount[monthKey] = (monthCount[monthKey] || 0) + 1;
-    });
-
-    return Object.entries(monthCount)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .slice(-6)
-      .map(([month, count]) => ({
-        month: format(parseISO(month + '-01'), 'M月', { locale: zhCN }),
-        count,
-      }));
-  }, [dailyLogs]);
 
   // 症状与经期关联分析
   const symptomPhaseData = useMemo(() => {
@@ -358,8 +318,8 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
         </Card>
       </div>
 
-      {/* 综合周期图表 - 堆叠柱状图 */}
-      {combinedCycleData.length > 0 && (
+      {/* 周期与经期时长分析 - 自定义进度条样式 */}
+      {filteredCycles.length > 0 && (
         <Card className="border-0 shadow-lg mb-6 card-hover">
           <CardContent className="p-4">
             <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
@@ -367,81 +327,118 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
               周期与经期时长分析
             </h3>
             <p className="text-xs text-muted-foreground mb-4">
-              红色=经期天数，蓝色=非经期天数，虚线=平均周期长度
+              红色=经期天数，虚线=平均周期长度 ({statistics.averageCycleLength}天)
             </p>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart 
-                  data={combinedCycleData} 
-                  layout="vertical"
-                  margin={{ top: 10, right: 10, bottom: 10, left: 50 }}
-                >
-                  <XAxis 
-                    type="number" 
-                    tick={{ fontSize: 10 }}
-                    tickLine={false}
-                    axisLine={false}
-                    domain={[0, 'dataMax + 5']}
-                  />
-                  <YAxis 
-                    type="category" 
-                    dataKey={combinedCycleData.length > 6 ? "shortLabel" : "label"}
-                    tick={{ fontSize: 10 }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={45}
-                  />
-                  <Tooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-background border rounded-lg shadow-lg p-3 text-sm">
-                            <p className="font-medium mb-1">{data.label}</p>
-                            <p className="text-phase-menstrual">经期: {data.periodDays} 天</p>
-                            <p className="text-primary">非经期: {data.nonPeriodDays} 天</p>
-                            <p className="text-muted-foreground">总周期: {data.cycleLength} 天</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Legend 
-                    wrapperStyle={{ fontSize: '11px' }}
-                    payload={[
-                      { value: '经期天数', type: 'square', color: 'hsl(var(--phase-menstrual))' },
-                      { value: '非经期天数', type: 'square', color: 'hsl(var(--primary))' },
-                    ]}
-                  />
-                  <Bar 
-                    dataKey="periodDays" 
-                    stackId="a" 
-                    fill="hsl(var(--phase-menstrual))" 
-                    radius={[0, 0, 0, 0]}
-                    name="经期天数"
-                  />
-                  <Bar 
-                    dataKey="nonPeriodDays" 
-                    stackId="a" 
-                    fill="hsl(var(--primary))" 
-                    radius={[0, 4, 4, 0]}
-                    name="非经期天数"
-                  />
-                  <ReferenceLine 
-                    x={statistics.averageCycleLength} 
-                    stroke="hsl(var(--phase-ovulation))" 
-                    strokeDasharray="5 5"
-                    strokeWidth={2}
-                    label={{ 
-                      value: `平均${statistics.averageCycleLength}天`, 
-                      position: 'top',
-                      fontSize: 10,
-                      fill: 'hsl(var(--phase-ovulation))'
-                    }}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+            
+            {/* 进度条图表容器 */}
+            <div className="relative">
+              {/* 平均周期虚线 */}
+              {(() => {
+                const maxCycleLength = Math.max(
+                  ...filteredCycles.map(c => c.cycleLength || 0),
+                  statistics.averageCycleLength
+                );
+                const avgPosition = (statistics.averageCycleLength / maxCycleLength) * 100;
+                return (
+                  <div 
+                    className="absolute top-0 bottom-0 border-l-2 border-dashed border-phase-ovulation z-10"
+                    style={{ left: `${avgPosition}%` }}
+                  >
+                    <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-phase-ovulation whitespace-nowrap">
+                      平均 {statistics.averageCycleLength}天
+                    </span>
+                  </div>
+                );
+              })()}
+              
+              {/* 周期列表 */}
+              <div className="space-y-4 pt-4">
+                {[...filteredCycles].reverse().map((cycle, index) => {
+                  const startDate = parseISO(cycle.startDate);
+                  const endDate = cycle.endDate ? parseISO(cycle.endDate) : null;
+                  const periodDays = endDate 
+                    ? differenceInDays(endDate, startDate) + 1 
+                    : 0;
+                  const cycleLength = cycle.cycleLength || periodDays;
+                  
+                  // 找下一个周期的开始日期来计算完整周期范围
+                  const sortedCycles = [...filteredCycles].sort((a, b) => 
+                    parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
+                  );
+                  const currentIndex = sortedCycles.findIndex(c => c.id === cycle.id);
+                  const nextCycle = sortedCycles[currentIndex + 1];
+                  const cycleEndDate = nextCycle 
+                    ? parseISO(nextCycle.startDate)
+                    : null;
+                  
+                  const maxCycleLength = Math.max(
+                    ...filteredCycles.map(c => c.cycleLength || 0),
+                    statistics.averageCycleLength
+                  );
+                  const periodPercent = (periodDays / maxCycleLength) * 100;
+                  const cyclePercent = (cycleLength / maxCycleLength) * 100;
+                  
+                  const isLatest = index === 0;
+                  
+                  return (
+                    <div key={cycle.id || index} className="space-y-1">
+                      {/* 日期范围 */}
+                      <div className="text-xs text-muted-foreground">
+                        {isLatest && <span className="text-primary font-medium mr-2">当前周期</span>}
+                        {format(startDate, 'yyyy年M月d日')}
+                        {cycleEndDate ? ` - ${format(cycleEndDate, 'yyyy年M月d日')}` : ' - 进行中'}
+                      </div>
+                      
+                      {/* 进度条 */}
+                      <div className="relative h-6 bg-muted/50 rounded-full overflow-visible">
+                        {/* 经期部分（填充） */}
+                        <div 
+                          className="absolute left-0 top-0 h-full bg-phase-menstrual rounded-l-full transition-all duration-300"
+                          style={{ width: `${periodPercent}%` }}
+                        />
+                        {/* 周期边框（空心） */}
+                        <div 
+                          className="absolute left-0 top-0 h-full border-2 border-muted-foreground/30 rounded-full transition-all duration-300"
+                          style={{ width: `${cyclePercent}%` }}
+                        />
+                        
+                        {/* 标注信息 */}
+                        <div className="absolute inset-0 flex items-center px-3">
+                          <span className="text-xs font-medium text-white drop-shadow-sm">
+                            {periodDays > 0 ? `${periodDays}天` : ''}
+                          </span>
+                        </div>
+                        
+                        {/* 周期长度标注 */}
+                        {cycleLength > 0 && (
+                          <span 
+                            className="absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground ml-2"
+                            style={{ left: `${cyclePercent}%` }}
+                          >
+                            周期 {cycleLength}天
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* 图例 */}
+            <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-phase-menstrual" />
+                <span>经期天数</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm border-2 border-muted-foreground/30" />
+                <span>周期长度</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-0 border-t-2 border-dashed border-phase-ovulation" style={{ width: '12px' }} />
+                <span>平均周期</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -615,89 +612,6 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
         </Card>
       )}
 
-      {/* 记录活跃度 */}
-      {monthlyLogData.length > 0 && (
-        <Card className="border-0 shadow-lg mb-6 card-hover">
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" />
-              月度记录活跃度
-            </h3>
-            <div className="h-32">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyLogData}>
-                  <XAxis 
-                    dataKey="month" 
-                    tick={{ fontSize: 10 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis hide />
-                  <Tooltip 
-                    formatter={(value) => [`${value}天`, '记录天数']}
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  />
-                  <Bar dataKey="count" fill="hsl(var(--phase-follicular))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 历史周期列表 */}
-      {filteredCycles.length > 0 && (
-        <Card className="border-0 shadow-lg card-hover">
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-primary" />
-              历史周期记录
-              <span className="text-xs text-muted-foreground font-normal">
-                ({filteredCycles.length}个)
-              </span>
-            </h3>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {[...filteredCycles].reverse().map((cycle, index) => {
-                const startDate = parseISO(cycle.startDate);
-                const endDate = cycle.endDate ? parseISO(cycle.endDate) : null;
-                const periodDays = endDate 
-                  ? differenceInDays(endDate, startDate) + 1 
-                  : null;
-
-                return (
-                  <div 
-                    key={cycle.id || index} 
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-xl hover:bg-muted transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-phase-menstrual/20 flex items-center justify-center">
-                        <span className="text-xs font-bold text-phase-menstrual">
-                          {format(startDate, 'M月')}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground text-sm">
-                          {format(startDate, 'M月d日')} - {endDate ? format(endDate, 'M月d日') : '进行中'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {periodDays ? `经期 ${periodDays} 天` : '未记录结束'}
-                          {cycle.cycleLength && ` · 周期 ${cycle.cycleLength} 天`}
-                        </p>
-                      </div>
-                    </div>
-                    {cycle.cycleLength && (
-                      <div className="text-right">
-                        <span className="text-lg font-bold text-foreground">{cycle.cycleLength}</span>
-                        <span className="text-xs text-muted-foreground ml-0.5">天</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
