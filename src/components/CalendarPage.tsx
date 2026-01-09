@@ -54,12 +54,21 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
     return { days, firstDayOfWeek, logMap };
   }, [currentMonth, dailyLogs]);
 
-  // 获取所有经期记录的日期映射（用于显示历史记录）
+  // 获取所有经期记录的日期映射（包括dailyLogs和cycles中的经期）
   const periodDates = useMemo(() => {
     const dates = new Set<string>();
+    // 从dailyLogs获取
     dailyLogs.filter(log => log.isPeriod).forEach(log => dates.add(log.date));
+    // 从cycles获取（包括startDate到endDate之间的所有日期）
+    cycles.forEach(cycle => {
+      const start = new Date(cycle.startDate);
+      const end = cycle.endDate ? new Date(cycle.endDate) : start;
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.add(formatDate(new Date(d)));
+      }
+    });
     return dates;
-  }, [dailyLogs]);
+  }, [dailyLogs, cycles]);
 
   const getPhaseForDate = (date: Date): CyclePhase | null => {
     if (!settings?.lastPeriodStart) return null;
@@ -151,7 +160,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
         
         <div className="flex items-center gap-1">
           <Select value={currentYear.toString()} onValueChange={setYear}>
-            <SelectTrigger className="w-[80px] h-9 border-0 bg-transparent font-bold text-base px-2">
+            <SelectTrigger className="h-9 border-0 bg-transparent font-bold text-base px-2 min-w-[85px]">
               <SelectValue>{currentYear}年</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -163,7 +172,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
             </SelectContent>
           </Select>
           <Select value={currentMonthNum.toString()} onValueChange={setMonth}>
-            <SelectTrigger className="w-[72px] h-9 border-0 bg-transparent font-bold text-base px-2">
+            <SelectTrigger className="h-9 border-0 bg-transparent font-bold text-base px-2 min-w-[75px]">
               <SelectValue>{monthOptions[currentMonthNum]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -291,11 +300,12 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
               const phase = getPhaseForDate(date);
               const isToday = dateStr === today;
               const isPast = date <= new Date();
-              const isRecordedPeriod = log?.isPeriod;
+              // 检查是否是经期（包括dailyLogs和cycles中的记录）
+              const isRecordedPeriod = log?.isPeriod || periodDates.has(dateStr);
               
               // 计算经期第几天
               let periodDayNum: number | null = null;
-              if (isRecordedPeriod && settings?.lastPeriodStart) {
+              if (isRecordedPeriod) {
                 // 找到这段经期的开始日期
                 const currentDate = new Date(dateStr);
                 let startDate = new Date(dateStr);
@@ -304,8 +314,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
                   const prevDate = new Date(currentDate);
                   prevDate.setDate(prevDate.getDate() - i);
                   const prevDateStr = formatDate(prevDate);
-                  const prevLog = monthData.logMap.get(prevDateStr);
-                  if (prevLog?.isPeriod) {
+                  if (periodDates.has(prevDateStr)) {
                     startDate = prevDate;
                   } else {
                     break;
