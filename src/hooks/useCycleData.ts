@@ -97,12 +97,11 @@ export function useCycleData() {
       onboardingComplete: true,
     });
     
-    // 如果有结束日期则创建初始周期记录
+    // 如果有结束日期则创建初始周期记录（不再存储 cycleLength）
     if (lastPeriodEnd) {
       await addCycle({
         startDate: lastPeriodStart,
         endDate: lastPeriodEnd,
-        cycleLength,
       });
     }
     
@@ -143,10 +142,10 @@ export function useCycleData() {
     return granted;
   }, [saveSettings]);
 
-  // 计算统计数据
+  // 计算统计数据（改用 cycles 计算经期长度）
   const statistics = {
     averageCycleLength: calculateAverageCycleLength(cycles),
-    averagePeriodLength: calculateAveragePeriodLength(dailyLogs),
+    averagePeriodLength: calculateAveragePeriodLength(cycles),
     totalCyclesTracked: cycles.length,
     totalDaysLogged: dailyLogs.length,
   };

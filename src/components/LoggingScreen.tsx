@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { ChevronLeft, Droplets, Save, Play, Square, Calendar, Edit, Trash2 } from 'lucide-react';
-import { DailyLog, Settings, CycleData, getCycleByDate, updateCycle, deleteCycle, addOrUpdateDailyLog } from '@/lib/db';
+import { DailyLog, Settings, CycleData, getCycleByDate, updateCycle, deleteCycle, addOrUpdateDailyLog, getAllCycles } from '@/lib/db';
 import { formatFullDate, formatDate } from '@/lib/cycle-utils';
 import { zh } from '@/lib/i18n';
 import {
@@ -43,7 +43,8 @@ export function LoggingScreen({
   onBack,
   onRefresh,
 }: LoggingScreenProps) {
-  const [isPeriod, setIsPeriod] = useState(existingLog?.isPeriod ?? false);
+  // isPeriod 从 cycles 表判断，不再存储在 dailyLogs 中
+  const [isPeriod, setIsPeriod] = useState(false);
   const [flowIntensity, setFlowIntensity] = useState<FlowIntensity | undefined>(
     existingLog?.flowIntensity
   );
@@ -61,7 +62,7 @@ export function LoggingScreen({
   const displayDate = new Date(date + 'T12:00:00');
   const avgPeriodLength = settings?.averagePeriodLength || 5;
 
-  // 加载相关周期记录
+  // 加载相关周期记录并判断是否在经期中
   useEffect(() => {
     const loadCycle = async () => {
       const cycle = await getCycleByDate(date);
@@ -69,6 +70,9 @@ export function LoggingScreen({
         setRelatedCycle(cycle);
         setEditStartDate(cycle.startDate);
         setEditEndDate(cycle.endDate || '');
+        setIsPeriod(true); // 如果在 cycle 范围内，则是经期
+      } else {
+        setIsPeriod(false);
       }
     };
     loadCycle();
@@ -81,8 +85,8 @@ export function LoggingScreen({
   };
 
   const handleSave = () => {
+    // 只保存用户主动记录的内容，不再包含 isPeriod
     onSave({
-      isPeriod,
       flowIntensity: isPeriod ? flowIntensity : undefined,
       symptoms,
       mood,
@@ -102,48 +106,16 @@ export function LoggingScreen({
     }
   };
 
-  // 保存编辑的周期
+  // 保存编辑的周期（只更新 cycles 表）
   const handleSaveCycleEdit = async () => {
     if (!relatedCycle?.id) return;
     
     try {
-      const oldStartDate = relatedCycle.startDate;
-      const oldEndDate = relatedCycle.endDate;
-      
       // 更新周期记录
       await updateCycle(relatedCycle.id, {
         startDate: editStartDate,
         endDate: editEndDate || undefined,
       });
-      
-      // 清除旧日期范围的经期标记
-      if (oldStartDate && oldEndDate) {
-        const start = new Date(oldStartDate + 'T12:00:00');
-        const end = new Date(oldEndDate + 'T12:00:00');
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          const dateStr = formatDate(d);
-          await addOrUpdateDailyLog({
-            date: dateStr,
-            isPeriod: false,
-            symptoms: [],
-          });
-        }
-      }
-      
-      // 设置新日期范围的经期标记
-      if (editStartDate && editEndDate) {
-        const start = new Date(editStartDate + 'T12:00:00');
-        const end = new Date(editEndDate + 'T12:00:00');
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          const dateStr = formatDate(d);
-          await addOrUpdateDailyLog({
-            date: dateStr,
-            isPeriod: true,
-            flowIntensity: 'medium',
-            symptoms: [],
-          });
-        }
-      }
       
       toast.success('经期记录已更新');
       setEditDialogOpen(false);
@@ -155,30 +127,13 @@ export function LoggingScreen({
     }
   };
 
-  // 删除周期记录
+  // 删除周期记录（只删除 cycles 表记录）
   const handleDeleteCycle = async () => {
     if (!relatedCycle?.id) return;
     
     try {
-      const oldStartDate = relatedCycle.startDate;
-      const oldEndDate = relatedCycle.endDate;
-      
       // 删除周期记录
       await deleteCycle(relatedCycle.id);
-      
-      // 清除日期范围的经期标记
-      if (oldStartDate && oldEndDate) {
-        const start = new Date(oldStartDate + 'T12:00:00');
-        const end = new Date(oldEndDate + 'T12:00:00');
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          const dateStr = formatDate(d);
-          await addOrUpdateDailyLog({
-            date: dateStr,
-            isPeriod: false,
-            symptoms: [],
-          });
-        }
-      }
       
       toast.success('经期记录已删除');
       setDeleteDialogOpen(false);

@@ -3,21 +3,22 @@ import { openDB, DBSchema, IDBPDatabase } from 'idb';
 // 类型定义
 export interface CycleData {
   id?: number;
-  startDate: string; // ISO 日期字符串
-  endDate?: string;
-  cycleLength?: number;
+  startDate: string; // ISO 日期字符串 YYYY-MM-DD
+  endDate?: string;  // ISO 日期字符串 YYYY-MM-DD
+  createdAt?: string; // ISO 时间戳
 }
 
+// dailyLogs 只存储用户主动记录的内容（症状、心情、备注、经量）
+// isPeriod 已移除，经期判断改用 cycles 表
 export interface DailyLog {
   id?: number;
   date: string; // ISO 日期字符串 (YYYY-MM-DD)
-  isPeriod: boolean;
   flowIntensity?: 'light' | 'medium' | 'heavy';
-  symptoms: string[];
+  symptoms?: string[];
   mood?: string;
   notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Settings {
@@ -127,9 +128,12 @@ export async function updateSettings(updates: Partial<Settings>): Promise<Settin
 }
 
 // 周期操作
-export async function addCycle(cycle: Omit<CycleData, 'id'>): Promise<number> {
+export async function addCycle(cycle: Omit<CycleData, 'id' | 'createdAt'>): Promise<number> {
   const db = await getDB();
-  return db.add('cycles', cycle as CycleData);
+  return db.add('cycles', {
+    ...cycle,
+    createdAt: new Date().toISOString(),
+  } as CycleData);
 }
 
 export async function updateCycle(id: number, updates: Partial<CycleData>): Promise<void> {
@@ -218,12 +222,32 @@ export async function exportData(): Promise<BackupData> {
     getAllDailyLogs(),
   ]);
 
+  // 标准化 cycles 数据，只保留必要字段
+  const normalizedCycles = cycles.map(({ id, startDate, endDate, createdAt }) => ({
+    id,
+    startDate,
+    endDate,
+    createdAt: createdAt || new Date().toISOString(),
+  }));
+
+  // dailyLogs 不再包含 isPeriod 字段
+  const normalizedLogs = dailyLogs.map(({ id, date, flowIntensity, symptoms, mood, notes, createdAt, updatedAt }) => ({
+    id,
+    date,
+    ...(flowIntensity && { flowIntensity }),
+    ...(symptoms && symptoms.length > 0 && { symptoms }),
+    ...(mood && { mood }),
+    ...(notes && { notes }),
+    createdAt,
+    updatedAt,
+  }));
+
   return {
-    version: 1,
+    version: 2,
     exportDate: new Date().toISOString(),
     settings,
-    cycles,
-    dailyLogs,
+    cycles: normalizedCycles,
+    dailyLogs: normalizedLogs,
   };
 }
 
@@ -234,46 +258,39 @@ export async function importData(data: BackupData): Promise<void> {
   await db.clear('cycles');
   await db.clear('dailyLogs');
   
-  // 导入周期，同时为每个周期创建对应的dailyLogs记录
+  // 导入周期（标准化格式，不再自动创建 dailyLogs）
   for (const cycle of data.cycles) {
-    // 兼容旧格式（可能有duration字段但没有cycleLength）
-    const cycleToAdd = {
-      ...cycle,
-      cycleLength: cycle.cycleLength || (cycle as any).duration,
+    const cycleToAdd: CycleData = {
+      startDate: cycle.startDate,
+      endDate: cycle.endDate,
+      createdAt: cycle.createdAt || (cycle as any).createdAt || new Date().toISOString(),
     };
     await db.add('cycles', cycleToAdd);
-    
-    // 如果有开始和结束日期，自动创建对应的每日经期记录
-    if (cycle.startDate && cycle.endDate) {
-      const start = new Date(cycle.startDate);
-      const end = new Date(cycle.endDate);
-      const now = new Date().toISOString();
-      
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
-        // 检查是否已存在该日期的记录
-        const existing = await db.getFromIndex('dailyLogs', 'by-date', dateStr);
-        if (!existing) {
-          await db.add('dailyLogs', {
-            date: dateStr,
-            isPeriod: true,
-            flowIntensity: 'medium',
-            symptoms: [],
-            createdAt: now,
-            updatedAt: now,
-          } as DailyLog);
-        }
-      }
-    }
   }
   
-  // 导入每日记录（覆盖已存在的）
+  // 导入每日记录（移除 isPeriod 字段，只导入有实际内容的记录）
   for (const log of data.dailyLogs || []) {
-    const existing = await db.getFromIndex('dailyLogs', 'by-date', log.date);
-    if (existing) {
-      await db.put('dailyLogs', { ...existing, ...log });
-    } else {
-      await db.add('dailyLogs', log);
+    // 从旧数据中提取，忽略 isPeriod
+    const { isPeriod, ...logWithoutIsPeriod } = log as any;
+    
+    // 只有当 log 有实际内容时才导入
+    const hasContent = 
+      (logWithoutIsPeriod.symptoms && logWithoutIsPeriod.symptoms.length > 0) || 
+      logWithoutIsPeriod.mood || 
+      logWithoutIsPeriod.notes || 
+      logWithoutIsPeriod.flowIntensity;
+    
+    if (hasContent) {
+      const cleanLog: DailyLog = {
+        date: logWithoutIsPeriod.date,
+        ...(logWithoutIsPeriod.flowIntensity && { flowIntensity: logWithoutIsPeriod.flowIntensity }),
+        ...(logWithoutIsPeriod.symptoms && logWithoutIsPeriod.symptoms.length > 0 && { symptoms: logWithoutIsPeriod.symptoms }),
+        ...(logWithoutIsPeriod.mood && { mood: logWithoutIsPeriod.mood }),
+        ...(logWithoutIsPeriod.notes && { notes: logWithoutIsPeriod.notes }),
+        createdAt: logWithoutIsPeriod.createdAt || new Date().toISOString(),
+        updatedAt: logWithoutIsPeriod.updatedAt || new Date().toISOString(),
+      };
+      await db.add('dailyLogs', cleanLog);
     }
   }
   

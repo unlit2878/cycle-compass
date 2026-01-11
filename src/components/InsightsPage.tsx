@@ -101,11 +101,11 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
       .map(([mood, count], index) => ({ mood, count, fill: colors[index % colors.length] }));
   }, [dailyLogs]);
 
-  // 经量分布
+  // 经量分布（只统计有 flowIntensity 的记录）
   const flowData = useMemo(() => {
     const flowCount: Record<string, number> = { light: 0, medium: 0, heavy: 0 };
     dailyLogs.forEach((log) => {
-      if (log.isPeriod && log.flowIntensity) {
+      if (log.flowIntensity) {
         flowCount[log.flowIntensity]++;
       }
     });
@@ -145,9 +145,22 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
     return { score, cv, stdDev, lengths };
   }, [cycles]);
 
-  // 周期长度范围
+  // 周期长度范围（从相邻周期的开始日期计算）
   const cycleLengthRange = useMemo(() => {
-    const lengths = cycles.filter((c) => c.cycleLength).map((c) => c.cycleLength!);
+    if (cycles.length < 2) return null;
+    
+    const sorted = [...cycles].sort((a, b) => 
+      parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
+    );
+    
+    const lengths: number[] = [];
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const diff = differenceInDays(parseISO(sorted[i + 1].startDate), parseISO(sorted[i].startDate));
+      if (diff > 0 && diff <= 60) {
+        lengths.push(diff);
+      }
+    }
+    
     if (lengths.length === 0) return null;
     return {
       min: Math.min(...lengths),
@@ -171,29 +184,20 @@ export function InsightsPage({ settings, cycles, dailyLogs, statistics }: Insigh
   }, [filteredCycles]);
 
 
-  // 症状与经期关联分析
+  // 症状统计（移除与经期的关联分析，因为不再有 isPeriod 字段）
   const symptomPhaseData = useMemo(() => {
-    const periodSymptoms: Record<string, number> = {};
-    const nonPeriodSymptoms: Record<string, number> = {};
+    const symptomCount: Record<string, number> = {};
 
     dailyLogs.forEach((log) => {
-      log.symptoms.forEach((symptom) => {
-        if (log.isPeriod) {
-          periodSymptoms[symptom] = (periodSymptoms[symptom] || 0) + 1;
-        } else {
-          nonPeriodSymptoms[symptom] = (nonPeriodSymptoms[symptom] || 0) + 1;
-        }
+      (log.symptoms || []).forEach((symptom) => {
+        symptomCount[symptom] = (symptomCount[symptom] || 0) + 1;
       });
     });
 
-    const allSymptoms = new Set([...Object.keys(periodSymptoms), ...Object.keys(nonPeriodSymptoms)]);
-    
-    return Array.from(allSymptoms)
-      .map(symptom => ({
+    return Object.entries(symptomCount)
+      .map(([symptom, count]) => ({
         symptom,
-        period: periodSymptoms[symptom] || 0,
-        nonPeriod: nonPeriodSymptoms[symptom] || 0,
-        total: (periodSymptoms[symptom] || 0) + (nonPeriodSymptoms[symptom] || 0),
+        total: count,
       }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
