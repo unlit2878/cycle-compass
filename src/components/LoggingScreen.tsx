@@ -75,9 +75,9 @@ export function LoggingScreen({
     { value: 'heavy', label: zh.flowIntensity.heavy, drops: 3 },
   ];
 
-  // 判断是否显示"标记开始"按钮（如果当前在经期中则禁用）
-  const showStartButton = onStartPeriod && !isInPeriod;
-  const showEndButton = onEndPeriod;
+  // 始终显示两个按钮，但在经期中时禁用"标记开始"按钮
+  const showStartButton = !!onStartPeriod;
+  const showEndButton = !!onEndPeriod;
 
   return (
     <div className="min-h-screen pb-24 px-4 pt-6 page-enter">
@@ -105,7 +105,8 @@ export function LoggingScreen({
                 {showStartButton && (
                   <Button
                     onClick={handleStartPeriod}
-                    className="flex-1 bg-phase-menstrual hover:bg-phase-menstrual/90 text-white gap-2"
+                    disabled={isInPeriod}
+                    className="flex-1 bg-phase-menstrual hover:bg-phase-menstrual/90 text-white gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Play className="w-4 h-4" />
                     标记经期开始
