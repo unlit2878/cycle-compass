@@ -11,6 +11,7 @@ import {
   exportData,
   importData,
   requestPersistentStorage,
+  syncLastPeriodStart,
   Settings,
   CycleData,
   DailyLog,
@@ -34,6 +35,9 @@ export function useCycleData() {
   // 加载所有数据
   const loadData = useCallback(async () => {
     try {
+      // 先同步 lastPeriodStart 与最新周期记录
+      await syncLastPeriodStart();
+      
       const [settingsData, cyclesData, logsData] = await Promise.all([
         getSettings(),
         getAllCycles(),
