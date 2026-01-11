@@ -158,10 +158,10 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
           <ChevronLeft className="w-5 h-5" />
         </Button>
         
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0">
           <Select value={currentYear.toString()} onValueChange={setYear}>
-            <SelectTrigger className="h-9 border-0 bg-transparent font-bold text-base px-2 min-w-[85px]">
-              <SelectValue>{currentYear}年</SelectValue>
+            <SelectTrigger className="h-9 border-0 bg-transparent font-bold text-base px-1 w-auto">
+              <span className="whitespace-nowrap">{currentYear}年</span>
             </SelectTrigger>
             <SelectContent>
               {yearOptions.map((year) => (
@@ -172,8 +172,8 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
             </SelectContent>
           </Select>
           <Select value={currentMonthNum.toString()} onValueChange={setMonth}>
-            <SelectTrigger className="h-9 border-0 bg-transparent font-bold text-base px-2 min-w-[75px]">
-              <SelectValue>{monthOptions[currentMonthNum]}</SelectValue>
+            <SelectTrigger className="h-9 border-0 bg-transparent font-bold text-base px-1 w-auto">
+              <span className="whitespace-nowrap">{monthOptions[currentMonthNum]}</span>
             </SelectTrigger>
             <SelectContent>
               {monthOptions.map((month, i) => (
@@ -276,21 +276,21 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
 
       {/* 日历网格 */}
       <Card className="border-0 shadow-lg">
-        <CardContent className="p-2">
+        <CardContent className="p-3">
           {/* 星期标题 */}
-          <div className="grid grid-cols-7 mb-1">
+          <div className="grid grid-cols-7 mb-2">
             {zh.calendar.weekdays.map((day) => (
-              <div key={day} className="text-center text-[10px] font-medium text-muted-foreground py-1">
+              <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
                 {day}
               </div>
             ))}
           </div>
 
           {/* 日期网格 */}
-          <div className="grid grid-cols-7 gap-0.5">
+          <div className="grid grid-cols-7 gap-1">
             {/* 月初之前的空白单元格 */}
             {Array.from({ length: monthData.firstDayOfWeek }).map((_, i) => (
-              <div key={`empty-${i}`} className="aspect-square" />
+              <div key={`empty-${i}`} className="h-10" />
             ))}
 
             {/* 日期单元格 */}
@@ -337,7 +337,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
                 <button
                   key={dateStr}
                   onClick={() => onDaySelect(dateStr)}
-                  className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative
+                  className={`h-10 rounded-lg flex flex-col items-center justify-center relative
                     transition-all duration-200 hover:scale-105 active:scale-95 ${
                     isRecordedPeriod
                       ? 'bg-phase-menstrual text-white font-bold shadow-md'
@@ -346,14 +346,14 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
                         : 'bg-muted/30 hover:bg-muted/50'
                   } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''}`}
                 >
-                  <span className={`${isRecordedPeriod ? 'text-white' : 'text-foreground'} ${periodDayNum ? 'text-[10px]' : ''}`}>
+                  <span className={`text-sm font-medium ${isRecordedPeriod ? 'text-white' : 'text-foreground'} ${periodDayNum ? 'text-xs' : ''}`}>
                     {date.getDate()}
                   </span>
                   {periodDayNum && (
-                    <span className="text-[8px] text-white/80 leading-none">第{periodDayNum}天</span>
+                    <span className="text-[9px] text-white/90 leading-none font-medium">第{periodDayNum}天</span>
                   )}
                   {log && !isRecordedPeriod && (
-                    <div className="w-1 h-1 rounded-full bg-primary absolute bottom-0.5" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary absolute bottom-1" />
                   )}
                 </button>
               );
