@@ -13,7 +13,7 @@ import { InsightsPage } from "@/components/InsightsPage";
 import { SettingsPage } from "@/components/SettingsPage";
 import { BottomNav } from "@/components/BottomNav";
 import { formatDate } from "@/lib/cycle-utils";
-import { BackupData } from "@/lib/db";
+import { BackupData, addCycle, updateCycle, getAllCycles } from "@/lib/db";
 import { toast } from "sonner";
 import { zh } from "@/lib/i18n";
 
@@ -36,6 +36,7 @@ function AppContent() {
     backup,
     restore,
     requestPersistence,
+    refresh,
   } = useCycleData();
 
   const [loggingDate, setLoggingDate] = useState<string | null>(null);
@@ -110,6 +111,15 @@ function AppContent() {
     // 更新设置中的最后经期开始日期
     await saveSettings({ lastPeriodStart: date });
     
+    // 创建新的周期记录
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + autoFillDays - 1);
+    await addCycle({
+      startDate: date,
+      endDate: formatDate(endDate),
+      cycleLength: settings?.averageCycleLength || 28,
+    });
+    
     // 填充经期天数
     for (let i = 0; i < autoFillDays; i++) {
       const currentDate = new Date(startDate);
@@ -150,6 +160,15 @@ function AppContent() {
       flowIntensity: 'light',
       symptoms: [],
     });
+    
+    // 更新最近周期的结束日期
+    const allCycles = await getAllCycles();
+    if (allCycles.length > 0) {
+      const latestCycle = allCycles[allCycles.length - 1];
+      if (latestCycle.id) {
+        await updateCycle(latestCycle.id, { endDate: date });
+      }
+    }
     
     toast.success('已标记经期结束');
     setLoggingDate(null);
@@ -207,6 +226,7 @@ function AppContent() {
         onStartPeriod={handleStartPeriod}
         onEndPeriod={handleEndPeriod}
         onBack={() => { setLoggingDate(null); setLoggingExistingLog(null); }}
+        onRefresh={refresh}
       />
     );
   }

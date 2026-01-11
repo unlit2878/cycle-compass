@@ -1,11 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { ChevronLeft, Droplets, Save, Play, Square, Calendar } from 'lucide-react';
-import { DailyLog, Settings } from '@/lib/db';
-import { formatFullDate } from '@/lib/cycle-utils';
+import { ChevronLeft, Droplets, Save, Play, Square, Calendar, Edit, Trash2 } from 'lucide-react';
+import { DailyLog, Settings, CycleData, getCycleByDate, updateCycle, deleteCycle, addOrUpdateDailyLog } from '@/lib/db';
+import { formatFullDate, formatDate } from '@/lib/cycle-utils';
 import { zh } from '@/lib/i18n';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 interface LoggingScreenProps {
   date: string;
@@ -16,6 +27,7 @@ interface LoggingScreenProps {
   onStartPeriod?: (date: string, autoFillDays: number) => void;
   onEndPeriod?: (date: string) => void;
   onBack: () => void;
+  onRefresh?: () => void;
 }
 
 type FlowIntensity = 'light' | 'medium' | 'heavy';
@@ -28,7 +40,8 @@ export function LoggingScreen({
   onSave, 
   onStartPeriod,
   onEndPeriod,
-  onBack 
+  onBack,
+  onRefresh,
 }: LoggingScreenProps) {
   const [isPeriod, setIsPeriod] = useState(existingLog?.isPeriod ?? false);
   const [flowIntensity, setFlowIntensity] = useState<FlowIntensity | undefined>(
@@ -37,9 +50,29 @@ export function LoggingScreen({
   const [symptoms, setSymptoms] = useState<string[]>(existingLog?.symptoms ?? []);
   const [mood, setMood] = useState<string | undefined>(existingLog?.mood);
   const [notes, setNotes] = useState(existingLog?.notes ?? '');
+  
+  // 编辑经期相关状态
+  const [relatedCycle, setRelatedCycle] = useState<CycleData | null>(null);
+  const [editStartDate, setEditStartDate] = useState('');
+  const [editEndDate, setEditEndDate] = useState('');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const displayDate = new Date(date + 'T12:00:00');
   const avgPeriodLength = settings?.averagePeriodLength || 5;
+
+  // 加载相关周期记录
+  useEffect(() => {
+    const loadCycle = async () => {
+      const cycle = await getCycleByDate(date);
+      if (cycle) {
+        setRelatedCycle(cycle);
+        setEditStartDate(cycle.startDate);
+        setEditEndDate(cycle.endDate || '');
+      }
+    };
+    loadCycle();
+  }, [date]);
 
   const toggleSymptom = (symptom: string) => {
     setSymptoms((prev) =>
@@ -66,6 +99,94 @@ export function LoggingScreen({
   const handleEndPeriod = () => {
     if (onEndPeriod) {
       onEndPeriod(date);
+    }
+  };
+
+  // 保存编辑的周期
+  const handleSaveCycleEdit = async () => {
+    if (!relatedCycle?.id) return;
+    
+    try {
+      const oldStartDate = relatedCycle.startDate;
+      const oldEndDate = relatedCycle.endDate;
+      
+      // 更新周期记录
+      await updateCycle(relatedCycle.id, {
+        startDate: editStartDate,
+        endDate: editEndDate || undefined,
+      });
+      
+      // 清除旧日期范围的经期标记
+      if (oldStartDate && oldEndDate) {
+        const start = new Date(oldStartDate + 'T12:00:00');
+        const end = new Date(oldEndDate + 'T12:00:00');
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = formatDate(d);
+          await addOrUpdateDailyLog({
+            date: dateStr,
+            isPeriod: false,
+            symptoms: [],
+          });
+        }
+      }
+      
+      // 设置新日期范围的经期标记
+      if (editStartDate && editEndDate) {
+        const start = new Date(editStartDate + 'T12:00:00');
+        const end = new Date(editEndDate + 'T12:00:00');
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = formatDate(d);
+          await addOrUpdateDailyLog({
+            date: dateStr,
+            isPeriod: true,
+            flowIntensity: 'medium',
+            symptoms: [],
+          });
+        }
+      }
+      
+      toast.success('经期记录已更新');
+      setEditDialogOpen(false);
+      onRefresh?.();
+      onBack();
+    } catch (error) {
+      console.error('更新失败:', error);
+      toast.error('更新失败');
+    }
+  };
+
+  // 删除周期记录
+  const handleDeleteCycle = async () => {
+    if (!relatedCycle?.id) return;
+    
+    try {
+      const oldStartDate = relatedCycle.startDate;
+      const oldEndDate = relatedCycle.endDate;
+      
+      // 删除周期记录
+      await deleteCycle(relatedCycle.id);
+      
+      // 清除日期范围的经期标记
+      if (oldStartDate && oldEndDate) {
+        const start = new Date(oldStartDate + 'T12:00:00');
+        const end = new Date(oldEndDate + 'T12:00:00');
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = formatDate(d);
+          await addOrUpdateDailyLog({
+            date: dateStr,
+            isPeriod: false,
+            symptoms: [],
+          });
+        }
+      }
+      
+      toast.success('经期记录已删除');
+      setDeleteDialogOpen(false);
+      onRefresh?.();
+      onBack();
+    } catch (error) {
+      console.error('删除失败:', error);
+      toast.error('删除失败');
     }
   };
 
@@ -127,6 +248,79 @@ export function LoggingScreen({
                 <p className="text-xs text-muted-foreground mt-2">
                   点击"标记经期开始"将自动填充未来 {avgPeriodLength} 天为经期
                 </p>
+              )}
+              
+              {/* 编辑已有周期记录 */}
+              {relatedCycle && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    当前经期记录: {relatedCycle.startDate} 至 {relatedCycle.endDate || '进行中'}
+                  </p>
+                  <div className="flex gap-2">
+                    <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="flex-1 gap-1">
+                          <Edit className="w-3 h-3" />
+                          修改日期
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>修改经期日期</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">开始日期</label>
+                            <Input
+                              type="date"
+                              value={editStartDate}
+                              onChange={(e) => setEditStartDate(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">结束日期</label>
+                            <Input
+                              type="date"
+                              value={editEndDate}
+                              onChange={(e) => setEditEndDate(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button variant="outline">取消</Button>
+                          </DialogClose>
+                          <Button onClick={handleSaveCycleEdit}>保存</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                    
+                    <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-1 text-destructive border-destructive/50 hover:bg-destructive/10">
+                          <Trash2 className="w-3 h-3" />
+                          删除记录
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>确认删除</DialogTitle>
+                        </DialogHeader>
+                        <p className="py-4 text-muted-foreground">
+                          确定要删除这条经期记录吗？此操作无法撤销。
+                        </p>
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button variant="outline">取消</Button>
+                          </DialogClose>
+                          <Button variant="destructive" onClick={handleDeleteCycle}>
+                            删除
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

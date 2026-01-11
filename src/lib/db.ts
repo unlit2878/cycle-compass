@@ -150,6 +150,21 @@ export async function getLatestCycle(): Promise<CycleData | undefined> {
   return cycles[cycles.length - 1];
 }
 
+export async function deleteCycle(id: number): Promise<void> {
+  const db = await getDB();
+  await db.delete('cycles', id);
+}
+
+export async function getCycleByDate(date: string): Promise<CycleData | undefined> {
+  const cycles = await getAllCycles();
+  return cycles.find(cycle => {
+    if (cycle.startDate === date) return true;
+    if (cycle.endDate === date) return true;
+    if (cycle.startDate <= date && cycle.endDate && cycle.endDate >= date) return true;
+    return false;
+  });
+}
+
 // 每日记录操作
 export async function addOrUpdateDailyLog(log: Omit<DailyLog, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
   const db = await getDB();
