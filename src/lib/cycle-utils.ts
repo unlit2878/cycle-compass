@@ -40,10 +40,16 @@ export function getPhaseInfo(
 ): PhaseInfo {
   const diffTime = currentDate.getTime() - lastPeriodStart.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  const dayInCycle = (diffDays % cycleLength) + 1;
   
-  const phase = getCyclePhase(dayInCycle, cycleLength);
-  const daysUntilNextPeriod = cycleLength - dayInCycle + 1;
+  // 实际天数（从经期开始到现在，不取模，用于显示"第N天"）
+  const dayInCycle = diffDays + 1;
+  
+  // 周期内相对位置（用于判断当前阶段和预测下次经期）
+  const dayInCurrentCycle = ((diffDays % cycleLength) + cycleLength) % cycleLength + 1;
+  
+  const phase = getCyclePhase(dayInCurrentCycle, cycleLength);
+  const daysUntilNextPeriod = cycleLength - dayInCurrentCycle + 1;
+  
   
   // 计算阶段内的天数
   const ovulationDay = Math.round(cycleLength - 14);
@@ -52,19 +58,19 @@ export function getPhaseInfo(
   
   switch (phase) {
     case 'menstrual':
-      phaseDay = dayInCycle;
+      phaseDay = dayInCurrentCycle;
       phaseTotalDays = periodLength;
       break;
     case 'follicular':
-      phaseDay = dayInCycle - periodLength;
+      phaseDay = dayInCurrentCycle - periodLength;
       phaseTotalDays = ovulationDay - periodLength - 2;
       break;
     case 'ovulation':
-      phaseDay = dayInCycle - (ovulationDay - 2);
+      phaseDay = dayInCurrentCycle - (ovulationDay - 2);
       phaseTotalDays = 5;
       break;
     case 'luteal':
-      phaseDay = dayInCycle - (ovulationDay + 2);
+      phaseDay = dayInCurrentCycle - (ovulationDay + 2);
       phaseTotalDays = cycleLength - ovulationDay - 2;
       break;
   }
