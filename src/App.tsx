@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { useCycleData } from "@/hooks/useCycleData";
 import { Onboarding } from "@/components/Onboarding";
 import { Home } from "@/components/Home";
@@ -16,12 +16,16 @@ import { formatDate } from "@/lib/cycle-utils";
 import { BackupData, addCycle, updateCycle, getAllCycles } from "@/lib/db";
 import { toast } from "sonner";
 import { zh } from "@/lib/i18n";
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastBackPressRef = useRef<number>(0);
   const {
     settings,
     cycles,
@@ -42,6 +46,41 @@ function AppContent() {
   const [loggingDate, setLoggingDate] = useState<string | null>(null);
   const [loggingExistingLog, setLoggingExistingLog] = useState<any>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
+
+  // Android 返回键处理
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    
+    const handleBackButton = () => {
+      // 如果在记录页面，关闭记录
+      if (loggingDate) {
+        setLoggingDate(null);
+        setLoggingExistingLog(null);
+        return;
+      }
+      
+      // 如果不在首页，返回首页
+      if (location.pathname !== '/') {
+        navigate('/');
+        return;
+      }
+      
+      // 在首页，双击退出
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2000) {
+        CapacitorApp.exitApp();
+      } else {
+        lastBackPressRef.current = now;
+        toast('再按一次返回键退出应用');
+      }
+    };
+    
+    CapacitorApp.addListener('backButton', handleBackButton);
+    
+    return () => {
+      CapacitorApp.removeAllListeners();
+    };
+  }, [location.pathname, loggingDate, navigate]);
 
   // 加载时应用深色模式
   useEffect(() => {

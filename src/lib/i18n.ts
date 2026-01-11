@@ -1,8 +1,8 @@
-// Simplified Chinese translations for MyCycle
+// Simplified Chinese translations for 知期
 
 export const zh = {
   // App name
-  appName: '我的周期',
+  appName: '知期',
 
   // Phase names
   phases: {
@@ -73,7 +73,7 @@ export const zh = {
   // Onboarding
   onboarding: {
     welcome: {
-      title: '欢迎使用我的周期',
+      title: '欢迎使用知期',
       subtitle: '您的私密经期追踪助手',
       description: '所有数据安全存储在您的设备上，完全私密。',
       getStarted: '开始使用',
@@ -181,25 +181,44 @@ export const zh = {
     title: '设置',
     notifications: '通知提醒',
     periodReminder: '经期提醒',
-    periodReminderDesc: '在预测经期前一天提醒',
+    periodReminderDesc: '在预测经期前提醒您',
+    ovulationReminder: '排卵期提醒',
+    ovulationReminderDesc: '在预测排卵期前提醒您',
+    reminderDays: '提前提醒天数',
+    daysBefore: '天',
     dailyReminder: '每日记录提醒',
     dailyReminderDesc: '每天提醒您记录',
     dataManagement: '数据管理',
     exportData: '导出数据',
+    exporting: '导出中...',
+    exportSuccess: '导出成功',
     exportDataDesc: '备份您的所有数据',
     importData: '导入数据',
+    importing: '导入中...',
+    importSuccess: '导入成功',
     importDataDesc: '从备份文件恢复数据',
     formatHelp: '格式说明',
+    dataFormatHelp: '导入数据格式说明',
+    dataFormatHelpTitle: '导入数据格式',
+    dataFormatHelpDesc: '请上传 JSON 格式的备份文件',
     backupReminder: '备份提醒',
     backupReminderDesc: '定期提醒备份数据',
+    weekly: '每周',
+    monthly: '每月',
+    never: '关闭',
+    lastBackup: '上次备份',
+    noBackupYet: '尚未备份',
     persistentStorage: '持久存储',
     persistentStorageDesc: '防止浏览器自动清除数据',
+    persistentStorageEnabled: '已启用持久存储',
+    enable: '启用',
     requestPermission: '请求权限',
     granted: '已授权',
     display: '显示设置',
     darkMode: '深色模式',
     darkModeDesc: '使用深色主题',
     about: '关于',
+    aboutDesc: '一款简洁的经期追踪应用，数据安全存储在本地',
     version: '版本',
     privacy: '隐私说明',
     privacyDesc: '所有数据仅存储在您的设备上',
