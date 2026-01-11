@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { ChevronLeft, Droplets, Save, Play, Square, Calendar } from 'lucide-react';
 import { DailyLog, Settings } from '@/lib/db';
 import { formatFullDate } from '@/lib/cycle-utils';
@@ -12,6 +11,7 @@ interface LoggingScreenProps {
   date: string;
   existingLog?: DailyLog;
   settings?: Settings | null;
+  isInPeriod?: boolean;
   onSave: (data: Omit<DailyLog, 'id' | 'date' | 'createdAt' | 'updatedAt'>) => void;
   onStartPeriod?: (date: string, autoFillDays: number) => void;
   onEndPeriod?: (date: string) => void;
@@ -24,6 +24,7 @@ export function LoggingScreen({
   date, 
   existingLog, 
   settings,
+  isInPeriod = false,
   onSave, 
   onStartPeriod,
   onEndPeriod,
@@ -36,7 +37,6 @@ export function LoggingScreen({
   const [symptoms, setSymptoms] = useState<string[]>(existingLog?.symptoms ?? []);
   const [mood, setMood] = useState<string | undefined>(existingLog?.mood);
   const [notes, setNotes] = useState(existingLog?.notes ?? '');
-  const [showPeriodOptions, setShowPeriodOptions] = useState(false);
 
   const displayDate = new Date(date + 'T12:00:00');
   const avgPeriodLength = settings?.averagePeriodLength || 5;
@@ -75,6 +75,10 @@ export function LoggingScreen({
     { value: 'heavy', label: zh.flowIntensity.heavy, drops: 3 },
   ];
 
+  // 判断是否显示"标记开始"按钮（如果当前在经期中则禁用）
+  const showStartButton = onStartPeriod && !isInPeriod;
+  const showEndButton = onEndPeriod;
+
   return (
     <div className="min-h-screen pb-24 px-4 pt-6 page-enter">
       {/* 头部 */}
@@ -90,7 +94,7 @@ export function LoggingScreen({
 
       <div className="space-y-6">
         {/* 快捷操作：标记经期开始/结束 */}
-        {(onStartPeriod || onEndPeriod) && (
+        {(showStartButton || showEndButton) && (
           <Card className="border-0 shadow-lg overflow-hidden bg-gradient-to-r from-phase-menstrual/10 to-phase-menstrual/5">
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-3">
@@ -98,7 +102,7 @@ export function LoggingScreen({
                 <span className="font-medium text-foreground">快捷操作</span>
               </div>
               <div className="flex gap-2">
-                {onStartPeriod && (
+                {showStartButton && (
                   <Button
                     onClick={handleStartPeriod}
                     className="flex-1 bg-phase-menstrual hover:bg-phase-menstrual/90 text-white gap-2"
@@ -107,7 +111,7 @@ export function LoggingScreen({
                     标记经期开始
                   </Button>
                 )}
-                {onEndPeriod && (
+                {showEndButton && (
                   <Button
                     onClick={handleEndPeriod}
                     variant="outline"
@@ -118,7 +122,7 @@ export function LoggingScreen({
                   </Button>
                 )}
               </div>
-              {onStartPeriod && (
+              {showStartButton && (
                 <p className="text-xs text-muted-foreground mt-2">
                   点击"标记经期开始"将自动填充未来 {avgPeriodLength} 天为经期
                 </p>
@@ -127,68 +131,57 @@ export function LoggingScreen({
           </Card>
         )}
 
-        {/* 月经开关 */}
-        <Card className="border-0 shadow-lg overflow-hidden card-hover">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+        {/* 经量选择（仅当有经期记录时显示） */}
+        {isPeriod && (
+          <Card className="border-0 shadow-lg overflow-hidden card-hover">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full bg-phase-menstrual/20 flex items-center justify-center">
                   <Droplets className="w-5 h-5 text-phase-menstrual" />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">{zh.phases.menstrual}</p>
-                  <p className="text-sm text-muted-foreground">{zh.logging.isPeriod}</p>
+                  <p className="font-medium text-foreground">{zh.logging.flowIntensity}</p>
+                  <p className="text-sm text-muted-foreground">选择今天的经量</p>
                 </div>
               </div>
-              <Switch
-                checked={isPeriod}
-                onCheckedChange={setIsPeriod}
-              />
-            </div>
-
-            {/* 经量 */}
-            {isPeriod && (
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-sm font-medium text-foreground mb-3">{zh.logging.flowIntensity}</p>
-                <div className="flex gap-2">
-                  {flowOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setFlowIntensity(option.value)}
-                      className={`flex-1 py-3 px-2 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
+              <div className="flex gap-2">
+                {flowOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setFlowIntensity(option.value)}
+                    className={`flex-1 py-3 px-2 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
+                      flowIntensity === option.value
+                        ? 'border-phase-menstrual bg-phase-menstrual/10'
+                        : 'border-border'
+                    }`}
+                  >
+                    <div className="flex">
+                      {Array.from({ length: option.drops }).map((_, i) => (
+                        <Droplets
+                          key={i}
+                          className={`w-4 h-4 ${
+                            flowIntensity === option.value
+                              ? 'text-phase-menstrual'
+                              : 'text-muted-foreground'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span
+                      className={`text-xs ${
                         flowIntensity === option.value
-                          ? 'border-phase-menstrual bg-phase-menstrual/10'
-                          : 'border-border'
+                          ? 'text-phase-menstrual font-medium'
+                          : 'text-muted-foreground'
                       }`}
                     >
-                      <div className="flex">
-                        {Array.from({ length: option.drops }).map((_, i) => (
-                          <Droplets
-                            key={i}
-                            className={`w-4 h-4 ${
-                              flowIntensity === option.value
-                                ? 'text-phase-menstrual'
-                                : 'text-muted-foreground'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span
-                        className={`text-xs ${
-                          flowIntensity === option.value
-                            ? 'text-phase-menstrual font-medium'
-                            : 'text-muted-foreground'
-                        }`}
-                      >
-                        {option.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                      {option.label}
+                    </span>
+                  </button>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 症状 */}
         <Card className="border-0 shadow-lg card-hover">
