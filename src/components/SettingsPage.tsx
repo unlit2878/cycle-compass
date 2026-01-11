@@ -71,6 +71,10 @@ export function SettingsPage({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
+      // 更新最后备份时间
+      await onUpdateSettings({ lastBackupDate: new Date().toISOString() });
+      
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3000);
     } catch (error) {
