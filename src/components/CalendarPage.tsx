@@ -55,12 +55,10 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
     return { days, firstDayOfWeek, logMap };
   }, [currentMonth, dailyLogs]);
 
-  // 获取所有经期记录的日期映射（包括dailyLogs和cycles中的经期）
+  // 获取所有经期记录的日期映射（只从 cycles 表获取）
   const periodDates = useMemo(() => {
     const dates = new Set<string>();
-    // 从dailyLogs获取
-    dailyLogs.filter(log => log.isPeriod).forEach(log => dates.add(log.date));
-    // 从cycles获取（包括startDate到endDate之间的所有日期）
+    // 只从 cycles 获取（包括 startDate 到 endDate 之间的所有日期）
     cycles.forEach(cycle => {
       const start = new Date(cycle.startDate);
       const end = cycle.endDate ? new Date(cycle.endDate) : start;
@@ -69,7 +67,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
       }
     });
     return dates;
-  }, [dailyLogs, cycles]);
+  }, [cycles]);
 
   const getPhaseForDate = (date: Date): CyclePhase | null => {
     if (!settings?.lastPeriodStart) return null;
@@ -301,8 +299,8 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
               const phase = getPhaseForDate(date);
               const isToday = dateStr === today;
               const isPast = date <= new Date();
-              // 检查是否是经期（包括dailyLogs和cycles中的记录）
-              const isRecordedPeriod = log?.isPeriod || periodDates.has(dateStr);
+              // 检查是否是经期（只从 cycles 表获取）
+              const isRecordedPeriod = periodDates.has(dateStr);
               const isOvulation = isPast && phase === 'ovulation' && !isRecordedPeriod;
               
               // 计算经期第几天
@@ -384,6 +382,10 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full border-2 border-dashed border-phase-menstrual/70 bg-phase-menstrual/10" />
           <span className="text-xs text-muted-foreground">未来预测</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+          <span className="text-xs text-muted-foreground">有记录</span>
         </div>
       </div>
     </div>

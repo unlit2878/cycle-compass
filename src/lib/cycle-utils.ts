@@ -1,4 +1,4 @@
-import { CycleData, DailyLog } from './db';
+import { CycleData } from './db';
 import { zh } from './i18n';
 
 export type CyclePhase = 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
@@ -121,34 +121,16 @@ export function calculateAverageCycleLength(cycles: CycleData[]): number {
   return Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length);
 }
 
-// 从每日记录计算平均经期长度
-export function calculateAveragePeriodLength(logs: DailyLog[]): number {
-  const periodDays = logs.filter(l => l.isPeriod);
-  if (periodDays.length === 0) return 5;
-  
-  // 将连续的经期天数分组
-  const sortedDates = periodDays.map(l => l.date).sort();
-  let periodLengths: number[] = [];
-  let currentLength = 1;
-  
-  for (let i = 1; i < sortedDates.length; i++) {
-    const prevDate = new Date(sortedDates[i - 1]);
-    const currDate = new Date(sortedDates[i]);
-    const diffDays = Math.round((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) {
-      currentLength++;
-    } else {
-      if (currentLength >= 2) {
-        periodLengths.push(currentLength);
-      }
-      currentLength = 1;
-    }
-  }
-  
-  if (currentLength >= 2) {
-    periodLengths.push(currentLength);
-  }
+// 从 cycles 表计算平均经期长度
+export function calculateAveragePeriodLength(cycles: CycleData[]): number {
+  const periodLengths = cycles
+    .filter(c => c.startDate && c.endDate)
+    .map(c => {
+      const start = new Date(c.startDate);
+      const end = new Date(c.endDate!);
+      return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    })
+    .filter(l => l > 0 && l < 15);
   
   if (periodLengths.length === 0) return 5;
   return Math.round(periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length);

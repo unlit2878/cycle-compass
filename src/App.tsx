@@ -59,28 +59,29 @@ function AppContent() {
     }
   }, [settings?.persistentStorageGranted]);
 
-  // 判断当前是否在经期中
+  // 判断当前是否在经期中（改用 cycles 表判断）
   const isInPeriod = useMemo(() => {
-    if (!dailyLogs || dailyLogs.length === 0) return false;
+    if (!cycles || cycles.length === 0) return false;
     
     const today = formatDate(new Date());
     const todayTime = new Date(today + 'T12:00:00').getTime();
     
-    // 检查最近14天内是否有经期记录且还没有结束
-    // 找到最近的经期开始日期
-    const periodLogs = dailyLogs.filter(log => log.isPeriod).sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
+    // 找到最新的周期记录
+    const sortedCycles = [...cycles].sort((a, b) => 
+      new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
     );
     
-    if (periodLogs.length === 0) return false;
+    const latestCycle = sortedCycles[0];
+    if (!latestCycle) return false;
     
-    // 检查最新的经期记录是否是连续的到今天
-    const latestPeriodDate = new Date(periodLogs[0].date + 'T12:00:00');
-    const daysDiff = Math.floor((todayTime - latestPeriodDate.getTime()) / (1000 * 60 * 60 * 24));
+    const startTime = new Date(latestCycle.startDate + 'T12:00:00').getTime();
+    const endTime = latestCycle.endDate 
+      ? new Date(latestCycle.endDate + 'T12:00:00').getTime() 
+      : startTime + 7 * 24 * 60 * 60 * 1000; // 如果没有结束日期，默认7天
     
-    // 如果最近的经期记录在7天内，认为仍在经期中
-    return daysDiff <= 7 && daysDiff >= 0;
-  }, [dailyLogs]);
+    // 检查今天是否在最新周期的经期范围内
+    return todayTime >= startTime && todayTime <= endTime;
+  }, [cycles]);
 
   const handleLogToday = async () => {
     const today = formatDate(new Date());
@@ -104,73 +105,43 @@ function AppContent() {
     }
   };
 
-  // 标记经期开始：自动填充未来n天
+  // 标记经期开始：只创建周期记录，不再创建冗余的 dailyLogs
   const handleStartPeriod = async (date: string, autoFillDays: number) => {
     const startDate = new Date(date + 'T12:00:00');
     
     // 更新设置中的最后经期开始日期
     await saveSettings({ lastPeriodStart: date });
     
-    // 创建新的周期记录
+    // 创建新的周期记录（不再存储 cycleLength，不再创建 dailyLogs）
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + autoFillDays - 1);
     await addCycle({
       startDate: date,
       endDate: formatDate(endDate),
-      cycleLength: settings?.averageCycleLength || 28,
     });
     
-    // 填充经期天数
-    for (let i = 0; i < autoFillDays; i++) {
-      const currentDate = new Date(startDate);
-      currentDate.setDate(currentDate.getDate() + i);
-      const dateStr = formatDate(currentDate);
-      
-      await logDay(dateStr, {
-        isPeriod: true,
-        flowIntensity: i === 0 || i === autoFillDays - 1 ? 'light' : 'medium',
-        symptoms: [],
-      });
-    }
-    
-    toast.success(`已标记经期开始，自动填充了${autoFillDays}天`);
+    toast.success(`已标记经期：${date} 至 ${formatDate(endDate)}`);
+    await refresh();
     setLoggingDate(null);
     setLoggingExistingLog(null);
   };
 
-  // 标记经期结束：清除当天之后的经期标记
+  // 标记经期结束：只更新周期记录的结束日期
   const handleEndPeriod = async (date: string) => {
-    const endDate = new Date(date + 'T12:00:00');
-    
-    // 将当天之后（不包括当天）的经期记录清除
-    for (const log of dailyLogs) {
-      const logDate = new Date(log.date + 'T12:00:00');
-      if (log.isPeriod && logDate > endDate) {
-        await logDay(log.date, {
-          ...log,
-          isPeriod: false,
-          flowIntensity: undefined,
-        });
-      }
-    }
-    
-    // 确保当天是经期
-    await logDay(date, {
-      isPeriod: true,
-      flowIntensity: 'light',
-      symptoms: [],
-    });
-    
     // 更新最近周期的结束日期
     const allCycles = await getAllCycles();
     if (allCycles.length > 0) {
-      const latestCycle = allCycles[allCycles.length - 1];
+      const sortedCycles = [...allCycles].sort((a, b) => 
+        new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+      );
+      const latestCycle = sortedCycles[0];
       if (latestCycle.id) {
         await updateCycle(latestCycle.id, { endDate: date });
       }
     }
     
     toast.success('已标记经期结束');
+    await refresh();
     setLoggingDate(null);
     setLoggingExistingLog(null);
   };
