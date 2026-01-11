@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -40,6 +40,7 @@ function AppContent() {
 
   const [loggingDate, setLoggingDate] = useState<string | null>(null);
   const [loggingExistingLog, setLoggingExistingLog] = useState<any>(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   // 加载时应用深色模式
   useEffect(() => {
@@ -56,6 +57,29 @@ function AppContent() {
       requestPersistence();
     }
   }, [settings?.persistentStorageGranted]);
+
+  // 判断当前是否在经期中
+  const isInPeriod = useMemo(() => {
+    if (!dailyLogs || dailyLogs.length === 0) return false;
+    
+    const today = formatDate(new Date());
+    const todayTime = new Date(today + 'T12:00:00').getTime();
+    
+    // 检查最近14天内是否有经期记录且还没有结束
+    // 找到最近的经期开始日期
+    const periodLogs = dailyLogs.filter(log => log.isPeriod).sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    if (periodLogs.length === 0) return false;
+    
+    // 检查最新的经期记录是否是连续的到今天
+    const latestPeriodDate = new Date(periodLogs[0].date + 'T12:00:00');
+    const daysDiff = Math.floor((todayTime - latestPeriodDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // 如果最近的经期记录在7天内，认为仍在经期中
+    return daysDiff <= 7 && daysDiff >= 0;
+  }, [dailyLogs]);
 
   const handleLogToday = async () => {
     const today = formatDate(new Date());
@@ -178,6 +202,7 @@ function AppContent() {
         date={loggingDate}
         existingLog={loggingExistingLog}
         settings={settings}
+        isInPeriod={isInPeriod}
         onSave={handleLogSave}
         onStartPeriod={handleStartPeriod}
         onEndPeriod={handleEndPeriod}
@@ -190,10 +215,17 @@ function AppContent() {
     <div className="min-h-screen">
       <Routes>
         <Route path="/" element={
-          <Home phaseInfo={phaseInfo} settings={settings} cycles={cycles} onLogToday={handleLogToday} onBackupReminder={() => navigate('/settings')} />
+          <Home phaseInfo={phaseInfo} settings={settings} cycles={cycles} onDaySelect={handleDaySelect} onBackupReminder={() => navigate('/settings')} />
         } />
         <Route path="/calendar" element={
-          <CalendarPage settings={settings} dailyLogs={dailyLogs} cycles={cycles} onDaySelect={handleDaySelect} />
+          <CalendarPage 
+            settings={settings} 
+            dailyLogs={dailyLogs} 
+            cycles={cycles} 
+            currentMonth={calendarMonth}
+            onMonthChange={setCalendarMonth}
+            onDaySelect={handleDaySelect} 
+          />
         } />
         <Route path="/insights" element={
           <InsightsPage settings={settings} cycles={cycles} dailyLogs={dailyLogs} statistics={statistics} />

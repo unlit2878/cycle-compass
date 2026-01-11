@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,11 +25,12 @@ interface CalendarPageProps {
   settings: Settings | null;
   dailyLogs: DailyLog[];
   cycles: CycleData[];
+  currentMonth: Date;
+  onMonthChange: (date: Date) => void;
   onDaySelect: (date: string) => void;
 }
 
-export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: CalendarPageProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMonthChange, onDaySelect }: CalendarPageProps) {
 
   // 使用统计预测获取周期长度（与首页统一）
   const predictedCycleLength = useMemo(() => {
@@ -116,23 +117,23 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
   const navigateMonth = (delta: number) => {
     const newDate = new Date(currentMonth);
     newDate.setMonth(newDate.getMonth() + delta);
-    setCurrentMonth(newDate);
+    onMonthChange(newDate);
   };
 
   const goToToday = () => {
-    setCurrentMonth(new Date());
+    onMonthChange(new Date());
   };
 
   const setYear = (year: string) => {
     const newDate = new Date(currentMonth);
     newDate.setFullYear(parseInt(year));
-    setCurrentMonth(newDate);
+    onMonthChange(newDate);
   };
 
   const setMonth = (month: string) => {
     const newDate = new Date(currentMonth);
     newDate.setMonth(parseInt(month));
-    setCurrentMonth(newDate);
+    onMonthChange(newDate);
   };
 
   const today = formatDate(new Date());
@@ -345,7 +346,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
                 <button
                   key={dateStr}
                   onClick={() => onDaySelect(dateStr)}
-                  className={`aspect-square rounded-xl flex flex-col items-center justify-center relative
+                  className={`aspect-square rounded-full flex flex-col items-center justify-center relative
                     transition-all duration-200 hover:scale-105 active:scale-95 ${
                     isRecordedPeriod
                       ? 'bg-phase-menstrual text-white font-bold shadow-md'
@@ -373,7 +374,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
       {/* 图例 */}
       <div className="flex flex-wrap justify-center gap-4 mt-4">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-lg bg-phase-menstrual shadow-sm" />
+          <div className="w-4 h-4 rounded-full bg-phase-menstrual shadow-sm" />
           <span className="text-xs text-muted-foreground">已记录经期</span>
         </div>
         <div className="flex items-center gap-2">
@@ -381,7 +382,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
           <span className="text-xs text-muted-foreground">排卵期</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-lg border-2 border-dashed border-phase-menstrual/70 bg-phase-menstrual/10" />
+          <div className="w-4 h-4 rounded-full border-2 border-dashed border-phase-menstrual/70 bg-phase-menstrual/10" />
           <span className="text-xs text-muted-foreground">未来预测</span>
         </div>
       </div>

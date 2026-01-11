@@ -1,20 +1,20 @@
 import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { PhaseInfo, getPhaseEmoji, getPhaseName, getPhaseDescription, formatDisplayDate, isBackupOverdue, getDaysSinceBackup } from '@/lib/cycle-utils';
+import { PhaseInfo, getPhaseEmoji, getPhaseName, getPhaseDescription, formatDisplayDate, formatDate, isBackupOverdue, getDaysSinceBackup } from '@/lib/cycle-utils';
 import { Settings, CycleData } from '@/lib/db';
-import { Plus, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { zh } from '@/lib/i18n';
 import { predictNextCycle } from '@/lib/prediction-utils';
+
 interface HomeProps {
   phaseInfo: PhaseInfo | null;
   settings: Settings | null;
   cycles: CycleData[];
-  onLogToday: () => void;
+  onDaySelect: (date: string) => void;
   onBackupReminder: () => void;
 }
 
-export function Home({ phaseInfo, settings, cycles, onLogToday, onBackupReminder }: HomeProps) {
+export function Home({ phaseInfo, settings, cycles, onDaySelect, onBackupReminder }: HomeProps) {
   const backupOverdue = useMemo(() => {
     if (!settings) return false;
     return isBackupOverdue(settings.lastBackupDate, settings.backupReminderInterval);
@@ -72,6 +72,7 @@ export function Home({ phaseInfo, settings, cycles, onLogToday, onBackupReminder
       
       days.push({
         date,
+        dateStr: formatDate(date),
         dayName: zh.calendar.weekdays[date.getDay()],
         dayNum: date.getDate(),
         phase,
@@ -80,7 +81,7 @@ export function Home({ phaseInfo, settings, cycles, onLogToday, onBackupReminder
     }
     
     return days;
-  }, [phaseInfo, settings]);
+  }, [phaseInfo, settings, predictedCycleLength]);
 
   const phaseColorClass = {
     menstrual: 'bg-phase-menstrual',
@@ -197,7 +198,11 @@ export function Home({ phaseInfo, settings, cycles, onLogToday, onBackupReminder
           <p className="text-sm text-muted-foreground mb-3">{zh.home.weekPreview}</p>
           <div className="flex justify-between">
             {weekPreview.map((day, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
+              <button
+                key={i}
+                onClick={() => onDaySelect(day.dateStr)}
+                className="flex flex-col items-center gap-1 transition-transform active:scale-95"
+              >
                 <span className="text-xs text-muted-foreground">{day.dayName}</span>
                 <div
                   className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 hover:scale-110 ${
@@ -208,20 +213,11 @@ export function Home({ phaseInfo, settings, cycles, onLogToday, onBackupReminder
                 >
                   {day.dayNum}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </CardContent>
       </Card>
-
-      {/* 快速记录按钮 */}
-      <Button
-        onClick={onLogToday}
-        className="w-full h-14 text-lg rounded-2xl shadow-lg btn-press transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5"
-      >
-        <Plus className="mr-2 w-5 h-5" />
-        记录今天
-      </Button>
     </div>
   );
 }
