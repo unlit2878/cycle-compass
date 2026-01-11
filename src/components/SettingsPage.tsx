@@ -23,10 +23,15 @@ import {
   Check,
   AlertCircle,
   HelpCircle,
+  Smartphone,
 } from 'lucide-react';
 import { Settings as SettingsType, BackupData } from '@/lib/db';
 import { getDaysSinceBackup } from '@/lib/cycle-utils';
 import { zh } from '@/lib/i18n';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { toast } from 'sonner';
+import { requestNotificationPermission, checkNotificationPermission, cancelAllNotifications } from '@/lib/notifications';
 
 interface SettingsPageProps {
   settings: SettingsType | null;
@@ -49,6 +54,8 @@ export function SettingsPage({
   const [importSuccess, setImportSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isNative = Capacitor.isNativePlatform();
+
   if (!settings) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -62,23 +69,60 @@ export function SettingsPage({
     setExportSuccess(false);
     try {
       const data = await onExport();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `mycycle-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const jsonString = JSON.stringify(data, null, 2);
+      const fileName = `zhiqi-backup-${new Date().toISOString().split('T')[0]}.json`;
       
-      // 更新最后备份时间
-      await onUpdateSettings({ lastBackupDate: new Date().toISOString() });
+      if (isNative) {
+        // 原生平台：写入文档文件夹
+        try {
+          await Filesystem.writeFile({
+            path: fileName,
+            data: jsonString,
+            directory: Directory.Documents,
+            encoding: Encoding.UTF8,
+          });
+          toast.success(`数据已导出到"文档"文件夹：${fileName}`);
+          setExportSuccess(true);
+          await onUpdateSettings({ lastBackupDate: new Date().toISOString() });
+        } catch (fsError) {
+          console.error('文件系统写入失败:', fsError);
+          // 尝试使用外部存储
+          try {
+            await Filesystem.writeFile({
+              path: `Download/${fileName}`,
+              data: jsonString,
+              directory: Directory.ExternalStorage,
+              encoding: Encoding.UTF8,
+            });
+            toast.success(`数据已导出到"下载"文件夹：${fileName}`);
+            setExportSuccess(true);
+            await onUpdateSettings({ lastBackupDate: new Date().toISOString() });
+          } catch (extError) {
+            console.error('外部存储写入也失败:', extError);
+            toast.error('导出失败，请检查存储权限。您可以在系统设置中授予应用存储权限。');
+          }
+        }
+      } else {
+        // Web 平台：使用下载链接
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        await onUpdateSettings({ lastBackupDate: new Date().toISOString() });
+        setExportSuccess(true);
+        toast.success('数据导出成功！');
+      }
       
-      setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3000);
     } catch (error) {
       console.error('导出失败:', error);
+      toast.error('导出失败，请重试');
     } finally {
       setExporting(false);
     }
@@ -99,10 +143,10 @@ export function SettingsPage({
       const data = JSON.parse(text) as BackupData;
       await onImport(data);
       setImportSuccess(true);
-      setTimeout(() => setImportSuccess(false), 3000);
+      toast.success('数据导入成功！');
     } catch (error) {
       console.error('导入失败:', error);
-      alert('导入数据失败，请检查文件格式。');
+      toast.error('导入失败，请检查文件格式');
     } finally {
       setImporting(false);
       e.target.value = '';
@@ -111,9 +155,42 @@ export function SettingsPage({
 
   const handleRequestPersistence = async () => {
     const granted = await onRequestPersistence();
-    if (!granted) {
-      alert('持久存储权限未授予。当存储空间不足时，您的数据可能会被清除。');
+    if (granted) {
+      toast.success('持久化存储已启用！');
+    } else {
+      toast.error('无法启用持久化存储');
     }
+  };
+
+  // 处理经期提醒开关
+  const handlePeriodReminderToggle = async (checked: boolean) => {
+    if (checked && isNative) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        toast.error('请在系统设置中授予通知权限');
+        return;
+      }
+      toast.success('经期提醒已开启');
+    } else if (!checked) {
+      await cancelAllNotifications();
+    }
+    onUpdateSettings({ reminderPeriodApproaching: checked });
+  };
+
+  // 处理排卵期提醒开关
+  const handleOvulationReminderToggle = async (checked: boolean) => {
+    if (checked && isNative) {
+      const hasPermission = await checkNotificationPermission();
+      if (!hasPermission) {
+        const granted = await requestNotificationPermission();
+        if (!granted) {
+          toast.error('请在系统设置中授予通知权限');
+          return;
+        }
+      }
+      toast.success('排卵期提醒已开启');
+    }
+    onUpdateSettings({ reminderOvulation: checked });
   };
 
   const daysSinceBackup = getDaysSinceBackup(settings.lastBackupDate);
@@ -142,9 +219,7 @@ export function SettingsPage({
                 </div>
                 <Switch
                   checked={settings.reminderPeriodApproaching}
-                  onCheckedChange={(checked) =>
-                    onUpdateSettings({ reminderPeriodApproaching: checked })
-                  }
+                  onCheckedChange={handlePeriodReminderToggle}
                 />
               </div>
               {settings.reminderPeriodApproaching && (
@@ -167,12 +242,12 @@ export function SettingsPage({
             {/* 排卵期提醒 */}
             <div className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-phase-ovulation" />
+              <Bell className="w-5 h-5 text-phase-ovulation" />
                 <span className="font-medium text-foreground">排卵期提醒</span>
               </div>
               <Switch
                 checked={settings.reminderOvulation}
-                onCheckedChange={(checked) => onUpdateSettings({ reminderOvulation: checked })}
+                onCheckedChange={handleOvulationReminderToggle}
               />
             </div>
 
@@ -357,29 +432,41 @@ export function SettingsPage({
               </div>
             </div>
 
-            {/* 持久存储 */}
-            <button
-              onClick={handleRequestPersistence}
-              disabled={settings.persistentStorageGranted}
-              className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Shield className="w-5 h-5 text-primary" />
-                <div className="text-left">
-                  <span className="font-medium text-foreground block">{zh.settings.persistentStorage}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {settings.persistentStorageGranted
-                      ? '存储保护已启用'
-                      : zh.settings.persistentStorageDesc}
-                  </span>
+            {/* 持久存储 - 仅在 Web 平台显示 */}
+            {!isNative && (
+              <button
+                onClick={handleRequestPersistence}
+                disabled={settings.persistentStorageGranted}
+                className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Shield className="w-5 h-5 text-primary" />
+                  <div className="text-left">
+                    <span className="font-medium text-foreground block">{zh.settings.persistentStorage}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {settings.persistentStorageGranted
+                        ? '存储保护已启用'
+                        : zh.settings.persistentStorageDesc}
+                    </span>
+                  </div>
                 </div>
+                {settings.persistentStorageGranted ? (
+                  <Check className="w-5 h-5 text-success" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                )}
+              </button>
+            )}
+
+            {/* 原生平台通知提示 */}
+            {isNative && (
+              <div className="p-4 flex items-center gap-3">
+                <Smartphone className="w-5 h-5 text-primary" />
+                <span className="text-sm text-muted-foreground">
+                  数据安全存储在本机，无需额外权限
+                </span>
               </div>
-              {settings.persistentStorageGranted ? (
-                <Check className="w-5 h-5 text-success" />
-              ) : (
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              )}
-            </button>
+            )}
           </CardContent>
         </Card>
       </div>
