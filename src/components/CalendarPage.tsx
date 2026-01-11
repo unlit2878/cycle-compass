@@ -287,10 +287,10 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
           </div>
 
           {/* 日期网格 */}
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-1.5">
             {/* 月初之前的空白单元格 */}
             {Array.from({ length: monthData.firstDayOfWeek }).map((_, i) => (
-              <div key={`empty-${i}`} className="h-10" />
+              <div key={`empty-${i}`} className="aspect-square" />
             ))}
 
             {/* 日期单元格 */}
@@ -302,6 +302,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
               const isPast = date <= new Date();
               // 检查是否是经期（包括dailyLogs和cycles中的记录）
               const isRecordedPeriod = log?.isPeriod || periodDates.has(dateStr);
+              const isOvulation = isPast && phase === 'ovulation' && !isRecordedPeriod;
               
               // 计算经期第几天
               let periodDayNum: number | null = null;
@@ -323,7 +324,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
                 periodDayNum = Math.floor((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
               }
 
-              // 未来预测样式：虚线边框+淡色背景（移除动画）
+              // 未来预测样式：虚线边框+淡色背景
               const futureStyle = phase 
                 ? `border-2 border-dashed ${
                     phase === 'menstrual' ? 'border-phase-menstrual/70 bg-phase-menstrual/10' :
@@ -333,24 +334,31 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
                   }`
                 : '';
 
+              // 确定文字颜色
+              const textColorClass = isRecordedPeriod 
+                ? 'text-white' 
+                : isOvulation 
+                  ? 'text-phase-ovulation font-bold' 
+                  : 'text-foreground';
+
               return (
                 <button
                   key={dateStr}
                   onClick={() => onDaySelect(dateStr)}
-                  className={`h-10 rounded-lg flex flex-col items-center justify-center relative
+                  className={`aspect-square rounded-xl flex flex-col items-center justify-center relative
                     transition-all duration-200 hover:scale-105 active:scale-95 ${
                     isRecordedPeriod
                       ? 'bg-phase-menstrual text-white font-bold shadow-md'
                       : !isPast && phase
-                        ? futureStyle  // 只有未来日期显示预测样式
+                        ? futureStyle
                         : 'bg-muted/30 hover:bg-muted/50'
                   } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''}`}
                 >
-                  <span className={`text-sm font-medium ${isRecordedPeriod ? 'text-white' : 'text-foreground'} ${periodDayNum ? 'text-xs' : ''}`}>
+                  <span className={`text-sm font-medium ${textColorClass} ${periodDayNum ? 'text-xs' : ''}`}>
                     {date.getDate()}
                   </span>
                   {periodDayNum && (
-                    <span className="text-[9px] text-white/90 leading-none font-medium">第{periodDayNum}天</span>
+                    <span className="text-[8px] text-white/90 leading-none font-medium">第{periodDayNum}天</span>
                   )}
                   {log && !isRecordedPeriod && (
                     <div className="w-1.5 h-1.5 rounded-full bg-primary absolute bottom-1" />
@@ -365,11 +373,15 @@ export function CalendarPage({ settings, dailyLogs, cycles, onDaySelect }: Calen
       {/* 图例 */}
       <div className="flex flex-wrap justify-center gap-4 mt-4">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-phase-menstrual shadow-sm" />
+          <div className="w-4 h-4 rounded-lg bg-phase-menstrual shadow-sm" />
           <span className="text-xs text-muted-foreground">已记录经期</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded border-2 border-dashed border-phase-menstrual/70 bg-phase-menstrual/10" />
+          <span className="text-xs font-bold text-phase-ovulation">18</span>
+          <span className="text-xs text-muted-foreground">排卵期</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-lg border-2 border-dashed border-phase-menstrual/70 bg-phase-menstrual/10" />
           <span className="text-xs text-muted-foreground">未来预测</span>
         </div>
       </div>
