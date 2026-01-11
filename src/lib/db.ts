@@ -350,3 +350,21 @@ export async function checkStoragePersistence(): Promise<boolean> {
   }
   return false;
 }
+
+// 同步 lastPeriodStart 与最新周期记录
+export async function syncLastPeriodStart(): Promise<void> {
+  const cycles = await getAllCycles();
+  if (cycles.length > 0) {
+    // 按开始日期降序排序，取最新的
+    const sorted = [...cycles].sort((a, b) => 
+      new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    );
+    const latestCycle = sorted[0];
+    const currentSettings = await getSettings();
+    
+    // 仅当 lastPeriodStart 与最新周期不一致时更新
+    if (currentSettings.lastPeriodStart !== latestCycle.startDate) {
+      await updateSettings({ lastPeriodStart: latestCycle.startDate });
+    }
+  }
+}
