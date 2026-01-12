@@ -201,6 +201,14 @@ export async function getAllDailyLogs(): Promise<DailyLog[]> {
   return db.getAllFromIndex('dailyLogs', 'by-date');
 }
 
+export async function deleteDailyLog(date: string): Promise<void> {
+  const db = await getDB();
+  const existing = await db.getFromIndex('dailyLogs', 'by-date', date);
+  if (existing?.id) {
+    await db.delete('dailyLogs', existing.id);
+  }
+}
+
 export async function getDailyLogsInRange(startDate: string, endDate: string): Promise<DailyLog[]> {
   const allLogs = await getAllDailyLogs();
   return allLogs.filter(log => log.date >= startDate && log.date <= endDate);

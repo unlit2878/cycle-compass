@@ -33,7 +33,9 @@ interface CalendarPageProps {
 export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMonthChange, onDaySelect }: CalendarPageProps) {
   // 滑动手势状态
   const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
   const touchEndX = useRef<number>(0);
+  const touchEndY = useRef<number>(0);
   const [isSwiping, setIsSwiping] = useState(false);
   
   // 动画状态
@@ -43,6 +45,9 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
   // 处理触摸开始
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    touchEndX.current = e.touches[0].clientX;
+    touchEndY.current = e.touches[0].clientY;
     setIsSwiping(true);
   };
 
@@ -50,6 +55,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isSwiping) return;
     touchEndX.current = e.touches[0].clientX;
+    touchEndY.current = e.touches[0].clientY;
   };
 
   // 处理触摸结束
@@ -57,11 +63,13 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
     if (!isSwiping) return;
     setIsSwiping(false);
     
-    const diff = touchStartX.current - touchEndX.current;
-    const threshold = 50; // 最小滑动距离
+    const diffX = touchStartX.current - touchEndX.current;
+    const diffY = Math.abs(touchStartY.current - touchEndY.current);
+    const threshold = 80; // 提高最小滑动距离
     
-    if (Math.abs(diff) > threshold) {
-      if (diff > 0) {
+    // 只有当水平滑动距离大于垂直滑动距离1.5倍，且超过阈值时才切换
+    if (Math.abs(diffX) > threshold && Math.abs(diffX) > diffY * 1.5) {
+      if (diffX > 0) {
         // 左滑 -> 下个月
         navigateMonth(1);
       } else {
@@ -83,9 +91,12 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
 
   // 带动画的回到今天
   const goToToday = useCallback(() => {
+    const today = new Date();
     setSlideDirection('scale');
     setAnimationKey(prev => prev + 1);
-    onMonthChange(new Date());
+    // 重置到今天所在的月份
+    const newMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    onMonthChange(newMonth);
   }, [onMonthChange]);
 
   // 设置年份（带动画）
@@ -213,12 +224,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
   const monthOptions = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
 
   return (
-    <div 
-      className="min-h-screen pb-24 px-4 pt-6"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="min-h-screen pb-24 px-4 pt-6">
       {/* 月份导航 */}
       <div className="flex items-center justify-between mb-4">
         <Button
@@ -333,7 +339,13 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
       </div>
 
       {/* 日历网格 */}
-      <Card key={animationKey} className={`border-0 shadow-lg ${getAnimationClass()}`}>
+      <Card 
+        key={animationKey} 
+        className={`border-0 shadow-lg ${getAnimationClass()}`}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <CardContent className="p-3">
           {/* 星期标题 */}
           <div className="grid grid-cols-7 mb-2">

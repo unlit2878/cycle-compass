@@ -7,6 +7,7 @@ import {
   getAllDailyLogs,
   addOrUpdateDailyLog,
   getDailyLog,
+  deleteDailyLog as deleteDailyLogFromDB,
   getLatestCycle,
   exportData,
   importData,
@@ -122,6 +123,12 @@ export function useCycleData() {
     return getDailyLog(date);
   }, []);
 
+  // 删除特定日期的记录
+  const deleteLog = useCallback(async (date: string): Promise<void> => {
+    await deleteDailyLogFromDB(date);
+    await loadData();
+  }, [loadData]);
+
   // 备份数据
   const backup = useCallback(async (): Promise<BackupData> => {
     return exportData();
@@ -161,6 +168,7 @@ export function useCycleData() {
     completeOnboarding,
     logDay,
     getLogForDate,
+    deleteLog,
     backup,
     restore,
     requestPersistence,

@@ -28,6 +28,7 @@ interface LoggingScreenProps {
   onEndPeriod?: (date: string) => void;
   onBack: () => void;
   onRefresh?: () => void;
+  onDeleteLog?: (date: string) => Promise<void>;
 }
 
 type FlowIntensity = 'light' | 'medium' | 'heavy';
@@ -42,6 +43,7 @@ export function LoggingScreen({
   onEndPeriod,
   onBack,
   onRefresh,
+  onDeleteLog,
 }: LoggingScreenProps) {
   // isPeriod 从 cycles 表判断，不再存储在 dailyLogs 中
   const [isPeriod, setIsPeriod] = useState(false);
@@ -58,6 +60,7 @@ export function LoggingScreen({
   const [editEndDate, setEditEndDate] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLogDialogOpen, setDeleteLogDialogOpen] = useState(false);
 
   const displayDate = new Date(date + 'T12:00:00');
   const avgPeriodLength = settings?.averagePeriodLength || 5;
@@ -138,6 +141,21 @@ export function LoggingScreen({
       toast.success('经期记录已删除');
       setDeleteDialogOpen(false);
       onRefresh?.();
+      onBack();
+    } catch (error) {
+      console.error('删除失败:', error);
+      toast.error('删除失败');
+    }
+  };
+
+  // 删除日志记录
+  const handleDeleteLog = async () => {
+    if (!onDeleteLog) return;
+    
+    try {
+      await onDeleteLog(date);
+      toast.success('记录已删除');
+      setDeleteLogDialogOpen(false);
       onBack();
     } catch (error) {
       console.error('删除失败:', error);
@@ -396,6 +414,37 @@ export function LoggingScreen({
           <Save className="mr-2 w-5 h-5" />
           {zh.logging.save}
         </Button>
+
+        {/* 删除记录按钮（仅当有现有记录时显示） */}
+        {existingLog && onDeleteLog && (
+          <Dialog open={deleteLogDialogOpen} onOpenChange={setDeleteLogDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="w-full h-12 text-destructive border-destructive/50 hover:bg-destructive/10 rounded-2xl"
+              >
+                <Trash2 className="mr-2 w-4 h-4" />
+                删除此日记录
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>确认删除</DialogTitle>
+              </DialogHeader>
+              <p className="py-4 text-muted-foreground">
+                确定要删除 {formatFullDate(displayDate)} 的记录吗？此操作无法撤销。
+              </p>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">取消</Button>
+                </DialogClose>
+                <Button variant="destructive" onClick={handleDeleteLog}>
+                  删除
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   );
