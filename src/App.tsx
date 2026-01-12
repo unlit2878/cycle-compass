@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { zh } from "@/lib/i18n";
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
+import { initializeNotifications } from '@/lib/notifications';
 
 const queryClient = new QueryClient();
 
@@ -91,12 +92,24 @@ function AppContent() {
     }
   }, [settings?.darkMode]);
 
-  // 首次加载时请求持久存储
+  // 首次加载时请求持久存储并初始化通知
   useEffect(() => {
     if (settings && !settings.persistentStorageGranted) {
       requestPersistence();
     }
-  }, [settings?.persistentStorageGranted]);
+    
+    // 初始化通知系统
+    if (settings && Capacitor.isNativePlatform()) {
+      initializeNotifications({
+        reminderPeriodApproaching: settings.reminderPeriodApproaching,
+        reminderOvulation: settings.reminderOvulation,
+        reminderDailyLog: settings.reminderDailyLog,
+        reminderPeriodDays: settings.reminderPeriodDays,
+        lastPeriodStart: settings.lastPeriodStart,
+        averageCycleLength: settings.averageCycleLength,
+      });
+    }
+  }, [settings?.persistentStorageGranted, settings?.reminderPeriodApproaching, settings?.reminderOvulation, settings?.reminderDailyLog]);
 
   // 判断当前是否在经期中（改用 cycles 表判断）
   const isInPeriod = useMemo(() => {
