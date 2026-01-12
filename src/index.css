@@ -182,4 +182,9 @@
   .log-btn:active {
     transform: translateY(0) scale(0.95);
   }
+
+  /* Toast 位置调整，避免遮挡底部导航 */
+  [data-sonner-toaster] {
+    --offset: 100px !important;
+  }
 }

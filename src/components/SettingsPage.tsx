@@ -31,7 +31,14 @@ import { zh } from '@/lib/i18n';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { toast } from 'sonner';
-import { requestNotificationPermission, checkNotificationPermission, cancelAllNotifications } from '@/lib/notifications';
+import { 
+  requestNotificationPermission, 
+  checkNotificationPermission, 
+  cancelAllNotifications,
+  scheduleDailyReminder,
+  cancelDailyReminder,
+  initializeNotifications
+} from '@/lib/notifications';
 
 interface SettingsPageProps {
   settings: SettingsType | null;
@@ -259,7 +266,23 @@ export function SettingsPage({
               </div>
               <Switch
                 checked={settings.reminderDailyLog}
-                onCheckedChange={(checked) => onUpdateSettings({ reminderDailyLog: checked })}
+                onCheckedChange={async (checked) => {
+                  if (checked && isNative) {
+                    const hasPermission = await checkNotificationPermission();
+                    if (!hasPermission) {
+                      const granted = await requestNotificationPermission();
+                      if (!granted) {
+                        toast.error('请在系统设置中授予通知权限');
+                        return;
+                      }
+                    }
+                    await scheduleDailyReminder();
+                    toast.success('每日提醒已开启，将在每晚8点提醒您记录');
+                  } else if (!checked && isNative) {
+                    await cancelDailyReminder();
+                  }
+                  onUpdateSettings({ reminderDailyLog: checked });
+                }}
               />
             </div>
           </CardContent>

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +31,41 @@ interface CalendarPageProps {
 }
 
 export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMonthChange, onDaySelect }: CalendarPageProps) {
+  // 滑动手势状态
+  const touchStartX = useRef<number>(0);
+  const touchEndX = useRef<number>(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+
+  // 处理触摸开始
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    setIsSwiping(true);
+  };
+
+  // 处理触摸移动
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isSwiping) return;
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  // 处理触摸结束
+  const handleTouchEnd = () => {
+    if (!isSwiping) return;
+    setIsSwiping(false);
+    
+    const diff = touchStartX.current - touchEndX.current;
+    const threshold = 50; // 最小滑动距离
+    
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        // 左滑 -> 下个月
+        navigateMonth(1);
+      } else {
+        // 右滑 -> 上个月
+        navigateMonth(-1);
+      }
+    }
+  };
 
   // 使用统计预测获取周期长度（与首页统一）
   const predictedCycleLength = useMemo(() => {
@@ -145,7 +180,12 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
   const monthOptions = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
 
   return (
-    <div className="min-h-screen pb-24 px-4 pt-6">
+    <div 
+      className="min-h-screen pb-24 px-4 pt-6"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* 月份导航 */}
       <div className="flex items-center justify-between mb-4">
         <Button
@@ -194,20 +234,6 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
         </Button>
       </div>
 
-      {/* 回到今天按钮 */}
-      {!isCurrentMonth && (
-        <div className="flex justify-center mb-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToToday}
-            className="rounded-full gap-1.5 animate-fade-in"
-          >
-            <CalendarDays className="w-4 h-4" />
-            回到今天
-          </Button>
-        </div>
-      )}
 
       {/* 图例和说明 */}
       <div className="flex flex-wrap items-center gap-3 mb-4 justify-center">
@@ -324,12 +350,13 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
               }
 
               // 未来预测样式：虚线边框+淡色背景
+              // 未来预测样式：更细更浅的虚线边框
               const futureStyle = phase 
-                ? `border-2 border-dashed ${
-                    phase === 'menstrual' ? 'border-phase-menstrual/70 bg-phase-menstrual/10' :
-                    phase === 'follicular' ? 'border-phase-follicular/70 bg-phase-follicular/10' :
-                    phase === 'ovulation' ? 'border-phase-ovulation/70 bg-phase-ovulation/10' :
-                    'border-phase-luteal/70 bg-phase-luteal/10'
+                ? `border border-dashed ${
+                    phase === 'menstrual' ? 'border-phase-menstrual/40 bg-phase-menstrual/5' :
+                    phase === 'follicular' ? 'border-phase-follicular/40 bg-phase-follicular/5' :
+                    phase === 'ovulation' ? 'border-phase-ovulation/40 bg-phase-ovulation/5' :
+                    'border-phase-luteal/40 bg-phase-luteal/5'
                   }`
                 : '';
 
@@ -380,7 +407,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
           <span className="text-xs text-muted-foreground">排卵期</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full border-2 border-dashed border-phase-menstrual/70 bg-phase-menstrual/10" />
+          <div className="w-4 h-4 rounded-full border border-dashed border-phase-menstrual/40 bg-phase-menstrual/5" />
           <span className="text-xs text-muted-foreground">未来预测</span>
         </div>
         <div className="flex items-center gap-2">
@@ -388,6 +415,19 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
           <span className="text-xs text-muted-foreground">有记录</span>
         </div>
       </div>
+
+      {/* 回到今天悬浮按钮 */}
+      {!isCurrentMonth && (
+        <Button
+          variant="default"
+          size="sm"
+          onClick={goToToday}
+          className="fixed bottom-24 right-4 rounded-full shadow-lg gap-1.5 animate-fade-in z-10"
+        >
+          <CalendarDays className="w-4 h-4" />
+          今天
+        </Button>
+      )}
     </div>
   );
 }
