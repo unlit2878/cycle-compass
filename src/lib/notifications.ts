@@ -1,6 +1,9 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 
+// 通知渠道ID
+const NOTIFICATION_CHANNEL_ID = 'zhiqi_notifications';
+
 // 通知ID常量
 const NOTIFICATION_IDS = {
   PERIOD_REMINDER: 1,
@@ -8,6 +11,26 @@ const NOTIFICATION_IDS = {
   DAILY_REMINDER: 3,
   TEST_NOTIFICATION: 99,
 };
+
+// 创建通知渠道（Android 8+ 必需）
+export async function createNotificationChannel(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+  
+  try {
+    await LocalNotifications.createChannel({
+      id: NOTIFICATION_CHANNEL_ID,
+      name: '知期提醒',
+      description: '经期、排卵期和每日记录提醒',
+      importance: 5, // 最高优先级（IMPORTANCE_HIGH）
+      visibility: 1, // 锁屏可见
+      sound: 'default',
+      vibration: true,
+    });
+    console.log('通知渠道创建成功');
+  } catch (error) {
+    console.error('创建通知渠道失败:', error);
+  }
+}
 
 // 请求通知权限
 export async function requestNotificationPermission(): Promise<boolean> {
@@ -75,8 +98,12 @@ export async function sendTestNotification(type: 'period' | 'ovulation' | 'daily
         id: NOTIFICATION_IDS.TEST_NOTIFICATION,
         title,
         body,
-        schedule: { at: scheduleTime },
+        schedule: { 
+          at: scheduleTime,
+          allowWhileIdle: true, // 允许在设备休眠时触发
+        },
         sound: 'default',
+        channelId: NOTIFICATION_CHANNEL_ID,
       }],
     });
     
@@ -110,8 +137,12 @@ export async function schedulePeriodReminder(
           id: NOTIFICATION_IDS.PERIOD_REMINDER,
           title: '🩸 知期提醒',
           body: `您的经期预计在 ${daysBefore} 天后到来，请做好准备`,
-          schedule: { at: reminderDate },
+          schedule: { 
+            at: reminderDate,
+            allowWhileIdle: true,
+          },
           sound: 'default',
+          channelId: NOTIFICATION_CHANNEL_ID,
         }],
       });
       console.log('经期提醒已安排:', reminderDate);
@@ -142,8 +173,12 @@ export async function scheduleOvulationReminder(
           id: NOTIFICATION_IDS.OVULATION_REMINDER,
           title: '🌸 知期提醒',
           body: `您的排卵期预计在 ${daysBefore} 天后到来`,
-          schedule: { at: reminderDate },
+          schedule: { 
+            at: reminderDate,
+            allowWhileIdle: true,
+          },
           sound: 'default',
+          channelId: NOTIFICATION_CHANNEL_ID,
         }],
       });
       console.log('排卵期提醒已安排:', reminderDate);
@@ -181,6 +216,7 @@ export async function scheduleDailyReminder(): Promise<void> {
           allowWhileIdle: true,
         },
         sound: 'default',
+        channelId: NOTIFICATION_CHANNEL_ID,
       }],
     });
     console.log('每日提醒已安排，首次提醒时间:', reminderTime);
