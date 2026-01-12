@@ -6,6 +6,7 @@ const NOTIFICATION_IDS = {
   PERIOD_REMINDER: 1,
   OVULATION_REMINDER: 2,
   DAILY_REMINDER: 3,
+  TEST_NOTIFICATION: 99,
 };
 
 // 请求通知权限
@@ -34,6 +35,59 @@ export async function checkNotificationPermission(): Promise<boolean> {
   }
 }
 
+// 测试通知 - 立即发送一条测试通知
+export async function sendTestNotification(type: 'period' | 'ovulation' | 'daily'): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) {
+    console.log('非原生平台，跳过通知测试');
+    return false;
+  }
+  
+  try {
+    const hasPermission = await checkNotificationPermission();
+    if (!hasPermission) {
+      console.error('没有通知权限');
+      return false;
+    }
+    
+    const notifications = {
+      period: {
+        title: '🩸 知期提醒 - 测试',
+        body: '这是经期提醒测试通知，实际通知将在您设置的提前天数发送',
+      },
+      ovulation: {
+        title: '🥚 知期提醒 - 测试',
+        body: '这是排卵期提醒测试通知，实际通知将在排卵期前1天发送',
+      },
+      daily: {
+        title: '📝 知期提醒 - 测试',
+        body: '这是每日记录提醒测试通知，实际通知将在每晚8点发送',
+      },
+    };
+    
+    const { title, body } = notifications[type];
+    
+    // 安排5秒后发送
+    const scheduleTime = new Date();
+    scheduleTime.setSeconds(scheduleTime.getSeconds() + 5);
+    
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: NOTIFICATION_IDS.TEST_NOTIFICATION,
+        title,
+        body,
+        schedule: { at: scheduleTime },
+        sound: 'default',
+      }],
+    });
+    
+    console.log(`${type} 测试通知已安排，将在5秒后发送`);
+    return true;
+  } catch (error) {
+    console.error('发送测试通知失败:', error);
+    return false;
+  }
+}
+
 // 安排经期提醒
 export async function schedulePeriodReminder(
   nextPeriodDate: Date,
@@ -54,7 +108,7 @@ export async function schedulePeriodReminder(
       await LocalNotifications.schedule({
         notifications: [{
           id: NOTIFICATION_IDS.PERIOD_REMINDER,
-          title: '知期提醒',
+          title: '🩸 知期提醒',
           body: `您的经期预计在 ${daysBefore} 天后到来，请做好准备`,
           schedule: { at: reminderDate },
           sound: 'default',
@@ -86,7 +140,7 @@ export async function scheduleOvulationReminder(
       await LocalNotifications.schedule({
         notifications: [{
           id: NOTIFICATION_IDS.OVULATION_REMINDER,
-          title: '知期提醒',
+          title: '🥚 知期提醒',
           body: `您的排卵期预计在 ${daysBefore} 天后到来`,
           schedule: { at: reminderDate },
           sound: 'default',
@@ -107,25 +161,29 @@ export async function scheduleDailyReminder(): Promise<void> {
     // 先取消之前的每日提醒
     await LocalNotifications.cancel({ notifications: [{ id: NOTIFICATION_IDS.DAILY_REMINDER }] });
     
-    // 设置明天晚上8点的提醒
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(20, 0, 0, 0);
+    // 设置今天或明天晚上8点的提醒
+    const reminderTime = new Date();
+    reminderTime.setHours(20, 0, 0, 0);
+    
+    // 如果当前时间已过20:00，设置为明天
+    if (reminderTime <= new Date()) {
+      reminderTime.setDate(reminderTime.getDate() + 1);
+    }
     
     await LocalNotifications.schedule({
       notifications: [{
         id: NOTIFICATION_IDS.DAILY_REMINDER,
-        title: '知期提醒',
+        title: '📝 知期提醒',
         body: '别忘了记录今天的身体状况哦~',
         schedule: {
-          at: tomorrow,
+          at: reminderTime,
           every: 'day', // 每天重复
           allowWhileIdle: true,
         },
         sound: 'default',
       }],
     });
-    console.log('每日提醒已安排，首次提醒时间:', tomorrow);
+    console.log('每日提醒已安排，首次提醒时间:', reminderTime);
   } catch (error) {
     console.error('安排每日提醒失败:', error);
   }
@@ -157,6 +215,24 @@ export async function cancelAllNotifications(): Promise<void> {
     console.log('所有通知已取消');
   } catch (error) {
     console.error('取消通知失败:', error);
+  }
+}
+
+// 获取已安排的通知列表（用于调试）
+export async function getPendingNotifications(): Promise<{ id: number; title?: string; body?: string; schedule?: any }[]> {
+  if (!Capacitor.isNativePlatform()) return [];
+  
+  try {
+    const pending = await LocalNotifications.getPending();
+    return pending.notifications.map(n => ({
+      id: n.id,
+      title: n.title,
+      body: n.body,
+      schedule: n.schedule,
+    }));
+  } catch (error) {
+    console.error('获取待发送通知失败:', error);
+    return [];
   }
 }
 

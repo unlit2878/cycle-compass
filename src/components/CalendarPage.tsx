@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,6 +35,10 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
   const [isSwiping, setIsSwiping] = useState(false);
+  
+  // 动画状态
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | 'scale' | null>(null);
+  const [animationKey, setAnimationKey] = useState(0);
 
   // 处理触摸开始
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -64,6 +68,56 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
         // 右滑 -> 上个月
         navigateMonth(-1);
       }
+    }
+  };
+
+  // 带动画的月份导航
+  const navigateMonth = useCallback((delta: number) => {
+    setSlideDirection(delta > 0 ? 'left' : 'right');
+    setAnimationKey(prev => prev + 1);
+    
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(newDate.getMonth() + delta);
+    onMonthChange(newDate);
+  }, [currentMonth, onMonthChange]);
+
+  // 带动画的回到今天
+  const goToToday = useCallback(() => {
+    setSlideDirection('scale');
+    setAnimationKey(prev => prev + 1);
+    onMonthChange(new Date());
+  }, [onMonthChange]);
+
+  // 设置年份（带动画）
+  const setYear = (year: string) => {
+    const newYear = parseInt(year);
+    setSlideDirection(newYear > currentMonth.getFullYear() ? 'left' : 'right');
+    setAnimationKey(prev => prev + 1);
+    
+    const newDate = new Date(currentMonth);
+    newDate.setFullYear(newYear);
+    onMonthChange(newDate);
+  };
+
+  // 设置月份（带动画）
+  const setMonth = (month: string) => {
+    const newMonth = parseInt(month);
+    setSlideDirection(newMonth > currentMonth.getMonth() ? 'left' : 'right');
+    setAnimationKey(prev => prev + 1);
+    
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(newMonth);
+    onMonthChange(newDate);
+  };
+
+  // 获取动画类名
+  const getAnimationClass = () => {
+    if (!slideDirection) return '';
+    switch (slideDirection) {
+      case 'left': return 'calendar-slide-left';
+      case 'right': return 'calendar-slide-right';
+      case 'scale': return 'calendar-slide-enter';
+      default: return '';
     }
   };
 
@@ -147,27 +201,6 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
     luteal: 'bg-phase-luteal text-white shadow-sm',
   };
 
-  const navigateMonth = (delta: number) => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() + delta);
-    onMonthChange(newDate);
-  };
-
-  const goToToday = () => {
-    onMonthChange(new Date());
-  };
-
-  const setYear = (year: string) => {
-    const newDate = new Date(currentMonth);
-    newDate.setFullYear(parseInt(year));
-    onMonthChange(newDate);
-  };
-
-  const setMonth = (month: string) => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(parseInt(month));
-    onMonthChange(newDate);
-  };
 
   const today = formatDate(new Date());
   const currentYear = currentMonth.getFullYear();
@@ -300,7 +333,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
       </div>
 
       {/* 日历网格 */}
-      <Card className="border-0 shadow-lg">
+      <Card key={animationKey} className={`border-0 shadow-lg ${getAnimationClass()}`}>
         <CardContent className="p-3">
           {/* 星期标题 */}
           <div className="grid grid-cols-7 mb-2">

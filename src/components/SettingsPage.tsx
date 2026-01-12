@@ -37,7 +37,9 @@ import {
   cancelAllNotifications,
   scheduleDailyReminder,
   cancelDailyReminder,
-  initializeNotifications
+  initializeNotifications,
+  sendTestNotification,
+  getPendingNotifications
 } from '@/lib/notifications';
 
 interface SettingsPageProps {
@@ -59,6 +61,7 @@ export function SettingsPage({
   const [importing, setImporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
   const [importSuccess, setImportSuccess] = useState(false);
+  const [testingNotification, setTestingNotification] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isNative = Capacitor.isNativePlatform();
@@ -224,10 +227,32 @@ export function SettingsPage({
                   <Bell className="w-5 h-5 text-primary" />
                   <span className="font-medium text-foreground">{zh.settings.periodReminder}</span>
                 </div>
-                <Switch
-                  checked={settings.reminderPeriodApproaching}
-                  onCheckedChange={handlePeriodReminderToggle}
-                />
+                <div className="flex items-center gap-2">
+                  {isNative && settings.reminderPeriodApproaching && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        setTestingNotification('period');
+                        const success = await sendTestNotification('period');
+                        if (success) {
+                          toast.success('测试通知将在5秒后发送');
+                        } else {
+                          toast.error('发送测试通知失败');
+                        }
+                        setTimeout(() => setTestingNotification(null), 2000);
+                      }}
+                      disabled={testingNotification === 'period'}
+                      className="text-xs h-7 px-2"
+                    >
+                      {testingNotification === 'period' ? '发送中...' : '测试'}
+                    </Button>
+                  )}
+                  <Switch
+                    checked={settings.reminderPeriodApproaching}
+                    onCheckedChange={handlePeriodReminderToggle}
+                  />
+                </div>
               </div>
               {settings.reminderPeriodApproaching && (
                 <div className="ml-8 mt-3">
@@ -249,13 +274,35 @@ export function SettingsPage({
             {/* 排卵期提醒 */}
             <div className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-              <Bell className="w-5 h-5 text-phase-ovulation" />
+                <Bell className="w-5 h-5 text-phase-ovulation" />
                 <span className="font-medium text-foreground">排卵期提醒</span>
               </div>
-              <Switch
-                checked={settings.reminderOvulation}
-                onCheckedChange={handleOvulationReminderToggle}
-              />
+              <div className="flex items-center gap-2">
+                {isNative && settings.reminderOvulation && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setTestingNotification('ovulation');
+                      const success = await sendTestNotification('ovulation');
+                      if (success) {
+                        toast.success('测试通知将在5秒后发送');
+                      } else {
+                        toast.error('发送测试通知失败');
+                      }
+                      setTimeout(() => setTestingNotification(null), 2000);
+                    }}
+                    disabled={testingNotification === 'ovulation'}
+                    className="text-xs h-7 px-2"
+                  >
+                    {testingNotification === 'ovulation' ? '发送中...' : '测试'}
+                  </Button>
+                )}
+                <Switch
+                  checked={settings.reminderOvulation}
+                  onCheckedChange={handleOvulationReminderToggle}
+                />
+              </div>
             </div>
 
             {/* 每日记录提醒 */}
@@ -264,27 +311,58 @@ export function SettingsPage({
                 <Bell className="w-5 h-5 text-phase-follicular" />
                 <span className="font-medium text-foreground">{zh.settings.dailyReminder}</span>
               </div>
-              <Switch
-                checked={settings.reminderDailyLog}
-                onCheckedChange={async (checked) => {
-                  if (checked && isNative) {
-                    const hasPermission = await checkNotificationPermission();
-                    if (!hasPermission) {
-                      const granted = await requestNotificationPermission();
-                      if (!granted) {
-                        toast.error('请在系统设置中授予通知权限');
-                        return;
+              <div className="flex items-center gap-2">
+                {isNative && settings.reminderDailyLog && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setTestingNotification('daily');
+                      const success = await sendTestNotification('daily');
+                      if (success) {
+                        toast.success('测试通知将在5秒后发送');
+                      } else {
+                        toast.error('发送测试通知失败');
                       }
+                      setTimeout(() => setTestingNotification(null), 2000);
+                    }}
+                    disabled={testingNotification === 'daily'}
+                    className="text-xs h-7 px-2"
+                  >
+                    {testingNotification === 'daily' ? '发送中...' : '测试'}
+                  </Button>
+                )}
+                <Switch
+                  checked={settings.reminderDailyLog}
+                  onCheckedChange={async (checked) => {
+                    if (checked && isNative) {
+                      const hasPermission = await checkNotificationPermission();
+                      if (!hasPermission) {
+                        const granted = await requestNotificationPermission();
+                        if (!granted) {
+                          toast.error('请在系统设置中授予通知权限');
+                          return;
+                        }
+                      }
+                      await scheduleDailyReminder();
+                      toast.success('每日提醒已开启，将在每晚8点提醒您记录');
+                    } else if (!checked && isNative) {
+                      await cancelDailyReminder();
                     }
-                    await scheduleDailyReminder();
-                    toast.success('每日提醒已开启，将在每晚8点提醒您记录');
-                  } else if (!checked && isNative) {
-                    await cancelDailyReminder();
-                  }
-                  onUpdateSettings({ reminderDailyLog: checked });
-                }}
-              />
+                    onUpdateSettings({ reminderDailyLog: checked });
+                  }}
+                />
+              </div>
             </div>
+
+            {/* 原生平台提示 */}
+            {isNative && (
+              <div className="p-4 bg-muted/30">
+                <p className="text-xs text-muted-foreground">
+                  💡 开启提醒后可点击"测试"按钮验证通知是否正常工作（5秒后发送）
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
