@@ -285,7 +285,7 @@ export function LoggingScreen({
                           删除记录
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent className="rounded-3xl mx-4 max-w-sm">
+                      <AlertDialogContent className="rounded-3xl max-w-sm w-[calc(100%-2rem)]">
                         <div className="flex flex-col items-center text-center py-4">
                           <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
                             <AlertTriangle className="w-8 h-8 text-destructive" />
@@ -441,7 +441,7 @@ export function LoggingScreen({
                 删除此日记录
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-3xl mx-4 max-w-sm">
+            <AlertDialogContent className="rounded-3xl max-w-sm w-[calc(100%-2rem)]">
               <div className="flex flex-col items-center text-center py-4">
                 <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
                   <AlertTriangle className="w-8 h-8 text-destructive" />
