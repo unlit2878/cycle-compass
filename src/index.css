@@ -184,7 +184,53 @@
   }
 
   /* Toast 位置调整，避免遮挡底部导航 */
-  [data-sonner-toaster] {
-    --offset: 100px !important;
+  [data-sonner-toaster][data-y-position="bottom"] {
+    bottom: 100px !important;
+  }
+
+  /* 日历月份切换动画 */
+  .calendar-slide-enter {
+    animation: calendar-slide-in 0.3s ease-out;
+  }
+
+  .calendar-slide-left {
+    animation: calendar-slide-left 0.3s ease-out;
+  }
+
+  .calendar-slide-right {
+    animation: calendar-slide-right 0.3s ease-out;
+  }
+
+  @keyframes calendar-slide-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes calendar-slide-left {
+    from {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes calendar-slide-right {
+    from {
+      opacity: 0;
+      transform: translateX(-30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 }

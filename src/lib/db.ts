@@ -299,10 +299,13 @@ export async function importData(data: BackupData): Promise<void> {
   
   // 如果导入的数据有settings，使用它；否则基于cycles计算
   if (data.settings) {
+    // 导入时清除备份日期，因为导入本身不算备份
+    const { lastBackupDate, ...settingsWithoutBackup } = data.settings;
     await updateSettings({
-      ...data.settings,
+      ...settingsWithoutBackup,
       id: 1,
       persistentStorageGranted: currentSettings.persistentStorageGranted,
+      lastBackupDate: undefined, // 明确清除备份日期
     });
   } else if (data.cycles && data.cycles.length > 0) {
     // 自动计算设置
