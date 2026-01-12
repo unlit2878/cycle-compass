@@ -55,7 +55,7 @@ export async function sendTestNotification(type: 'period' | 'ovulation' | 'daily
         body: '这是经期提醒测试通知，实际通知将在您设置的提前天数发送',
       },
       ovulation: {
-        title: '🥚 知期提醒 - 测试',
+        title: '🌸 知期提醒 - 测试',
         body: '这是排卵期提醒测试通知，实际通知将在排卵期前1天发送',
       },
       daily: {
@@ -140,7 +140,7 @@ export async function scheduleOvulationReminder(
       await LocalNotifications.schedule({
         notifications: [{
           id: NOTIFICATION_IDS.OVULATION_REMINDER,
-          title: '🥚 知期提醒',
+          title: '🌸 知期提醒',
           body: `您的排卵期预计在 ${daysBefore} 天后到来`,
           schedule: { at: reminderDate },
           sound: 'default',

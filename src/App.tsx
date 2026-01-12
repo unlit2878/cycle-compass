@@ -38,6 +38,7 @@ function AppContent() {
     completeOnboarding,
     logDay,
     getLogForDate,
+    deleteLog,
     backup,
     restore,
     requestPersistence,
@@ -250,6 +251,7 @@ function AppContent() {
         onEndPeriod={handleEndPeriod}
         onBack={() => { setLoggingDate(null); setLoggingExistingLog(null); }}
         onRefresh={refresh}
+        onDeleteLog={deleteLog}
       />
     );
   }
@@ -286,7 +288,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
+      <Sonner position="top-center" />
       <BrowserRouter>
         <AppContent />
       </BrowserRouter>
