@@ -24,6 +24,7 @@ import {
   AlertCircle,
   HelpCircle,
   Smartphone,
+  AlertTriangle,
 } from 'lucide-react';
 import { Settings as SettingsType, BackupData } from '@/lib/db';
 import { getDaysSinceBackup } from '@/lib/cycle-utils';
@@ -365,6 +366,28 @@ export function SettingsPage({
             )}
           </CardContent>
         </Card>
+
+        {/* 电池优化提示 */}
+        {isNative && (
+          <Card className="mt-4 border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-400">后台通知提示</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                    为确保能在应用关闭时收到提醒，请在手机设置中：
+                  </p>
+                  <ul className="text-xs text-amber-600 dark:text-amber-500 mt-2 list-disc pl-4 space-y-1">
+                    <li>关闭本应用的电池优化/省电模式</li>
+                    <li>允许本应用后台运行</li>
+                    <li>允许本应用自启动（部分手机）</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* 数据管理 */}

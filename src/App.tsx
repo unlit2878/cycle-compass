@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { zh } from "@/lib/i18n";
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
-import { initializeNotifications } from '@/lib/notifications';
+import { initializeNotifications, createNotificationChannel } from '@/lib/notifications';
 
 const queryClient = new QueryClient();
 
@@ -92,6 +92,13 @@ function AppContent() {
       document.documentElement.classList.remove('dark');
     }
   }, [settings?.darkMode]);
+
+  // 创建通知渠道（应用启动时）
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      createNotificationChannel();
+    }
+  }, []);
 
   // 首次加载时请求持久存储并初始化通知
   useEffect(() => {
