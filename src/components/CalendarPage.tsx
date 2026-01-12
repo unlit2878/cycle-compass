@@ -37,6 +37,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
   const touchEndX = useRef<number>(0);
   const touchEndY = useRef<number>(0);
   const [isSwiping, setIsSwiping] = useState(false);
+  const [swipeOffset, setSwipeOffset] = useState(0);
   
   // 动画状态
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | 'scale' | null>(null);
@@ -49,13 +50,25 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
     touchEndX.current = e.touches[0].clientX;
     touchEndY.current = e.touches[0].clientY;
     setIsSwiping(true);
+    setSwipeOffset(0);
   };
 
-  // 处理触摸移动
+  // 处理触摸移动 - 实时更新偏移量
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isSwiping) return;
     touchEndX.current = e.touches[0].clientX;
     touchEndY.current = e.touches[0].clientY;
+    
+    const diffX = touchEndX.current - touchStartX.current;
+    const diffY = Math.abs(touchEndY.current - touchStartY.current);
+    
+    // 只有水平滑动距离大于垂直滑动时才更新偏移
+    if (Math.abs(diffX) > diffY) {
+      // 限制最大偏移量，并添加阻尼效果
+      const maxOffset = 120;
+      const dampedOffset = Math.sign(diffX) * Math.min(Math.abs(diffX) * 0.5, maxOffset);
+      setSwipeOffset(dampedOffset);
+    }
   };
 
   // 处理触摸结束
@@ -77,6 +90,9 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
         navigateMonth(-1);
       }
     }
+    
+    // 重置偏移量
+    setSwipeOffset(0);
   };
 
   // 带动画的月份导航
@@ -342,6 +358,10 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
       <Card 
         key={animationKey} 
         className={`border-0 shadow-lg ${getAnimationClass()}`}
+        style={{ 
+          transform: `translateX(${swipeOffset}px)`,
+          transition: isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
