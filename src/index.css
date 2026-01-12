@@ -184,7 +184,7 @@
   }
 
   /* Toast 位置调整，避免遮挡底部导航 */
-  [data-sonner-toaster][data-y-position="bottom"] {
+  [data-sonner-toaster] {
     bottom: 100px !important;
   }
 

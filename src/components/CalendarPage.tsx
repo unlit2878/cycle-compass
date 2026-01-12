@@ -64,6 +64,9 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
     
     // 只有水平滑动距离大于垂直滑动时才更新偏移
     if (Math.abs(diffX) > diffY) {
+      // 阻止浏览器默认的边缘滑动返回手势
+      e.preventDefault();
+      
       // 限制最大偏移量，并添加阻尼效果
       const maxOffset = 120;
       const dampedOffset = Math.sign(diffX) * Math.min(Math.abs(diffX) * 0.5, maxOffset);
@@ -360,7 +363,8 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
         className={`border-0 shadow-lg ${getAnimationClass()}`}
         style={{ 
           transform: `translateX(${swipeOffset}px)`,
-          transition: isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          transition: isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          touchAction: 'pan-y'
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

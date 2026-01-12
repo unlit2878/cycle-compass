@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { ChevronLeft, Droplets, Save, Play, Square, Calendar, Edit, Trash2 } from 'lucide-react';
+import { ChevronLeft, Droplets, Save, Play, Square, Calendar, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { DailyLog, Settings, CycleData, getCycleByDate, updateCycle, deleteCycle, addOrUpdateDailyLog, getAllCycles } from '@/lib/db';
 import { formatFullDate, formatDate } from '@/lib/cycle-utils';
 import { zh } from '@/lib/i18n';
@@ -15,6 +15,16 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
@@ -268,30 +278,34 @@ export function LoggingScreen({
                       </DialogContent>
                     </Dialog>
                     
-                    <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                      <DialogTrigger asChild>
+                    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                      <AlertDialogTrigger asChild>
                         <Button variant="outline" size="sm" className="gap-1 text-destructive border-destructive/50 hover:bg-destructive/10">
                           <Trash2 className="w-3 h-3" />
                           删除记录
                         </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>确认删除</DialogTitle>
-                        </DialogHeader>
-                        <p className="py-4 text-muted-foreground">
-                          确定要删除这条经期记录吗？此操作无法撤销。
-                        </p>
-                        <DialogFooter>
-                          <DialogClose asChild>
-                            <Button variant="outline">取消</Button>
-                          </DialogClose>
-                          <Button variant="destructive" onClick={handleDeleteCycle}>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="rounded-3xl mx-4 max-w-sm">
+                        <div className="flex flex-col items-center text-center py-4">
+                          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                            <AlertTriangle className="w-8 h-8 text-destructive" />
+                          </div>
+                          <AlertDialogTitle className="text-xl mb-2">确认删除？</AlertDialogTitle>
+                          <AlertDialogDescription className="text-muted-foreground">
+                            删除此经期记录后无法恢复
+                          </AlertDialogDescription>
+                        </div>
+                        <AlertDialogFooter className="flex-row gap-3 sm:gap-3">
+                          <AlertDialogCancel className="flex-1 rounded-xl h-12 mt-0">取消</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={handleDeleteCycle}
+                            className="flex-1 rounded-xl h-12 bg-destructive hover:bg-destructive/90"
+                          >
                             删除
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               )}
@@ -417,8 +431,8 @@ export function LoggingScreen({
 
         {/* 删除记录按钮（仅当有现有记录时显示） */}
         {existingLog && onDeleteLog && (
-          <Dialog open={deleteLogDialogOpen} onOpenChange={setDeleteLogDialogOpen}>
-            <DialogTrigger asChild>
+          <AlertDialog open={deleteLogDialogOpen} onOpenChange={setDeleteLogDialogOpen}>
+            <AlertDialogTrigger asChild>
               <Button 
                 variant="outline" 
                 className="w-full h-12 text-destructive border-destructive/50 hover:bg-destructive/10 rounded-2xl"
@@ -426,24 +440,28 @@ export function LoggingScreen({
                 <Trash2 className="mr-2 w-4 h-4" />
                 删除此日记录
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>确认删除</DialogTitle>
-              </DialogHeader>
-              <p className="py-4 text-muted-foreground">
-                确定要删除 {formatFullDate(displayDate)} 的记录吗？此操作无法撤销。
-              </p>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">取消</Button>
-                </DialogClose>
-                <Button variant="destructive" onClick={handleDeleteLog}>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="rounded-3xl mx-4 max-w-sm">
+              <div className="flex flex-col items-center text-center py-4">
+                <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                  <AlertTriangle className="w-8 h-8 text-destructive" />
+                </div>
+                <AlertDialogTitle className="text-xl mb-2">确认删除？</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground">
+                  删除 {formatFullDate(displayDate)} 的记录后无法恢复
+                </AlertDialogDescription>
+              </div>
+              <AlertDialogFooter className="flex-row gap-3 sm:gap-3">
+                <AlertDialogCancel className="flex-1 rounded-xl h-12 mt-0">取消</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleDeleteLog}
+                  className="flex-1 rounded-xl h-12 bg-destructive hover:bg-destructive/90"
+                >
                   删除
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
     </div>
