@@ -484,7 +484,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
                     </span>
                   )}
                   {log && (
-                    <div className={`w-1.5 h-1.5 rounded-full absolute ${isRecordedPeriod ? 'bg-white/90 top-0.5 right-0.5' : 'bg-blue-500 bottom-0.5'}`} />
+                    <div className={`w-1.5 h-1.5 rounded-full bg-blue-500 absolute ${isRecordedPeriod ? 'top-0.5 right-0.5' : 'bottom-0.5'}`} />
                   )}
                 </button>
               );
