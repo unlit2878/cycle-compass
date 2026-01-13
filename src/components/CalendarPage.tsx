@@ -399,9 +399,9 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
       >
         <CardContent className="p-3">
           {/* 星期标题 */}
-          <div className="grid grid-cols-7 mb-2">
+          <div className="grid grid-cols-7 gap-2 mb-2">
             {zh.calendar.weekdays.map((day) => (
-              <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
+              <div key={day} className="w-10 h-6 flex items-center justify-center text-xs font-medium text-muted-foreground">
                 {day}
               </div>
             ))}
