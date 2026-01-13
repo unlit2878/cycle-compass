@@ -464,7 +464,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
                 <button
                   key={dateStr}
                   onClick={() => onDaySelect(dateStr)}
-                  className={`w-10 h-10 rounded-full flex flex-col items-center justify-center relative
+                  className={`w-10 h-10 rounded-full flex flex-col items-center justify-start pt-1.5 pb-2.5 relative
                     transition-all duration-200 hover:scale-105 active:scale-95 ${
                     isRecordedPeriod
                       ? 'bg-phase-menstrual text-white font-bold shadow-md'
@@ -475,16 +475,16 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
                           : 'bg-muted/10 hover:bg-muted/30'
                   } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''} ${!day.isCurrentMonth ? 'opacity-40' : ''}`}
                 >
-                  <span className={`font-medium ${textColorClass} ${periodDayNum ? 'text-[10px]' : 'text-sm'}`}>
+                  <span className={`font-medium leading-none ${textColorClass} ${periodDayNum ? 'text-[10px]' : 'text-sm'}`}>
                     {date.getDate()}
                   </span>
                   {periodDayNum && (
-                    <span className="text-[7px] text-white/90 leading-none font-medium mt-0.5">
+                    <span className="text-[6px] text-white/90 leading-none font-medium">
                       {getOrdinalSuffix(periodDayNum)}
                     </span>
                   )}
                   {log && (
-                    <div className={`w-1.5 h-1.5 rounded-full bg-blue-500 absolute ${isRecordedPeriod ? 'top-0.5 right-0.5' : 'bottom-0.5'}`} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 absolute bottom-0.5 left-1/2 -translate-x-1/2" />
                   )}
                 </button>
               );
