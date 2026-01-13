@@ -247,6 +247,7 @@ function AppContent() {
         existingLog={loggingExistingLog}
         settings={settings}
         isInPeriod={isInPeriod}
+        statistics={statistics}
         onSave={handleLogSave}
         onStartPeriod={handleStartPeriod}
         onEndPeriod={handleEndPeriod}

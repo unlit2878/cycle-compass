@@ -36,6 +36,13 @@ export interface Settings {
   backupReminderInterval: 'weekly' | 'monthly';
   lastBackupDate?: string;
   persistentStorageGranted: boolean;
+  // 自定义时期表情
+  customPhaseEmojis?: {
+    menstrual?: string;
+    follicular?: string;
+    ovulation?: string;
+    luteal?: string;
+  };
 }
 
 interface MyCycleDB extends DBSchema {

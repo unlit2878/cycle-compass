@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { PhaseInfo, getPhaseEmoji, getPhaseName, getPhaseDescription, formatDisplayDate, formatDate, isBackupOverdue, getDaysSinceBackup } from '@/lib/cycle-utils';
+import { PhaseInfo, getPhaseEmoji, getPhaseName, getPhaseDescription, formatDisplayDate, formatDate, isBackupOverdue, getDaysSinceBackup, getMenstrualTip } from '@/lib/cycle-utils';
 import { Settings, CycleData } from '@/lib/db';
 import { AlertCircle } from 'lucide-react';
 import { zh } from '@/lib/i18n';
@@ -158,14 +158,14 @@ export function Home({ phaseInfo, settings, cycles, onDaySelect, onBackupReminde
           
           {/* 中心内容 */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-5xl mb-1">{getPhaseEmoji(phaseInfo.phase)}</span>
+            <span className="text-5xl mb-1">{getPhaseEmoji(phaseInfo.phase, settings?.customPhaseEmojis)}</span>
             <span className="text-2xl font-bold text-foreground">第 {phaseInfo.dayInCycle} 天</span>
             <span className="text-sm text-muted-foreground">{getPhaseName(phaseInfo.phase)}</span>
           </div>
         </div>
         
         <p className="text-center text-muted-foreground mt-4 max-w-xs">
-          {getPhaseDescription(phaseInfo.phase)}
+          {getPhaseDescription(phaseInfo.phase, phaseInfo.phaseDay)}
         </p>
       </div>
 
