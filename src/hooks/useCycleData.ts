@@ -25,6 +25,7 @@ import {
   formatDate,
   PhaseInfo,
 } from '@/lib/cycle-utils';
+import { predictNextCycle } from '@/lib/prediction-utils';
 
 export function useCycleData() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -49,12 +50,16 @@ export function useCycleData() {
       setCycles(cyclesData);
       setDailyLogs(logsData);
 
-      // 如果有数据则计算当前阶段
+      // 如果有数据则计算当前阶段（使用统计预测的周期长度）
       if (settingsData.lastPeriodStart) {
+        // 使用预测工具计算周期长度（与首页统一）
+        const prediction = predictNextCycle(cyclesData);
+        const cycleLength = cyclesData.length >= 2 ? prediction.predictedCycleLength : settingsData.averageCycleLength;
+        
         const info = getPhaseInfo(
           new Date(),
           new Date(settingsData.lastPeriodStart),
-          settingsData.averageCycleLength,
+          cycleLength,
           settingsData.averagePeriodLength
         );
         setPhaseInfo(info);
@@ -75,12 +80,16 @@ export function useCycleData() {
     const updated = await updateSettings(updates);
     setSettings(updated);
     
-    // 如果相关设置变更则重新计算阶段信息
+    // 如果相关设置变更则重新计算阶段信息（使用统计预测的周期长度）
     if (updates.lastPeriodStart || updates.averageCycleLength || updates.averagePeriodLength) {
+      const allCycles = await getAllCycles();
+      const prediction = predictNextCycle(allCycles);
+      const cycleLength = allCycles.length >= 2 ? prediction.predictedCycleLength : updated.averageCycleLength;
+      
       const info = getPhaseInfo(
         new Date(),
         new Date(updated.lastPeriodStart!),
-        updated.averageCycleLength,
+        cycleLength,
         updated.averagePeriodLength
       );
       setPhaseInfo(info);

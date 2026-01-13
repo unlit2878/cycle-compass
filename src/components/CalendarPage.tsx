@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, HelpCircle, CalendarDays } from 'lucide-react';
-import { getDaysInMonth, formatDate, CyclePhase, getCyclePhase } from '@/lib/cycle-utils';
+import { getDaysInMonth, formatDate, CyclePhase, getCyclePhase, getOrdinalSuffix } from '@/lib/cycle-utils';
 import { DailyLog, Settings, CycleData } from '@/lib/db';
 import { zh, formatMonthYear } from '@/lib/i18n';
 import { predictNextCycle } from '@/lib/prediction-utils';
@@ -164,14 +164,41 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
   const monthData = useMemo(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
-    const days = getDaysInMonth(year, month);
     const firstDayOfWeek = new Date(year, month, 1).getDay();
     
     // 创建已记录日期的映射
     const logMap = new Map<string, DailyLog>();
     dailyLogs.forEach(log => logMap.set(log.date, log));
     
-    return { days, firstDayOfWeek, logMap };
+    // 计算上月需要填充的日期
+    const prevMonthDays: { date: Date; isCurrentMonth: boolean }[] = [];
+    if (firstDayOfWeek > 0) {
+      const prevMonthLastDay = new Date(year, month, 0); // 上月最后一天
+      for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+        const day = new Date(year, month, 0 - i);
+        prevMonthDays.push({ date: day, isCurrentMonth: false });
+      }
+    }
+    
+    // 当月日期
+    const daysInMonth = getDaysInMonth(year, month);
+    const currentMonthDays = daysInMonth.map(d => ({ date: d, isCurrentMonth: true }));
+    
+    // 计算下月需要填充的日期（凑满5行 = 35天）
+    const totalDays = prevMonthDays.length + currentMonthDays.length;
+    const nextMonthDays: { date: Date; isCurrentMonth: boolean }[] = [];
+    const targetDays = 35; // 固定5行
+    
+    if (totalDays < targetDays) {
+      for (let i = 1; i <= targetDays - totalDays; i++) {
+        const day = new Date(year, month + 1, i);
+        nextMonthDays.push({ date: day, isCurrentMonth: false });
+      }
+    }
+    
+    const allDays = [...prevMonthDays, ...currentMonthDays, ...nextMonthDays];
+    
+    return { days: allDays, logMap };
   }, [currentMonth, dailyLogs]);
 
   // 获取所有经期记录的日期映射（只从 cycles 表获取）
@@ -381,14 +408,10 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
           </div>
 
           {/* 日期网格 */}
-          <div className="grid grid-cols-7 gap-1.5">
-            {/* 月初之前的空白单元格 */}
-            {Array.from({ length: monthData.firstDayOfWeek }).map((_, i) => (
-              <div key={`empty-${i}`} className="aspect-square" />
-            ))}
-
+          <div className="grid grid-cols-7 gap-2">
             {/* 日期单元格 */}
-            {monthData.days.map((date) => {
+            {monthData.days.map((day) => {
+              const date = day.date;
               const dateStr = formatDate(date);
               const log = monthData.logMap.get(dateStr);
               const phase = getPhaseForDate(date);
@@ -419,7 +442,6 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
               }
 
               // 未来预测样式：虚线边框+淡色背景
-              // 未来预测样式：更细更浅的虚线边框
               const futureStyle = phase 
                 ? `border border-dashed ${
                     phase === 'menstrual' ? 'border-phase-menstrual/40 bg-phase-menstrual/5' :
@@ -434,29 +456,35 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
                 ? 'text-white' 
                 : isOvulation 
                   ? 'text-phase-ovulation font-bold' 
-                  : 'text-foreground';
+                  : day.isCurrentMonth 
+                    ? 'text-foreground' 
+                    : 'text-foreground/40';
 
               return (
                 <button
                   key={dateStr}
                   onClick={() => onDaySelect(dateStr)}
-                  className={`aspect-square rounded-full flex flex-col items-center justify-center relative
+                  className={`w-10 h-10 rounded-full flex flex-col items-center justify-center relative
                     transition-all duration-200 hover:scale-105 active:scale-95 ${
                     isRecordedPeriod
                       ? 'bg-phase-menstrual text-white font-bold shadow-md'
                       : !isPast && phase
                         ? futureStyle
-                        : 'bg-muted/30 hover:bg-muted/50'
-                  } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                        : day.isCurrentMonth 
+                          ? 'bg-muted/30 hover:bg-muted/50'
+                          : 'bg-muted/10 hover:bg-muted/30'
+                  } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''} ${!day.isCurrentMonth ? 'opacity-40' : ''}`}
                 >
-                  <span className={`text-sm font-medium ${textColorClass} ${periodDayNum ? 'text-xs' : ''}`}>
+                  <span className={`font-medium ${textColorClass} ${periodDayNum ? 'text-[10px]' : 'text-sm'}`}>
                     {date.getDate()}
                   </span>
                   {periodDayNum && (
-                    <span className="text-[8px] text-white/90 leading-none font-medium">第{periodDayNum}天</span>
+                    <span className="text-[7px] text-white/90 leading-none font-medium mt-0.5">
+                      {getOrdinalSuffix(periodDayNum)}
+                    </span>
                   )}
                   {log && !isRecordedPeriod && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary absolute bottom-1" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 absolute bottom-0.5" />
                   )}
                 </button>
               );
@@ -480,7 +508,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
           <span className="text-xs text-muted-foreground">未来预测</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
           <span className="text-xs text-muted-foreground">有记录</span>
         </div>
       </div>

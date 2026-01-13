@@ -577,26 +577,76 @@ export function SettingsPage({
       <div className="mb-6">
         <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">{zh.settings.display}</h2>
         <Card className="border-0 shadow-lg">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {settings.darkMode ? (
-                <Moon className="w-5 h-5 text-primary" />
-              ) : (
-                <Sun className="w-5 h-5 text-primary" />
-              )}
-              <span className="font-medium text-foreground">{zh.settings.darkMode}</span>
+          <CardContent className="p-0 divide-y divide-border">
+            {/* 深色模式 */}
+            <div className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {settings.darkMode ? (
+                  <Moon className="w-5 h-5 text-primary" />
+                ) : (
+                  <Sun className="w-5 h-5 text-primary" />
+                )}
+                <span className="font-medium text-foreground">{zh.settings.darkMode}</span>
+              </div>
+              <Switch
+                checked={settings.darkMode}
+                onCheckedChange={(checked) => {
+                  onUpdateSettings({ darkMode: checked });
+                  if (checked) {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                }}
+              />
             </div>
-            <Switch
-              checked={settings.darkMode}
-              onCheckedChange={(checked) => {
-                onUpdateSettings({ darkMode: checked });
-                if (checked) {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                }
-              }}
-            />
+
+            {/* 自定义时期图标 */}
+            <div className="p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-xl">🌸</span>
+                <span className="font-medium text-foreground">时期图标</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 ml-8">
+                {(['menstrual', 'follicular', 'ovulation', 'luteal'] as const).map((phase) => {
+                  const defaultEmojis: Record<string, string> = {
+                    menstrual: '🌺',
+                    follicular: '🌷',
+                    ovulation: '🌻',
+                    luteal: '🌼',
+                  };
+                  const currentEmoji = settings.customPhaseEmojis?.[phase] || defaultEmojis[phase];
+                  const phaseNames: Record<string, string> = {
+                    menstrual: '经期',
+                    follicular: '卵泡期',
+                    ovulation: '排卵期',
+                    luteal: '黄体期',
+                  };
+                  
+                  return (
+                    <div key={phase} className="flex items-center gap-2 bg-muted/30 rounded-lg p-2">
+                      <input
+                        type="text"
+                        value={currentEmoji}
+                        onChange={(e) => {
+                          const newEmojis = {
+                            ...(settings.customPhaseEmojis || {}),
+                            [phase]: e.target.value.slice(-2) || defaultEmojis[phase],
+                          };
+                          onUpdateSettings({ customPhaseEmojis: newEmojis });
+                        }}
+                        className="w-10 h-10 text-2xl text-center bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
+                        maxLength={2}
+                      />
+                      <span className="text-sm text-muted-foreground">{phaseNames[phase]}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 ml-8">
+                点击图标可以自定义每个时期的表情
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

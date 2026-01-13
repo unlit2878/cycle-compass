@@ -84,7 +84,10 @@ export function getPhaseInfo(
   };
 }
 
-export function getPhaseEmoji(phase: CyclePhase): string {
+export function getPhaseEmoji(phase: CyclePhase, customEmojis?: Record<string, string>): string {
+  if (customEmojis && customEmojis[phase]) {
+    return customEmojis[phase];
+  }
   return zh.phaseEmojis[phase];
 }
 
@@ -92,8 +95,28 @@ export function getPhaseName(phase: CyclePhase): string {
   return zh.phases[phase];
 }
 
-export function getPhaseDescription(phase: CyclePhase): string {
+// 获取经期随机提示语
+export function getMenstrualTip(): string {
+  const tips = zh.menstrualTips;
+  return tips[Math.floor(Math.random() * tips.length)];
+}
+
+// 获取时期描述（经期用随机提示语，其他时期用"预计处于xx期的第n天"）
+export function getPhaseDescription(phase: CyclePhase, phaseDay?: number): string {
+  if (phase === 'menstrual') {
+    return getMenstrualTip();
+  }
+  if (phaseDay !== undefined) {
+    return `预计处于${zh.phases[phase]}的第${phaseDay}天`;
+  }
   return zh.phaseDescriptions[phase];
+}
+
+// 获取序数词后缀
+export function getOrdinalSuffix(n: number): string {
+  const suffixes = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
 }
 
 // 从历史记录计算平均周期长度（基于相邻周期开始日期之差）

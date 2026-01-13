@@ -33,6 +33,7 @@ interface LoggingScreenProps {
   existingLog?: DailyLog;
   settings?: Settings | null;
   isInPeriod?: boolean;
+  statistics?: { averagePeriodLength: number };
   onSave: (data: Omit<DailyLog, 'id' | 'date' | 'createdAt' | 'updatedAt'>) => void;
   onStartPeriod?: (date: string, autoFillDays: number) => void;
   onEndPeriod?: (date: string) => void;
@@ -48,6 +49,7 @@ export function LoggingScreen({
   existingLog, 
   settings,
   isInPeriod = false,
+  statistics,
   onSave, 
   onStartPeriod,
   onEndPeriod,
@@ -73,7 +75,8 @@ export function LoggingScreen({
   const [deleteLogDialogOpen, setDeleteLogDialogOpen] = useState(false);
 
   const displayDate = new Date(date + 'T12:00:00');
-  const avgPeriodLength = settings?.averagePeriodLength || 5;
+  // 优先使用统计计算的平均经期天数
+  const avgPeriodLength = statistics?.averagePeriodLength || settings?.averagePeriodLength || 5;
 
   // 加载相关周期记录并判断是否在经期中
   useEffect(() => {

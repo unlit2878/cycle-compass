@@ -12,20 +12,32 @@ export const zh = {
     luteal: '黄体期',
   },
 
-  // Phase descriptions
+  // Phase descriptions (经期用随机提示语，其他时期动态生成)
   phaseDescriptions: {
-    menstrual: '身体正在更新，注意休息和保暖',
+    menstrual: '注意保暖和休息',
     follicular: '精力逐渐恢复，适合开始新计划',
     ovulation: '高生育力窗口期，您可能感觉更有活力',
     luteal: '身体准备下一周期，可能会有情绪波动',
   },
 
-  // Phase emojis
+  // 经期随机提示语
+  menstrualTips: [
+    '注意保暖和休息',
+    '多喝热水，避免生冷食物',
+    '适当休息，不要过度劳累',
+    '注意腹部保暖',
+    '保持心情愉悦',
+    '可以吃些红枣、桂圆',
+    '避免剧烈运动',
+    '早睡早起，保证充足睡眠',
+  ],
+
+  // Phase emojis (花卉主题)
   phaseEmojis: {
-    menstrual: '🌸',
-    follicular: '🌱',
-    ovulation: '💜',
-    luteal: '🌙',
+    menstrual: '🌺',   // 木槿花 - 热烈
+    follicular: '🌷',  // 郁金香 - 新生
+    ovulation: '🌻',   // 向日葵 - 活力
+    luteal: '🌼',      // 雏菊 - 平静
   },
 
   // Flow intensity
