@@ -407,8 +407,8 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
             ))}
           </div>
 
-          {/* 日期网格 - 固定6行高度，增加行间距 */}
-          <div className="grid grid-cols-7 gap-x-2 gap-y-3" style={{ minHeight: '276px' }}>
+          {/* 日期网格 - 固定6行高度 */}
+          <div className="grid grid-cols-7 grid-rows-6 gap-x-2 gap-y-3" style={{ height: '288px' }}>
             {/* 日期单元格 */}
             {monthData.days.map((day) => {
               const date = day.date;
