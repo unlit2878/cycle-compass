@@ -397,18 +397,18 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <CardContent className="p-3">
+        <CardContent className="p-4">
           {/* 星期标题 */}
-          <div className="grid grid-cols-7 gap-2 mb-2">
+          <div className="grid grid-cols-7 mb-2">
             {zh.calendar.weekdays.map((day) => (
-              <div key={day} className="w-10 h-6 flex items-center justify-center text-xs font-medium text-muted-foreground">
+              <div key={day} className="flex items-center justify-center text-xs font-medium text-muted-foreground h-6">
                 {day}
               </div>
             ))}
           </div>
 
-          {/* 日期网格 - 固定6行高度 */}
-          <div className="grid grid-cols-7 grid-rows-6 gap-x-2 gap-y-3" style={{ height: '288px' }}>
+          {/* 日期网格 - 固定6行高度，均匀分布 */}
+          <div className="grid grid-cols-7 grid-rows-6" style={{ height: '288px' }}>
             {/* 日期单元格 */}
             {monthData.days.map((day) => {
               const date = day.date;
@@ -461,32 +461,33 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
                     : 'text-foreground/40';
 
               return (
-                <button
-                  key={dateStr}
-                  onClick={() => onDaySelect(dateStr)}
-                  className={`w-10 h-10 rounded-full flex flex-col items-center justify-center relative
-                    transition-all duration-200 hover:scale-105 active:scale-95 ${
-                    isRecordedPeriod
-                      ? 'bg-phase-menstrual text-white font-bold shadow-md'
-                      : !isPast && phase
-                        ? futureStyle
-                        : day.isCurrentMonth 
-                          ? 'bg-muted/30 hover:bg-muted/50'
-                          : 'bg-muted/10 hover:bg-muted/30'
-                  } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''} ${!day.isCurrentMonth ? 'opacity-40' : ''}`}
-                >
-                  <span className={`font-medium ${textColorClass} ${periodDayNum ? 'text-[10px] -mt-0.5' : 'text-sm'}`}>
-                    {date.getDate()}
-                  </span>
-                  {periodDayNum && (
-                    <span className="text-[6px] text-white/90 leading-none font-medium -mt-0.5">
-                      {getOrdinalSuffix(periodDayNum)}
+                <div key={dateStr} className="flex items-center justify-center">
+                  <button
+                    onClick={() => onDaySelect(dateStr)}
+                    className={`w-10 h-10 rounded-full flex flex-col items-center justify-center relative
+                      transition-all duration-200 hover:scale-105 active:scale-95 ${
+                      isRecordedPeriod
+                        ? 'bg-phase-menstrual text-white font-bold shadow-md'
+                        : !isPast && phase
+                          ? futureStyle
+                          : day.isCurrentMonth 
+                            ? 'bg-muted/30 hover:bg-muted/50'
+                            : 'bg-muted/10 hover:bg-muted/30'
+                    } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''} ${!day.isCurrentMonth ? 'opacity-40' : ''}`}
+                  >
+                    <span className={`font-medium ${textColorClass} ${periodDayNum ? 'text-[10px] -mt-0.5' : 'text-sm'}`}>
+                      {date.getDate()}
                     </span>
-                  )}
-                  {log && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 absolute bottom-0.5 left-1/2 -translate-x-1/2" />
-                  )}
-                </button>
+                    {periodDayNum && (
+                      <span className="text-[6px] text-white/90 leading-none font-medium -mt-0.5">
+                        {getOrdinalSuffix(periodDayNum)}
+                      </span>
+                    )}
+                    {log && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 absolute bottom-0.5 left-1/2 -translate-x-1/2" />
+                    )}
+                  </button>
+                </div>
               );
             })}
           </div>
