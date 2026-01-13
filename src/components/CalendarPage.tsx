@@ -407,8 +407,8 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
             ))}
           </div>
 
-          {/* 日期网格 */}
-          <div className="grid grid-cols-7 gap-2">
+          {/* 日期网格 - 固定6行高度，增加行间距 */}
+          <div className="grid grid-cols-7 gap-x-2 gap-y-3" style={{ minHeight: '276px' }}>
             {/* 日期单元格 */}
             {monthData.days.map((day) => {
               const date = day.date;
@@ -464,7 +464,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
                 <button
                   key={dateStr}
                   onClick={() => onDaySelect(dateStr)}
-                  className={`w-10 h-10 rounded-full flex flex-col items-center justify-start pt-1.5 pb-2.5 relative
+                  className={`w-10 h-10 rounded-full flex flex-col items-center justify-center relative
                     transition-all duration-200 hover:scale-105 active:scale-95 ${
                     isRecordedPeriod
                       ? 'bg-phase-menstrual text-white font-bold shadow-md'
@@ -475,11 +475,11 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
                           : 'bg-muted/10 hover:bg-muted/30'
                   } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''} ${!day.isCurrentMonth ? 'opacity-40' : ''}`}
                 >
-                  <span className={`font-medium leading-none ${textColorClass} ${periodDayNum ? 'text-[10px]' : 'text-sm'}`}>
+                  <span className={`font-medium ${textColorClass} ${periodDayNum ? 'text-[10px] -mt-0.5' : 'text-sm'}`}>
                     {date.getDate()}
                   </span>
                   {periodDayNum && (
-                    <span className="text-[6px] text-white/90 leading-none font-medium">
+                    <span className="text-[6px] text-white/90 leading-none font-medium -mt-0.5">
                       {getOrdinalSuffix(periodDayNum)}
                     </span>
                   )}
