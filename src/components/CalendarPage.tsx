@@ -483,8 +483,8 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
                       {getOrdinalSuffix(periodDayNum)}
                     </span>
                   )}
-                  {log && !isRecordedPeriod && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 absolute bottom-0.5" />
+                  {log && (
+                    <div className={`w-1.5 h-1.5 rounded-full absolute ${isRecordedPeriod ? 'bg-white/90 top-0.5 right-0.5' : 'bg-blue-500 bottom-0.5'}`} />
                   )}
                 </button>
               );
