@@ -24,6 +24,7 @@ import {
   calculateAveragePeriodLength,
   formatDate,
   PhaseInfo,
+  parseLocalDate,
 } from '@/lib/cycle-utils';
 import { predictNextCycle } from '@/lib/prediction-utils';
 
@@ -55,10 +56,12 @@ export function useCycleData() {
         // 使用预测工具计算周期长度（与首页统一）
         const prediction = predictNextCycle(cyclesData);
         const cycleLength = cyclesData.length >= 2 ? prediction.predictedCycleLength : settingsData.averageCycleLength;
+        const currentDate = new Date();
+        currentDate.setHours(12, 0, 0, 0);
         
         const info = getPhaseInfo(
-          new Date(),
-          new Date(settingsData.lastPeriodStart),
+          currentDate,
+          parseLocalDate(settingsData.lastPeriodStart),
           cycleLength,
           settingsData.averagePeriodLength
         );
@@ -85,10 +88,12 @@ export function useCycleData() {
       const allCycles = await getAllCycles();
       const prediction = predictNextCycle(allCycles);
       const cycleLength = allCycles.length >= 2 ? prediction.predictedCycleLength : updated.averageCycleLength;
+      const currentDate = new Date();
+      currentDate.setHours(12, 0, 0, 0);
       
       const info = getPhaseInfo(
-        new Date(),
-        new Date(updated.lastPeriodStart!),
+        currentDate,
+        parseLocalDate(updated.lastPeriodStart!),
         cycleLength,
         updated.averagePeriodLength
       );

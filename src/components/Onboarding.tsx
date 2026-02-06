@@ -5,9 +5,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Sparkles, ArrowRight, ArrowLeft, Upload } from 'lucide-react';
 import { zh, formatDateChinese } from '@/lib/i18n';
+import { formatDate } from '@/lib/cycle-utils';
+import { zhCN } from 'date-fns/locale';
 
 interface OnboardingProps {
-  onComplete: (lastPeriodStart: string, cycleLength: number) => void;
+  onComplete: (lastPeriodStart: string, cycleLength: number, periodLength: number, lastPeriodEnd?: string) => void;
   onImport: () => void;
 }
 
@@ -15,12 +17,17 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [cycleLength, setCycleLength] = useState(28);
+  const [periodLength, setPeriodLength] = useState(5);
 
   const handleNext = () => {
-    if (step < 2) {
+    if (step < 3) {
       setStep(step + 1);
     } else if (selectedDate) {
-      onComplete(selectedDate.toISOString().split('T')[0], cycleLength);
+      const startDate = new Date(selectedDate);
+      startDate.setHours(12, 0, 0, 0);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + periodLength - 1);
+      onComplete(formatDate(startDate), cycleLength, periodLength, formatDate(endDate));
     }
   };
 
@@ -30,13 +37,13 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
     }
   };
 
-  const canProceed = step === 0 || (step === 1 && selectedDate) || step === 2;
+  const canProceed = step === 0 || (step === 1 && selectedDate) || step === 2 || step === 3;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 gradient-soft">
       {/* 进度指示器 */}
       <div className="flex gap-2 mb-8">
-        {[0, 1, 2].map((i) => (
+        {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
             className={`w-2 h-2 rounded-full transition-all ${
@@ -91,6 +98,7 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
                   selected={selectedDate}
                   onSelect={setSelectedDate}
                   disabled={(date) => date > new Date()}
+                  locale={zhCN}
                   className="rounded-xl"
                 />
               </CardContent>
@@ -131,6 +139,35 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
             </div>
           </div>
         )}
+
+        {step === 3 && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-foreground">{zh.onboarding.periodLength.title}</h2>
+              <p className="text-muted-foreground mt-2">
+                {zh.onboarding.periodLength.subtitle}
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="text-6xl font-bold text-primary mb-2">{periodLength}</div>
+              <div className="text-muted-foreground">{zh.onboarding.cycleLength.days}</div>
+            </div>
+            <div className="px-4">
+              <Slider
+                value={[periodLength]}
+                onValueChange={(v) => setPeriodLength(v[0])}
+                min={2}
+                max={10}
+                step={1}
+                className="w-full"
+              />
+              <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                <span>2 {zh.onboarding.cycleLength.days}</span>
+                <span>10 {zh.onboarding.cycleLength.days}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 导航按钮 */}
@@ -149,7 +186,7 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
             disabled={!canProceed}
             className="flex-1 h-14 rounded-2xl"
           >
-            {step === 2 ? zh.onboarding.complete : zh.onboarding.next}
+            {step === 3 ? zh.onboarding.complete : zh.onboarding.next}
             <ArrowRight className="ml-2 w-5 h-5" />
           </Button>
         </div>

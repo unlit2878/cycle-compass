@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, HelpCircle, CalendarDays } from 'lucide-react';
-import { getDaysInMonth, formatDate, CyclePhase, getCyclePhase, getOrdinalSuffix } from '@/lib/cycle-utils';
+import { getDaysInMonth, formatDate, CyclePhase, getCyclePhase, getOrdinalSuffix, parseLocalDate } from '@/lib/cycle-utils';
 import { DailyLog, Settings, CycleData } from '@/lib/db';
 import { zh, formatMonthYear } from '@/lib/i18n';
 import { predictNextCycle } from '@/lib/prediction-utils';
@@ -184,10 +184,10 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
     const daysInMonth = getDaysInMonth(year, month);
     const currentMonthDays = daysInMonth.map(d => ({ date: d, isCurrentMonth: true }));
     
-    // 计算下月需要填充的日期（凑满5行 = 35天）
     const totalDays = prevMonthDays.length + currentMonthDays.length;
+    const rowCount = totalDays > 35 ? 6 : 5;
+    const targetDays = rowCount === 6 ? 42 : 35;
     const nextMonthDays: { date: Date; isCurrentMonth: boolean }[] = [];
-    const targetDays = 35; // 固定5行
     
     if (totalDays < targetDays) {
       for (let i = 1; i <= targetDays - totalDays; i++) {
@@ -198,7 +198,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
     
     const allDays = [...prevMonthDays, ...currentMonthDays, ...nextMonthDays];
     
-    return { days: allDays, logMap };
+    return { days: allDays, logMap, rowCount };
   }, [currentMonth, dailyLogs]);
 
   // 获取所有经期记录的日期映射（只从 cycles 表获取）
@@ -206,8 +206,8 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
     const dates = new Set<string>();
     // 只从 cycles 获取（包括 startDate 到 endDate 之间的所有日期）
     cycles.forEach(cycle => {
-      const start = new Date(cycle.startDate);
-      const end = cycle.endDate ? new Date(cycle.endDate) : start;
+      const start = parseLocalDate(cycle.startDate);
+      const end = cycle.endDate ? parseLocalDate(cycle.endDate) : start;
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         dates.add(formatDate(new Date(d)));
       }
@@ -225,8 +225,10 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
       return 'menstrual';
     }
     
-    const lastStart = new Date(settings.lastPeriodStart);
-    const diffDays = Math.floor((date.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24));
+    const lastStart = parseLocalDate(settings.lastPeriodStart);
+    const dateAtNoon = new Date(date);
+    dateAtNoon.setHours(12, 0, 0, 0);
+    const diffDays = Math.floor((dateAtNoon.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24));
     
     // 使用统计预测的周期长度
     const cycleLength = predictedCycleLength;
@@ -407,8 +409,11 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
             ))}
           </div>
 
-          {/* 日期网格 - 固定6行高度，均匀分布 */}
-          <div className="grid grid-cols-7 grid-rows-6" style={{ height: '288px' }}>
+          {/* 日期网格 - 固定高度，行数自适应 */}
+          <div
+            className="grid grid-cols-7"
+            style={{ height: '300px', gridTemplateRows: `repeat(${monthData.rowCount}, minmax(0, 1fr))` }}
+          >
             {/* 日期单元格 */}
             {monthData.days.map((day) => {
               const date = day.date;
@@ -458,13 +463,15 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
                   ? 'text-phase-ovulation font-bold' 
                   : day.isCurrentMonth 
                     ? 'text-foreground' 
-                    : 'text-foreground/40';
+                    : 'text-foreground/30';
+              
+              const isSixRows = monthData.rowCount === 6;
 
               return (
                 <div key={dateStr} className="flex items-center justify-center">
                   <button
                     onClick={() => onDaySelect(dateStr)}
-                    className={`w-10 h-10 rounded-full flex flex-col items-center justify-center relative
+                    className={`${isSixRows ? 'w-9 h-9' : 'w-10 h-10'} rounded-full flex flex-col items-center justify-center relative
                       transition-all duration-200 hover:scale-105 active:scale-95 ${
                       isRecordedPeriod
                         ? 'bg-phase-menstrual text-white font-bold shadow-md'
@@ -473,7 +480,7 @@ export function CalendarPage({ settings, dailyLogs, cycles, currentMonth, onMont
                           : day.isCurrentMonth 
                             ? 'bg-muted/30 hover:bg-muted/50'
                             : 'bg-muted/10 hover:bg-muted/30'
-                    } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''} ${!day.isCurrentMonth ? 'opacity-40' : ''}`}
+                    } ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''} ${!day.isCurrentMonth ? 'opacity-30' : ''}`}
                   >
                     <span className={`font-medium ${textColorClass} ${periodDayNum ? 'text-[10px] -mt-0.5' : 'text-sm'}`}>
                       {date.getDate()}

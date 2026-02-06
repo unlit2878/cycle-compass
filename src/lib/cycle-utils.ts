@@ -119,20 +119,25 @@ export function getOrdinalSuffix(n: number): string {
   return n + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
 }
 
+export function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
+}
+
 // 从历史记录计算平均周期长度（基于相邻周期开始日期之差）
 export function calculateAverageCycleLength(cycles: CycleData[]): number {
   if (cycles.length < 2) return 28;
   
   // 按开始日期排序
   const sorted = [...cycles].sort((a, b) => 
-    new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    parseLocalDate(a.startDate).getTime() - parseLocalDate(b.startDate).getTime()
   );
   
   // 计算相邻周期之间的天数
   const lengths: number[] = [];
   for (let i = 0; i < sorted.length - 1; i++) {
-    const start1 = new Date(sorted[i].startDate);
-    const start2 = new Date(sorted[i + 1].startDate);
+    const start1 = parseLocalDate(sorted[i].startDate);
+    const start2 = parseLocalDate(sorted[i + 1].startDate);
     const diffDays = Math.round((start2.getTime() - start1.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays > 0 && diffDays <= 60) { // 过滤异常值
       lengths.push(diffDays);
@@ -149,8 +154,8 @@ export function calculateAveragePeriodLength(cycles: CycleData[]): number {
   const periodLengths = cycles
     .filter(c => c.startDate && c.endDate)
     .map(c => {
-      const start = new Date(c.startDate);
-      const end = new Date(c.endDate!);
+      const start = parseLocalDate(c.startDate);
+      const end = parseLocalDate(c.endDate!);
       return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     })
     .filter(l => l > 0 && l < 15);

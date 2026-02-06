@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { PhaseInfo, getPhaseEmoji, getPhaseName, getPhaseDescription, formatDisplayDate, formatDate, isBackupOverdue, getDaysSinceBackup, getMenstrualTip } from '@/lib/cycle-utils';
+import { PhaseInfo, getPhaseEmoji, getPhaseName, getPhaseDescription, formatDisplayDate, formatDate, isBackupOverdue, getDaysSinceBackup, getMenstrualTip, parseLocalDate } from '@/lib/cycle-utils';
 import { Settings, CycleData } from '@/lib/db';
 import { AlertCircle } from 'lucide-react';
 import { zh } from '@/lib/i18n';
@@ -34,9 +34,13 @@ export function Home({ phaseInfo, settings, cycles, onDaySelect, onBackupReminde
     const prediction = predictNextCycle(cycles);
     const cycleLength = cycles.length >= 2 ? prediction.predictedCycleLength : settings.averageCycleLength;
     
-    const lastStart = new Date(settings.lastPeriodStart);
+    const lastStart = parseLocalDate(settings.lastPeriodStart);
     const nextStart = new Date(lastStart);
-    nextStart.setDate(nextStart.getDate() + cycleLength);
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    while (nextStart <= today) {
+      nextStart.setDate(nextStart.getDate() + cycleLength);
+    }
     
     return { nextPeriodDate: nextStart, predictedCycleLength: cycleLength };
   }, [phaseInfo, settings, cycles]);
@@ -50,12 +54,15 @@ export function Home({ phaseInfo, settings, cycles, onDaySelect, onBackupReminde
     
     // 使用预测的周期长度
     const cycleLength = predictedCycleLength;
+    const lastStart = parseLocalDate(settings.lastPeriodStart);
     
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() + i);
       
-      const diffFromStart = Math.floor((date.getTime() - new Date(settings.lastPeriodStart).getTime()) / (1000 * 60 * 60 * 24));
+      const dateAtNoon = new Date(date);
+      dateAtNoon.setHours(12, 0, 0, 0);
+      const diffFromStart = Math.floor((dateAtNoon.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24));
       const dayInCycle = (diffFromStart % cycleLength) + 1;
       const ovulationDay = Math.round(cycleLength - 14);
       
