@@ -286,7 +286,7 @@ export function LoggingScreen({
       <section className="record-section">
         <div className="section-title menstrual-title">
           <Droplet className="h-5 w-5" />
-          <span>1. 经期记录</span>
+          <span>经期记录</span>
         </div>
 
         {periodRangeText && (
@@ -303,7 +303,7 @@ export function LoggingScreen({
             onClick={() => setMarkerFromUser('start')}
           >
             <Droplet className="h-8 w-8" />
-            <span>{visibleCycle ? '更新开始时间' : '标记开始'}</span>
+            <span>{visibleCycle ? '更新开始' : '标记开始'}</span>
             <small>{visibleCycle ? '将当前经期开始改为所选日期' : '记录经期第一天'}</small>
           </button>
           <button
@@ -356,7 +356,7 @@ export function LoggingScreen({
       <section className="record-section bordered">
         <div className="section-title symptom-title">
           <Heart className="h-5 w-5" />
-          <span>2. 症状记录</span>
+          <span>症状记录</span>
         </div>
         <div className="icon-grid icon-grid-5 symptom-grid">
           {symptomOptions.map((symptom, index) => {
@@ -382,7 +382,7 @@ export function LoggingScreen({
       <section className="record-section bordered">
         <div className="section-title mood-title">
           <Smile className="h-5 w-5" />
-          <span>3. 心情记录</span>
+          <span>心情记录</span>
           <small>{mood || emptyMoodLabel}</small>
         </div>
         <div className="icon-grid icon-grid-5 mood-grid">

@@ -5,6 +5,7 @@ import {
   Heart,
   Info,
   Leaf,
+  ListFilter,
   Target,
   TrendingUp,
   type LucideIcon,
@@ -69,24 +70,26 @@ const FIGO_MAX_PERIOD = 8;
 
 export function InsightsPage({ cycles }: InsightsPageProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('recent6');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const years = useMemo(() => getAvailableYears(cycles), [cycles]);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const activeYear = selectedYear ?? years[0] ?? new Date().getFullYear();
 
+  const allStats = useMemo(() => buildRangeStats(cycles), [cycles]);
   const filteredCycles = useMemo(
     () => filterCycles(cycles, timeRange, activeYear),
     [activeYear, cycles, timeRange]
   );
-  const rangeStats = useMemo(() => buildRangeStats(filteredCycles), [filteredCycles]);
-  const chartRows = useMemo(() => buildChartRows(filteredCycles, rangeStats), [filteredCycles, rangeStats]);
+  const chartStats = useMemo(() => buildRangeStats(filteredCycles), [filteredCycles]);
+  const chartRows = useMemo(() => buildChartRows(filteredCycles, chartStats), [filteredCycles, chartStats]);
   const prediction = useMemo(
-    () => (extractCycleLengths(filteredCycles).length > 0 ? predictNextCycle(filteredCycles) : null),
-    [filteredCycles]
+    () => (extractCycleLengths(cycles).length > 0 ? predictNextCycle(cycles) : null),
+    [cycles]
   );
-  const predictionAccuracy = useMemo(() => evaluatePredictionAccuracy(filteredCycles), [filteredCycles]);
+  const predictionAccuracy = useMemo(() => evaluatePredictionAccuracy(cycles), [cycles]);
   const recentPredictions = predictionAccuracy.predictions.slice(-6).reverse();
-  const healthMessages = getHealthMessages(rangeStats);
-  const hasCycles = filteredCycles.length > 0;
+  const healthMessages = getHealthMessages(allStats);
+  const hasCycles = cycles.length > 0;
 
   return (
     <PageShell
@@ -95,45 +98,6 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
       decor="insights"
       className="insights-screen"
     >
-      <section className="insights-range-panel" aria-label="时间范围">
-        <div className="insights-range-tabs">
-          {[
-            { value: 'recent6', label: '最近 6' },
-            { value: 'recent12', label: '最近 12' },
-            { value: 'year', label: '按年份' },
-            { value: 'all', label: '全部' },
-          ].map((item) => (
-            <button
-              type="button"
-              key={item.value}
-              className={timeRange === item.value ? 'active' : undefined}
-              onClick={() => setTimeRange(item.value as TimeRange)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {timeRange === 'year' && (
-          <div className="insights-year-rail" aria-label="年份筛选">
-            {years.length > 0 ? (
-              years.map((year) => (
-                <button
-                  type="button"
-                  key={year}
-                  className={activeYear === year ? 'active' : undefined}
-                  onClick={() => setSelectedYear(year)}
-                >
-                  {year}
-                </button>
-              ))
-            ) : (
-              <span>暂无年份</span>
-            )}
-          </div>
-        )}
-      </section>
-
       {!hasCycles ? (
         <section className="analysis-section">
           <div className="empty-state">还没有可分析的周期记录。继续记录经期开始和结束后，这里会显示真实趋势。</div>
@@ -144,58 +108,110 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
             <StatItem
               icon={CalendarDays}
               label="平均周期"
-              value={formatStatValue(rangeStats.averageCycleLength)}
-              unit={rangeStats.averageCycleLength === null ? '' : '天'}
-              desc={formatCycleRange(rangeStats.cycleLengthRange)}
+              value={formatStatValue(allStats.averageCycleLength)}
+              unit={allStats.averageCycleLength === null ? '' : '天'}
+              desc={formatCycleRange(allStats.cycleLengthRange)}
               tone="pink"
             />
             <StatItem
               icon={Activity}
               label="平均经期"
-              value={formatStatValue(rangeStats.averagePeriodLength)}
-              unit={rangeStats.averagePeriodLength === null ? '' : '天'}
-              desc={formatPeriodRange(rangeStats.periodLengthRange)}
+              value={formatStatValue(allStats.averagePeriodLength)}
+              unit={allStats.averagePeriodLength === null ? '' : '天'}
+              desc={formatPeriodRange(allStats.periodLengthRange)}
               tone="red"
             />
             <StatItem
               icon={TrendingUp}
               label="记录周期"
-              value={rangeStats.totalCyclesTracked}
+              value={allStats.totalCyclesTracked}
               unit="个"
-              desc={getRangeLabel(timeRange, activeYear)}
+              desc="全部周期"
               tone="orange"
             />
             <StatItem
               icon={Heart}
               label="规律评分"
-              value={formatStatValue(rangeStats.regularity?.score ?? null)}
-              unit={rangeStats.regularity?.score === null || !rangeStats.regularity ? '' : '分'}
-              desc={rangeStats.regularity ? `${rangeStats.regularity.sampleSize} 个有效周期` : '记录不足'}
+              value={formatStatValue(allStats.regularity?.score ?? null)}
+              unit={allStats.regularity?.score === null || !allStats.regularity ? '' : '分'}
+              desc={allStats.regularity ? `${allStats.regularity.sampleSize} 个有效周期` : '记录不足'}
               tone="green"
-              score={rangeStats.regularity?.score ?? null}
+              score={allStats.regularity?.score ?? null}
             />
           </section>
 
           <section className="analysis-section">
-            <h2>
-              <Target className="h-5 w-5 text-[#f06c86]" />
-              周期与经期时长分析
-            </h2>
+            <div className="analysis-heading-row">
+              <h2>
+                <Target className="h-5 w-5 text-[#f06c86]" />
+                周期与经期时长分析
+              </h2>
+              <button
+                type="button"
+                className={`analysis-filter-button ${filtersOpen ? 'active' : ''}`}
+                aria-label="筛选周期与经期时长分析"
+                aria-expanded={filtersOpen}
+                onClick={() => setFiltersOpen((open) => !open)}
+              >
+                <ListFilter className="h-4 w-4" />
+              </button>
+            </div>
+
+            {filtersOpen && (
+              <section className="insights-range-panel" aria-label="周期与经期时长分析筛选">
+                <div className="insights-range-tabs">
+                  {[
+                    { value: 'recent6', label: '最近 6' },
+                    { value: 'recent12', label: '最近 12' },
+                    { value: 'year', label: '按年份' },
+                    { value: 'all', label: '全部' },
+                  ].map((item) => (
+                    <button
+                      type="button"
+                      key={item.value}
+                      className={timeRange === item.value ? 'active' : undefined}
+                      onClick={() => setTimeRange(item.value as TimeRange)}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+
+                {timeRange === 'year' && (
+                  <div className="insights-year-rail" aria-label="年份筛选">
+                    {years.length > 0 ? (
+                      years.map((year) => (
+                        <button
+                          type="button"
+                          key={year}
+                          className={activeYear === year ? 'active' : undefined}
+                          onClick={() => setSelectedYear(year)}
+                        >
+                          {year}
+                        </button>
+                      ))
+                    ) : (
+                      <span>暂无年份</span>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
             <div className="chart-legend">
               <span><i className="pink" />经期天数</span>
               <span><i className="green-line" />周期长度</span>
-              {rangeStats.averageCycleLength !== null && (
-                <span><i className="orange-dash" />平均周期 {rangeStats.averageCycleLength}天</span>
+              {chartStats.averageCycleLength !== null && (
+                <span><i className="orange-dash" />平均周期 {chartStats.averageCycleLength}天</span>
               )}
             </div>
 
             <div className="cycle-bar-chart">
-              {rangeStats.averageCycleLength !== null && (
+              {chartStats.averageCycleLength !== null && (
                 <div
                   className="avg-line"
-                  style={{ left: `${Math.min(86, (rangeStats.averageCycleLength / getChartScale(rangeStats)) * 100)}%` }}
+                  style={{ left: `${Math.min(86, (chartStats.averageCycleLength / getChartScale(chartStats)) * 100)}%` }}
                 >
-                  <span>平均 {rangeStats.averageCycleLength}天</span>
+                  <span>平均 {chartStats.averageCycleLength}天</span>
                 </div>
               )}
               {chartRows.length > 0 ? (
@@ -227,22 +243,22 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
                 周期健康评估
                 <FigoDialog />
               </h2>
-              {rangeStats.regularity?.score !== null && rangeStats.regularity ? (
-                <strong>{rangeStats.regularity.score}<span>分</span></strong>
+              {allStats.regularity?.score !== null && allStats.regularity ? (
+                <strong>{allStats.regularity.score}<span>分</span></strong>
               ) : (
                 <strong className="muted">暂无</strong>
               )}
             </div>
             <span>规律性评分</span>
-            {rangeStats.regularity?.score !== null && rangeStats.regularity ? (
+            {allStats.regularity?.score !== null && allStats.regularity ? (
               <>
                 <div className="health-progress">
-                  <i style={{ width: `${rangeStats.regularity.score}%` }} />
+                  <i style={{ width: `${allStats.regularity.score}%` }} />
                 </div>
                 <p>
-                  CV={rangeStats.regularity.cv.toFixed(1)}% ｜ 标准差=
-                  {rangeStats.regularity.stdDev.toFixed(1)}天 ｜ 样本=
-                  {rangeStats.regularity.sampleSize}个周期
+                  CV={allStats.regularity.cv.toFixed(1)}% ｜ 标准差=
+                  {allStats.regularity.stdDev.toFixed(1)}天 ｜ 样本=
+                  {allStats.regularity.sampleSize}个周期
                 </p>
               </>
             ) : (
@@ -273,7 +289,7 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
               <>
                 <div className="prediction-metrics">
                   <PredictionMetric icon={Leaf} label="准确率" value={`${predictionAccuracy.accuracyRate}%`} desc="±2天内" />
-                  <PredictionMetric icon={TrendingUp} label="平均误差" value={`${predictionAccuracy.avgError.toFixed(1)}天`} desc="绝对值" />
+                  <PredictionMetric icon={TrendingUp} label="平均误差" value={predictionAccuracy.avgError.toFixed(1)} unit="天" desc="绝对值" />
                   <PredictionMetric
                     icon={Heart}
                     label="置信度"
@@ -381,11 +397,13 @@ function PredictionMetric({
   icon: Icon,
   label,
   value,
+  unit = '',
   desc,
 }: {
   icon: LucideIcon;
   label: string;
   value: string;
+  unit?: string;
   desc: string;
 }) {
   return (
@@ -394,7 +412,7 @@ function PredictionMetric({
         <Icon className="h-9 w-9" />
       </span>
       <p>{label}</p>
-      <strong>{value}</strong>
+      <strong>{value}{unit && <small>{unit}</small>}</strong>
       <small>{desc}</small>
     </div>
   );

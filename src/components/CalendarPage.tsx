@@ -1,8 +1,10 @@
 import { ComponentType, TouchEvent, useCallback, useMemo, useRef, useState } from 'react';
 import {
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Droplet,
   HelpCircle,
   Pencil,
@@ -344,7 +346,7 @@ export function CalendarPage({
         aria-label={detailExpanded ? '收起当日详情' : '展开当日详情'}
         onClick={() => setDetailExpanded((expanded) => !expanded)}
       >
-        {detailExpanded ? '^' : '⌄'}
+        {detailExpanded ? <ChevronUp /> : <ChevronDown />}
       </button>
 
       {detailExpanded && <section className="calendar-detail">

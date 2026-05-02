@@ -31,6 +31,18 @@
     --success: 101 27% 52%;
     --warning: 33 90% 58%;
     --radius: 1rem;
+    --font-app: "PingFang SC", "Inter", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    --text-page-title: 30px;
+    --text-section-title: 20px;
+    --text-subsection-title: 16px;
+    --text-body: 15px;
+    --text-label: 14px;
+    --text-caption: 12px;
+    --text-metric: 34px;
+    --weight-title: 720;
+    --weight-section: 700;
+    --weight-label: 620;
+    --weight-body: 400;
   }
 
   .dark {
@@ -70,8 +82,8 @@
       linear-gradient(90deg, rgba(235, 239, 232, 0.55), transparent 18%, transparent 82%, rgba(235, 239, 232, 0.55)),
       #f7f4ef;
     color: hsl(var(--foreground));
-    font-family: "PingFang SC", "Inter", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
-    font-size: 15px;
+    font-family: var(--font-app);
+    font-size: var(--text-body);
     letter-spacing: 0;
     -webkit-font-smoothing: antialiased;
     text-rendering: geometricPrecision;
@@ -261,8 +273,8 @@
 .page-title-row h1 {
   margin: 0;
   color: #101418;
-  font-size: 29px;
-  font-weight: 600;
+  font-size: var(--text-page-title);
+  font-weight: var(--weight-title);
   line-height: 1.12;
 }
 
@@ -275,8 +287,8 @@
 .page-header p {
   margin: 12px 0 0;
   color: #858b97;
-  font-size: 13px;
-  font-weight: 400;
+  font-size: var(--text-label);
+  font-weight: var(--weight-body);
   line-height: 1.5;
 }
 
@@ -422,6 +434,35 @@
   margin: 40px 0;
   color: #8e96a1;
   text-align: center;
+}
+
+.inline-section-title h2,
+.settings-group h2,
+.analysis-section h2 {
+  font-size: var(--text-section-title);
+  font-weight: var(--weight-section);
+  line-height: 1.25;
+}
+
+.section-title,
+.section-eyebrow,
+.stat-item div,
+.calendar-legend,
+.record-option-label,
+.prediction-list > span,
+.settings-row-copy strong {
+  font-weight: var(--weight-label);
+}
+
+.page-header p,
+.empty-state,
+.phase-help-content,
+.figo-dialog-body,
+.import-help-body,
+.health-section p,
+.health-messages span {
+  font-size: var(--text-label);
+  line-height: 1.55;
 }
 
 .backup-reminder {
@@ -612,8 +653,8 @@
 .inline-section-title h2 {
   margin: 0;
   color: #171b1f;
-  font-size: 18px;
-  font-weight: 560;
+  font-size: var(--text-section-title);
+  font-weight: var(--weight-section);
 }
 
 .inline-section-title button {
@@ -935,7 +976,7 @@
 
 .section-title {
   margin-bottom: 24px;
-  font-size: 15px;
+  font-size: var(--text-subsection-title);
 }
 
 .menstrual-title svg { color: #e45672; }
@@ -1357,6 +1398,51 @@
   transform: translateX(-50%);
 }
 
+.calendar-day.muted,
+.calendar-day.muted.selected {
+  color: #c8c3be;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0.46;
+}
+
+.calendar-day.muted.period,
+.calendar-day.muted.predicted-period,
+.calendar-day.muted.ovulation {
+  opacity: 0.2;
+}
+
+.calendar-day.muted.period,
+.calendar-day.muted.period.selected {
+  color: hsl(var(--phase-menstrual));
+  background: hsl(var(--phase-menstrual) / 0.24);
+  box-shadow: none;
+}
+
+.calendar-day.muted.predicted-period,
+.calendar-day.muted.predicted-period.selected {
+  border: 1px dashed hsl(var(--phase-menstrual) / 0.52);
+  color: hsl(var(--phase-menstrual));
+  background: hsl(var(--phase-menstrual) / 0.07);
+  box-shadow: none;
+}
+
+.calendar-day.muted.ovulation,
+.calendar-day.muted.ovulation.selected {
+  color: hsl(var(--phase-ovulation));
+  background: hsl(var(--phase-ovulation) / 0.22);
+  box-shadow: none;
+}
+
+.calendar-day.muted small {
+  opacity: 0.58;
+}
+
+.calendar-day.muted .fertile-dot,
+.calendar-day.muted .log-dot {
+  opacity: 0.25;
+}
+
 .fertile-dot,
 .log-dot {
   width: 6px;
@@ -1467,16 +1553,22 @@
 }
 
 .detail-caret {
-  display: block;
+  display: flex;
   width: 38px;
   height: 30px;
+  align-items: center;
+  justify-content: center;
   margin: 0 auto 14px;
   border: 0;
   border-radius: 50%;
-  color: #7a828b;
+  color: #9aa1a9;
   background: transparent;
-  font-size: 24px;
-  line-height: 1;
+}
+
+.detail-caret svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.2;
 }
 
 .detail-caret:active {
@@ -1592,17 +1684,19 @@
 
 .insights-range-panel {
   display: grid;
-  gap: 16px;
-  margin: 0 0 30px;
+  gap: 14px;
+  margin: -4px 0 24px;
 }
 
 .insights-range-tabs {
   display: flex;
   align-items: flex-end;
-  gap: 30px;
+  gap: 24px;
   overflow-x: auto;
-  padding-bottom: 10px;
+  padding: 11px 14px 10px;
   border-bottom: 1px solid rgba(211, 207, 199, 0.72);
+  border-radius: 18px 18px 0 0;
+  background: rgba(255, 255, 255, 0.55);
   scrollbar-width: none;
 }
 
@@ -1618,8 +1712,8 @@
   border: 0;
   color: #848b95;
   background: transparent;
-  font-size: 15px;
-  font-weight: 720;
+  font-size: var(--text-label);
+  font-weight: var(--weight-label);
 }
 
 .insights-range-tabs button.active {
@@ -1642,7 +1736,7 @@
   align-items: center;
   gap: 18px;
   overflow-x: auto;
-  padding: 2px 0 7px;
+  padding: 2px 14px 7px;
   scrollbar-width: none;
 }
 
@@ -1691,14 +1785,14 @@
   align-items: center;
   gap: 7px;
   color: #747b83;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--text-label);
+  font-weight: var(--weight-label);
 }
 
 .stat-item strong {
   display: block;
   color: #12161a;
-  font-size: 34px;
+  font-size: var(--text-metric);
   font-weight: 620;
   line-height: 1;
 }
@@ -1742,8 +1836,39 @@
   gap: 11px;
   margin: 0 0 20px;
   color: #23282e;
-  font-size: 21px;
-  font-weight: 760;
+  font-size: var(--text-section-title);
+  font-weight: var(--weight-section);
+}
+
+.analysis-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.analysis-heading-row h2 {
+  margin-bottom: 0;
+}
+
+.analysis-filter-button {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 50%;
+  color: #8d95a1;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 24px rgba(87, 81, 70, 0.1);
+}
+
+.analysis-filter-button.active {
+  color: #719b5f;
+  background: rgba(236, 244, 230, 0.92);
 }
 
 .chart-legend {
@@ -2049,6 +2174,13 @@
   font-weight: 650;
 }
 
+.prediction-metrics strong small {
+  margin-left: 2px;
+  color: #4e555d;
+  font-size: 15px;
+  font-weight: 500;
+}
+
 .prediction-list > span {
   display: block;
   margin-bottom: 12px;
@@ -2086,8 +2218,8 @@
 .settings-group h2 {
   margin: 0 0 20px;
   color: #161b20;
-  font-size: 18px;
-  font-weight: 760;
+  font-size: var(--text-section-title);
+  font-weight: var(--weight-section);
 }
 
 .settings-row {
