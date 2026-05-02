@@ -11,7 +11,6 @@ import {
   Heart,
   HeartPulse,
   MoveHorizontal,
-  RefreshCw,
   Smile,
   Trash2,
   Toilet,
@@ -271,9 +270,6 @@ export function LoggingScreen({
             <span>此日记录</span>
             <small>{dateChanged ? `原记录：${formatDateCN(new Date(`${date}T12:00:00`))}` : '已保存过记录'}</small>
           </div>
-          <button type="button" className="day-log-icon-button" onClick={() => void onRefresh?.()} aria-label="刷新记录">
-            <RefreshCw className="h-4 w-4" />
-          </button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button type="button" className="day-log-icon-button danger" aria-label="删除此日记录">
@@ -287,10 +283,10 @@ export function LoggingScreen({
                   将删除 {formatDateCN(new Date(`${date}T12:00:00`))} 的流量、症状、心情和备注。经期开始/结束记录不会被删除。
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
+              <AlertDialogFooter className="record-confirm-actions">
                 <AlertDialogCancel>取消</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeleteLog} disabled={deleting}>
-                  {deleting ? '删除中...' : '确认删除'}
+                  {deleting ? '删除中...' : '删除'}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

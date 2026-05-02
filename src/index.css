@@ -261,7 +261,7 @@
   width: 92px;
   height: 92px;
   border-radius: 50%;
-  background: var(--paper-amber-soft);
+  background: #fde8c6;
   opacity: 0.72;
   animation: decor-blob-orange-ripple 11s ease-in-out infinite alternate-reverse;
 }
@@ -272,7 +272,7 @@
   width: 110px;
   height: 110px;
   border-radius: 50%;
-  background: var(--paper-blue-soft);
+  background: #dff0f7;
   opacity: 0.72;
   animation: decor-blob-blue-ripple 12.5s ease-in-out infinite alternate;
 }
@@ -1110,7 +1110,7 @@
 
 .day-log-panel {
   display: grid;
-  grid-template-columns: 1fr 42px 42px;
+  grid-template-columns: 1fr 42px;
   align-items: center;
   gap: 10px;
   margin-top: 18px;
@@ -1146,7 +1146,7 @@
   border: 0;
   border-radius: 50%;
   color: #76808a;
-  background: var(--paper-surface-strong);
+  background: #fffdf9;
   box-shadow: 0 8px 18px rgba(126, 111, 95, 0.08);
 }
 
@@ -1158,11 +1158,22 @@
   max-width: 360px;
   border: 0;
   border-radius: 24px;
-  background: var(--paper-surface-strong);
+  background: #fffdf9;
 }
 
 .record-confirm-dialog button:last-child {
-  background: var(--paper-rose);
+  background: #e45f7c;
+}
+
+.record-confirm-actions {
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.record-confirm-actions button {
+  flex: 1;
+  margin-top: 0;
 }
 
 .record-section {
@@ -1338,6 +1349,23 @@
   box-shadow: inset 0 0 0 2px currentColor, 0 8px 18px rgba(126, 111, 95, 0.08);
 }
 
+.circle-option.selected:not(.color-option) .option-icon {
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(126, 111, 95, 0.12);
+}
+
+.circle-option.selected.red:not(.color-option) .option-icon {
+  background: var(--paper-rose);
+}
+
+.circle-option.selected.lavender:not(.color-option) .option-icon {
+  background: var(--paper-lavender);
+}
+
+.circle-option.selected.green:not(.color-option) .option-icon {
+  background: var(--paper-green);
+}
+
 .circle-option.selected.red {
   color: #de4968;
 }
@@ -1497,6 +1525,7 @@
   min-width: 124px;
   height: 34px;
   border: 0;
+  border-color: transparent !important;
   border-radius: 0;
   padding: 0 8px;
   color: #101418;
@@ -1519,9 +1548,9 @@
 
 .calendar-select-trigger:focus,
 .calendar-select-trigger:focus-visible {
-  outline: none;
+  outline: none !important;
   background: transparent;
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
 .calendar-select-trigger[data-state="open"] {
@@ -1529,7 +1558,7 @@
   padding-inline: 12px;
   background: rgba(239, 235, 228, 0.7);
   outline: none;
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
 .weekday-grid,
@@ -2066,7 +2095,6 @@
   gap: 7px;
   color: #747b83;
   font-size: var(--text-label);
-  font-weight: var(--weight-label);
 }
 
 .stat-item strong {
@@ -2421,29 +2449,37 @@
 .prediction-metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
+  gap: 14px;
   margin: 24px 0;
 }
 
 .prediction-metrics div {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
   text-align: center;
 }
 
-.prediction-metrics span {
+.prediction-metrics .prediction-metric-icon {
   display: flex;
-  width: 74px;
-  height: 74px;
+  width: 22px;
+  height: 22px;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 10px;
-  border-radius: 50%;
   color: #85a978;
-  background: var(--paper-green-soft);
+  background: transparent;
 }
 
-.prediction-metrics div:nth-child(3) span {
+.prediction-metrics .prediction-metric-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.prediction-metrics div:nth-child(3) .prediction-metric-icon {
   color: #f2a93b;
-  background: var(--paper-amber-soft);
+  background: transparent;
 }
 
 .prediction-metrics p,
@@ -2453,9 +2489,17 @@
   font-size: 13px;
 }
 
+.prediction-metrics p {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
 .prediction-metrics strong {
   display: block;
-  margin: 2px 0;
+  margin: 1px 0;
   color: #171b20;
   font-size: 25px;
   font-weight: 650;
@@ -2492,6 +2536,7 @@
 }
 
 .prediction-list strong {
+  font-weight: 400;
   text-align: right;
 }
 
@@ -2560,7 +2605,7 @@
   max-width: 370px;
   border: 0;
   border-radius: 24px;
-  background: var(--paper-surface-strong);
+  background: #fffdf9;
 }
 
 .import-help-body {
@@ -2582,7 +2627,7 @@
   padding: 14px;
   border-radius: 14px;
   color: #46505a;
-  background: var(--paper-neutral);
+  background: #f6f2eb;
   font-size: 11px;
   line-height: 1.5;
   white-space: pre-wrap;

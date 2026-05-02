@@ -408,10 +408,12 @@ function PredictionMetric({
 }) {
   return (
     <div>
-      <span>
-        <Icon className="h-9 w-9" />
-      </span>
-      <p>{label}</p>
+      <p>
+        <span className="prediction-metric-icon">
+          <Icon className="h-9 w-9" />
+        </span>
+        {label}
+      </p>
       <strong>{value}{unit && <small>{unit}</small>}</strong>
       <small>{desc}</small>
     </div>

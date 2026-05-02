@@ -78,10 +78,7 @@ export function CalendarPage({
   const currentMonthIndex = currentMonth.getMonth();
   const currentMonthIsToday =
     new Date().getFullYear() === currentYear && new Date().getMonth() === currentMonthIndex;
-  const yearOptions = useMemo(
-    () => Array.from({ length: 11 }, (_, index) => new Date().getFullYear() - 5 + index),
-    []
-  );
+  const yearOptions = useMemo(() => Array.from({ length: 101 }, (_, index) => 2000 + index), []);
   const monthOptions = Array.from({ length: 12 }, (_, index) => `${index + 1}月`);
 
   const calendarDays = useMemo(() => {
