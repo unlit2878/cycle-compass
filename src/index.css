@@ -43,6 +43,74 @@
     --weight-section: 700;
     --weight-label: 620;
     --weight-body: 400;
+    --paper-grain:
+      radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.55) 0 0.8px, transparent 1.1px),
+      radial-gradient(circle at 72% 28%, rgba(255, 255, 255, 0.42) 0 0.7px, transparent 1px),
+      radial-gradient(circle at 38% 78%, rgba(96, 79, 55, 0.075) 0 0.65px, transparent 1px),
+      radial-gradient(circle at 84% 86%, rgba(96, 79, 55, 0.05) 0 0.7px, transparent 1.1px);
+    --paper-fibers:
+      repeating-linear-gradient(105deg, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px 8px),
+      repeating-linear-gradient(15deg, rgba(86, 70, 48, 0.038) 0 1px, transparent 1px 11px);
+    --paper-surface:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(246, 242, 235, 0.78) 100%);
+    --paper-surface-strong:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, rgba(255, 253, 249, 0.98) 0%, rgba(242, 237, 228, 0.9) 100%);
+    --paper-green:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, #9bb986 0%, #6f9f58 100%);
+    --paper-green-soft:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, rgba(238, 246, 231, 0.96) 0%, rgba(213, 229, 202, 0.86) 100%);
+    --paper-rose:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, rgba(246, 164, 177, 0.72) 0%, rgba(224, 79, 106, 0.74) 100%);
+    --paper-rose-soft:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, rgba(252, 238, 236, 0.96) 0%, rgba(247, 211, 214, 0.82) 100%);
+    --paper-amber:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, rgba(255, 238, 198, 0.94) 0%, rgba(246, 177, 83, 0.78) 100%);
+    --paper-amber-soft:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, rgba(255, 244, 220, 0.94) 0%, rgba(247, 222, 183, 0.82) 100%);
+    --paper-lavender:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, rgba(211, 205, 251, 0.88) 0%, rgba(156, 143, 225, 0.78) 100%);
+    --paper-lavender-soft:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, rgba(242, 239, 255, 0.95) 0%, rgba(222, 217, 248, 0.82) 100%);
+    --paper-blue-soft:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, rgba(238, 249, 253, 0.94) 0%, rgba(199, 226, 241, 0.82) 100%);
+    --paper-menstrual:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, hsl(var(--phase-menstrual) / 0.34) 0%, hsl(var(--phase-menstrual) / 0.2) 100%);
+    --paper-ovulation:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, hsl(var(--phase-ovulation) / 0.34) 0%, hsl(var(--phase-ovulation) / 0.18) 100%);
+    --paper-luteal:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, hsl(var(--phase-luteal) / 0.55) 0%, hsl(var(--phase-luteal) / 0.28) 100%);
+    --paper-neutral:
+      var(--paper-grain),
+      var(--paper-fibers),
+      linear-gradient(135deg, rgba(248, 247, 244, 0.9) 0%, rgba(232, 226, 217, 0.72) 100%);
   }
 
   .dark {
@@ -97,12 +165,32 @@
 
   button {
     -webkit-tap-highlight-color: transparent;
+    transition:
+      transform 160ms ease,
+      box-shadow 160ms ease,
+      filter 160ms ease;
   }
 }
 
 @layer utilities {
   .page-enter {
     animation: page-fade-in 220ms ease-out;
+  }
+
+  .paper-fill-surface {
+    background: var(--paper-surface);
+  }
+
+  .paper-fill-green {
+    background: var(--paper-green);
+  }
+
+  .paper-fill-green-soft {
+    background: var(--paper-green-soft);
+  }
+
+  .paper-fill-rose {
+    background: var(--paper-rose);
   }
 
   @keyframes page-fade-in {
@@ -172,7 +260,7 @@
   width: 92px;
   height: 92px;
   border-radius: 50%;
-  background: #ffdba9;
+  background: var(--paper-amber-soft);
   opacity: 0.72;
 }
 
@@ -182,7 +270,7 @@
   width: 110px;
   height: 110px;
   border-radius: 50%;
-  background: #cfe5f3;
+  background: var(--paper-blue-soft);
   opacity: 0.72;
 }
 
@@ -195,19 +283,19 @@
 .decor-dot-one {
   top: 154px;
   right: 150px;
-  background: #d9e7d2;
+  background: var(--paper-green-soft);
 }
 
 .decor-dot-two {
   top: 188px;
   right: 92px;
-  background: #d6d9fb;
+  background: var(--paper-lavender-soft);
 }
 
 .decor-dot-three {
   top: 254px;
   right: 45px;
-  background: #f8bc69;
+  background: var(--paper-amber);
 }
 
 .decor-leaf-one {
@@ -253,7 +341,7 @@
   left: -60px;
   width: 102px;
   height: 102px;
-  background: #dfe4ff;
+  background: var(--paper-lavender-soft);
 }
 
 .page-header {
@@ -309,7 +397,7 @@
   justify-content: center;
   border: 0;
   color: #719b5f;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--paper-surface);
   box-shadow: 0 10px 30px rgba(134, 118, 89, 0.12);
   backdrop-filter: blur(14px);
 }
@@ -401,7 +489,7 @@
   justify-content: center;
   border-radius: 50%;
   color: #fff;
-  background: linear-gradient(135deg, #92b779 0%, #6f9f58 100%);
+  background: var(--paper-green);
   box-shadow: 0 12px 22px rgba(86, 125, 66, 0.32);
 }
 
@@ -422,7 +510,7 @@
   height: 58px;
   margin: 0 auto 14px;
   border-radius: 50%;
-  background: #8caf73;
+  background: var(--paper-green);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -511,11 +599,11 @@
   opacity: 0.86;
 }
 
-.dotted-ring .phase-menstrual { background: hsl(var(--phase-menstrual)); }
-.dotted-ring .phase-follicular { background: hsl(var(--phase-follicular)); }
-.dotted-ring .phase-ovulation { background: hsl(var(--phase-ovulation)); }
-.dotted-ring .phase-luteal { background: hsl(var(--phase-luteal)); }
-.dotted-ring .phase-neutral { background: hsl(var(--phase-neutral)); }
+.dotted-ring .phase-menstrual { background: var(--paper-rose); }
+.dotted-ring .phase-follicular { background: var(--paper-green); }
+.dotted-ring .phase-ovulation { background: var(--paper-amber); }
+.dotted-ring .phase-luteal { background: var(--paper-lavender); }
+.dotted-ring .phase-neutral { background: var(--paper-neutral); }
 
 .ring-current-dot {
   position: absolute;
@@ -525,7 +613,7 @@
   height: 19px;
   border: 5px solid #7aa46c;
   border-radius: 50%;
-  background: #fffdf9;
+  background: var(--paper-surface-strong);
 }
 
 .ring-current-dot.phase-menstrual { border-color: hsl(var(--phase-menstrual)); }
@@ -591,7 +679,7 @@
   border: 0;
   border-radius: 25px;
   color: #fff;
-  background: #8ead78;
+  background: var(--paper-green);
   box-shadow: 0 8px 16px rgba(94, 131, 74, 0.2);
   font-size: 14px;
   font-weight: 500;
@@ -673,6 +761,13 @@
   height: 34px;
   margin-right: -7px;
   color: #7e776e;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+}
+
+.inline-section-title .icon-action:active {
+  background: rgba(239, 235, 228, 0.7);
 }
 
 .status-scroll {
@@ -717,7 +812,7 @@
 
 .status-chip.active span {
   color: #fff;
-  background: #7faa6d;
+  background: var(--paper-green);
   box-shadow: 0 8px 18px rgba(91, 130, 70, 0.18);
 }
 
@@ -766,6 +861,7 @@
   color: inherit;
   background: transparent;
   text-align: left;
+  box-shadow: none;
 }
 
 .recent-card.empty {
@@ -894,7 +990,7 @@
   padding: 0 10px;
   border-radius: 999px;
   color: #719b5f;
-  background: rgba(236, 244, 230, 0.86);
+  background: var(--paper-green-soft);
   font-size: 13px;
   font-weight: 650;
   white-space: nowrap;
@@ -916,8 +1012,8 @@
   margin-top: 18px;
   padding: 14px 16px;
   border-radius: 22px;
-  background: rgba(250, 249, 246, 0.88);
-  box-shadow: inset 0 0 0 1px rgba(230, 226, 219, 0.46);
+  background: transparent;
+  box-shadow: none;
 }
 
 .day-log-panel span,
@@ -946,7 +1042,7 @@
   border: 0;
   border-radius: 50%;
   color: #76808a;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--paper-surface-strong);
   box-shadow: 0 8px 18px rgba(126, 111, 95, 0.08);
 }
 
@@ -958,11 +1054,11 @@
   max-width: 360px;
   border: 0;
   border-radius: 24px;
-  background: #fffdf9;
+  background: var(--paper-surface-strong);
 }
 
 .record-confirm-dialog button:last-child {
-  background: #de4968;
+  background: var(--paper-rose);
 }
 
 .record-section {
@@ -999,7 +1095,7 @@
   padding: 12px 16px;
   border-radius: 18px;
   color: #6f7882;
-  background: rgba(247, 246, 243, 0.72);
+  background: transparent;
   font-size: 13px;
 }
 
@@ -1036,7 +1132,7 @@
 
 .period-toggle button.selected {
   color: #de4968;
-  background: rgba(247, 229, 226, 0.76);
+  background: var(--paper-rose-soft);
 }
 
 .period-toggle button.selected span {
@@ -1123,7 +1219,7 @@
 
 .symptom-grid .circle-option.selected.lavender .option-icon {
   color: #fff;
-  background: #a99ae5;
+  background: var(--paper-lavender);
   box-shadow: 0 8px 18px rgba(116, 98, 192, 0.16);
 }
 
@@ -1133,7 +1229,7 @@
 
 .mood-grid .circle-option.selected.green .option-icon {
   color: #fff;
-  background: #7faa6d;
+  background: var(--paper-green);
   box-shadow: 0 8px 18px rgba(91, 130, 70, 0.18);
 }
 
@@ -1142,6 +1238,8 @@
   width: 31px;
   height: 31px;
   border-radius: 50%;
+  background-image: var(--paper-grain), var(--paper-fibers);
+  background-blend-mode: soft-light, multiply;
 }
 
 .symptom-grid {
@@ -1169,8 +1267,8 @@
   border-radius: 24px;
   padding: 18px 20px 28px;
   color: #3c4249;
-  background: rgba(250, 249, 246, 0.88);
-  box-shadow: inset 0 0 0 1px rgba(230, 226, 219, 0.38);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(230, 226, 219, 0.62);
   outline: none;
 }
 
@@ -1193,7 +1291,7 @@
   margin: 8px auto 38px;
   padding: 5px;
   border-radius: 22px;
-  background: rgba(239, 236, 230, 0.72);
+  background: var(--paper-neutral);
   box-shadow: inset 0 2px 8px rgba(126, 113, 96, 0.06);
 }
 
@@ -1209,7 +1307,7 @@
 
 .segmented-control button.active {
   color: #6c9c58;
-  background: #fff;
+  background: var(--paper-surface-strong);
   box-shadow: 0 8px 18px rgba(126, 113, 96, 0.08);
 }
 
@@ -1220,15 +1318,27 @@
   margin-bottom: 30px;
 }
 
-.calendar-month-control button {
+.calendar-month-control > button {
   display: flex;
   width: 44px;
   height: 44px;
   align-items: center;
   justify-content: center;
   border: 0;
+  border-radius: 50%;
   color: #9da2a7;
   background: transparent;
+  box-shadow: none;
+}
+
+.calendar-month-control > button:active {
+  background: rgba(239, 235, 228, 0.7);
+}
+
+.calendar-month-control > button:focus,
+.calendar-month-control > button:focus-visible {
+  outline: none;
+  background: rgba(239, 235, 228, 0.7);
 }
 
 .calendar-month-control svg {
@@ -1251,11 +1361,11 @@
 
 .calendar-select-trigger {
   width: auto;
-  min-width: 112px;
+  min-width: 124px;
   height: 34px;
   border: 0;
   border-radius: 0;
-  padding: 0;
+  padding: 0 8px;
   color: #101418;
   background: transparent;
   box-shadow: none;
@@ -1264,7 +1374,7 @@
 }
 
 .calendar-select-trigger.month {
-  min-width: 58px;
+  min-width: 74px;
 }
 
 .calendar-select-trigger svg {
@@ -1275,8 +1385,16 @@
 }
 
 .calendar-select-trigger:focus,
-.calendar-select-trigger:focus-visible,
+.calendar-select-trigger:focus-visible {
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+}
+
 .calendar-select-trigger[data-state="open"] {
+  border-radius: 14px;
+  padding-inline: 12px;
+  background: rgba(239, 235, 228, 0.7);
   outline: none;
   box-shadow: none;
 }
@@ -1356,23 +1474,23 @@
 
 .calendar-day.period {
   color: hsl(var(--phase-menstrual));
-  background: hsl(var(--phase-menstrual) / 0.24);
+  background: var(--paper-menstrual);
 }
 
 .calendar-day.predicted-period {
   border: 1px dashed hsl(var(--phase-menstrual) / 0.52);
   color: hsl(var(--phase-menstrual));
-  background: hsl(var(--phase-menstrual) / 0.07);
+  background: var(--paper-rose-soft);
 }
 
 .calendar-day.ovulation {
   color: hsl(var(--phase-ovulation));
-  background: hsl(var(--phase-ovulation) / 0.22);
+  background: var(--paper-ovulation);
 }
 
 .calendar-day.selected {
   color: #fff;
-  background: #7aa169;
+  background: var(--paper-green);
   box-shadow: 0 8px 18px rgba(93, 125, 73, 0.2);
 }
 
@@ -1415,7 +1533,7 @@
 .calendar-day.muted.period,
 .calendar-day.muted.period.selected {
   color: hsl(var(--phase-menstrual));
-  background: hsl(var(--phase-menstrual) / 0.24);
+  background: var(--paper-menstrual);
   box-shadow: none;
 }
 
@@ -1423,14 +1541,14 @@
 .calendar-day.muted.predicted-period.selected {
   border: 1px dashed hsl(var(--phase-menstrual) / 0.52);
   color: hsl(var(--phase-menstrual));
-  background: hsl(var(--phase-menstrual) / 0.07);
+  background: var(--paper-rose-soft);
   box-shadow: none;
 }
 
 .calendar-day.muted.ovulation,
 .calendar-day.muted.ovulation.selected {
   color: hsl(var(--phase-ovulation));
-  background: hsl(var(--phase-ovulation) / 0.22);
+  background: var(--paper-ovulation);
   box-shadow: none;
 }
 
@@ -1451,11 +1569,11 @@
 }
 
 .fertile-dot {
-  background: hsl(var(--phase-luteal));
+  background: var(--paper-lavender);
 }
 
 .log-dot {
-  background: hsl(var(--phase-follicular));
+  background: var(--paper-green);
 }
 
 .calendar-legend {
@@ -1484,12 +1602,12 @@
   border-radius: 50%;
 }
 
-.legend-period { background: hsl(var(--phase-menstrual)); }
-.legend-ovulation { background: hsl(var(--phase-ovulation)); }
-.legend-fertile { background: hsl(var(--phase-luteal)); }
+.legend-period { background: var(--paper-rose); }
+.legend-ovulation { background: var(--paper-amber); }
+.legend-fertile { background: var(--paper-lavender); }
 .legend-predicted {
   border: 1px dashed hsl(var(--phase-menstrual) / 0.52);
-  background: hsl(var(--phase-menstrual) / 0.07);
+  background: var(--paper-rose-soft);
 }
 
 .calendar-help {
@@ -1501,7 +1619,7 @@
   border: 0;
   border-radius: 50%;
   color: #88909a;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--paper-surface);
 }
 
 .phase-help-dialog {
@@ -1560,9 +1678,10 @@
   justify-content: center;
   margin: 0 auto 14px;
   border: 0;
-  border-radius: 50%;
+  border-radius: 12px;
   color: #9aa1a9;
   background: transparent;
+  box-shadow: none;
 }
 
 .detail-caret svg {
@@ -1573,6 +1692,7 @@
 
 .detail-caret:active {
   transform: scale(0.94);
+  background: rgba(239, 235, 228, 0.7);
 }
 
 .calendar-detail {
@@ -1608,16 +1728,27 @@
   padding: 4px 10px;
   border-radius: 12px;
   color: #6f9d5b;
-  background: rgba(148, 182, 132, 0.24);
+  background: var(--paper-green-soft);
   font-size: 14px;
   font-style: normal;
   font-weight: 700;
 }
 
 .calendar-detail-head button {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
   border: 0;
+  border-radius: 50%;
   color: #7e776e;
   background: transparent;
+  box-shadow: none;
+}
+
+.calendar-detail-head button:active {
+  background: rgba(239, 235, 228, 0.7);
 }
 
 .today-status.compact {
@@ -1646,7 +1777,7 @@
   border: 0;
   border-radius: 999px;
   color: #719b5f;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--paper-surface-strong);
   box-shadow: 0 10px 26px rgba(87, 81, 70, 0.12);
   backdrop-filter: blur(14px);
   font-size: 13px;
@@ -1665,13 +1796,13 @@
   border: 0;
   border-radius: 22px;
   color: #697078;
-  background: rgba(247, 245, 240, 0.78);
+  background: var(--paper-surface);
   font-weight: 700;
 }
 
 .year-placeholder button.active {
   color: #fff;
-  background: #86a975;
+  background: var(--paper-green);
 }
 
 .insight-stat-row {
@@ -1728,7 +1859,7 @@
   bottom: -11px;
   height: 3px;
   border-radius: 999px;
-  background: #7aa66b;
+  background: var(--paper-green);
 }
 
 .insights-year-rail {
@@ -1767,7 +1898,7 @@
   bottom: 0;
   height: 2px;
   border-radius: 999px;
-  background: currentColor;
+  background: var(--paper-green);
 }
 
 .insights-year-rail span {
@@ -1777,6 +1908,22 @@
 
 .stat-item {
   min-width: 0;
+}
+
+.stat-item.pink {
+  background: transparent;
+}
+
+.stat-item.red {
+  background: transparent;
+}
+
+.stat-item.orange {
+  background: transparent;
+}
+
+.stat-item.green {
+  background: transparent;
 }
 
 .stat-item div {
@@ -1814,10 +1961,10 @@
 
 .stat-item i {
   display: block;
-  height: 7px;
+  height: 4px;
   margin-top: 20px;
   border-radius: 999px;
-  background: #83aa72;
+  background: var(--paper-green);
 }
 
 .stat-item.pink svg { color: #ed7185; }
@@ -1862,13 +2009,17 @@
   border: 0;
   border-radius: 50%;
   color: #8d95a1;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 10px 24px rgba(87, 81, 70, 0.1);
+  background: transparent;
+  box-shadow: none;
 }
 
 .analysis-filter-button.active {
   color: #719b5f;
   background: rgba(236, 244, 230, 0.92);
+}
+
+.analysis-filter-button:active {
+  background: rgba(239, 235, 228, 0.7);
 }
 
 .chart-legend {
@@ -1892,8 +2043,8 @@
   border-radius: 999px;
 }
 
-.chart-legend .pink { height: 8px; width: 12px; background: #ec7890; }
-.chart-legend .green-line { background: #9fbd91; }
+.chart-legend .pink { height: 8px; width: 12px; background: var(--paper-rose); }
+.chart-legend .green-line { background: var(--paper-green); }
 .chart-legend .orange-dash { border-top: 1px dashed #ef9e2f; }
 
 .cycle-bar-chart {
@@ -1932,7 +2083,7 @@
   padding: 3px 8px;
   border-radius: 7px;
   color: #e75e78;
-  background: rgba(240, 118, 137, 0.13);
+  background: var(--paper-rose-soft);
   font-size: 13px;
   font-style: normal;
   font-weight: 700;
@@ -1953,21 +2104,23 @@
 
 .bar-track {
   position: relative;
-  height: 10px;
-  border-top: 1px solid rgba(230, 220, 213, 0.9);
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--paper-neutral);
 }
 
 .bar-track i {
   position: absolute;
   left: 0;
-  top: -2px;
+  top: 0;
   display: block;
-  height: 3px;
+  height: 100%;
   border-radius: 999px;
 }
 
-.cycle-length { background: #a8c199; }
-.period-length { background: #e98195; }
+.cycle-length { background: var(--paper-green); }
+.period-length { background: var(--paper-rose); }
 
 .cycle-row-body strong {
   color: #7a828c;
@@ -2013,17 +2166,17 @@
 }
 
 .health-progress {
-  height: 7px;
+  height: 4px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(230, 226, 218, 0.85);
+  background: var(--paper-neutral);
 }
 
 .health-progress i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #88ad77;
+  background: var(--paper-green);
 }
 
 .health-section p,
@@ -2069,14 +2222,14 @@
   border: 0;
   border-radius: 50%;
   color: #8b938f;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--paper-surface);
 }
 
 .figo-dialog {
   max-width: 360px;
   border: 0;
   border-radius: 24px;
-  background: #fffdf9;
+  background: var(--paper-surface-strong);
 }
 
 .figo-dialog-body {
@@ -2106,7 +2259,7 @@
   padding: 16px 18px;
   border-radius: 20px;
   color: #77808a;
-  background: rgba(248, 241, 229, 0.76);
+  background: var(--paper-amber-soft);
 }
 
 .method-card svg {
@@ -2151,12 +2304,12 @@
   margin: 0 auto 10px;
   border-radius: 50%;
   color: #85a978;
-  background: rgba(239, 239, 232, 0.86);
+  background: var(--paper-green-soft);
 }
 
 .prediction-metrics div:nth-child(3) span {
   color: #f2a93b;
-  background: rgba(252, 238, 213, 0.86);
+  background: var(--paper-amber-soft);
 }
 
 .prediction-metrics p,
@@ -2273,7 +2426,7 @@
   max-width: 370px;
   border: 0;
   border-radius: 24px;
-  background: #fffdf9;
+  background: var(--paper-surface-strong);
 }
 
 .import-help-body {
@@ -2295,7 +2448,7 @@
   padding: 14px;
   border-radius: 14px;
   color: #46505a;
-  background: rgba(244, 241, 235, 0.86);
+  background: var(--paper-neutral);
   font-size: 11px;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -2306,7 +2459,7 @@
   border: 0;
   border-radius: 999px;
   color: #fff;
-  background: #7faa6d;
+  background: var(--paper-green);
   box-shadow: 0 8px 18px rgba(91, 130, 70, 0.16);
   font-size: 14px;
   font-weight: 650;
@@ -2336,7 +2489,7 @@
   border: 0;
   border-radius: 16px;
   color: #182027;
-  background: rgba(244, 241, 235, 0.92);
+  background: var(--paper-neutral);
   text-align: center;
   font-size: 16px;
   font-weight: 700;

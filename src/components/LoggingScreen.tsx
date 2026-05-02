@@ -345,7 +345,7 @@ export function LoggingScreen({
               }}
             >
               <span className="option-icon">
-                <i style={{ background: option.color }} />
+                <i style={{ backgroundColor: option.color }} />
               </span>
               <span>{option.label}</span>
             </button>
