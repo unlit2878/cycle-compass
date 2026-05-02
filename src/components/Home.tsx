@@ -1,20 +1,51 @@
-import { useMemo, useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { PhaseInfo, getPhaseEmoji, getPhaseName, getPhaseDescription, formatDisplayDate, formatDate, isBackupOverdue, getDaysSinceBackup, getMenstrualTip, parseLocalDate } from '@/lib/cycle-utils';
-import { Settings, CycleData } from '@/lib/db';
-import { AlertCircle } from 'lucide-react';
-import { zh } from '@/lib/i18n';
-import { predictNextCycle } from '@/lib/prediction-utils';
+import { ComponentType, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Droplet,
+  Pencil,
+  Smile,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
+import { PageShell } from '@/components/AppScaffold';
+import { emptyMoodLabel, getNextMoodSelection, moodOptionIcons } from '@/components/mood-options';
+import { CycleModel } from '@/lib/cycle-engine';
+import {
+  CyclePhase,
+  findPeriodCycleForDate,
+  formatDate,
+  getCyclePhase,
+  getDayInCycleForDate,
+  getDaysSinceBackup,
+  getOvulationDay,
+  getPhaseName,
+  isBackupOverdue,
+  parseLocalDate,
+} from '@/lib/cycle-utils';
+import { CycleData, DailyLog, Settings } from '@/lib/db';
+import { dateFromISO, formatShortCN, getFlowLabel, moodOptions, weekdayCN } from '@/lib/ui-model';
+
+type IconComponent = ComponentType<{ className?: string }>;
 
 interface HomeProps {
-  phaseInfo: PhaseInfo | null;
   settings: Settings | null;
+  cycleModel: CycleModel | null;
   cycles: CycleData[];
+  dailyLogs: DailyLog[];
   onDaySelect: (date: string) => void;
+  onMoodSelect: (date: string, mood: string | undefined) => void;
   onBackupReminder: () => void;
 }
 
-export function Home({ phaseInfo, settings, cycles, onDaySelect, onBackupReminder }: HomeProps) {
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onMoodSelect, onBackupReminder }: HomeProps) {
+  const navigate = useNavigate();
+  const today = useMemo(() => new Date(), []);
+  const todayStr = formatDate(today);
+  const todayLog = dailyLogs.find((log) => log.date === todayStr);
+  const latestLog = [...dailyLogs].reverse().find((log) => log.flowIntensity || log.mood || log.symptoms?.length);
+
   const backupOverdue = useMemo(() => {
     if (!settings) return false;
     return isBackupOverdue(settings.lastBackupDate, settings.backupReminderInterval);
@@ -26,205 +57,381 @@ export function Home({ phaseInfo, settings, cycles, onDaySelect, onBackupReminde
     return days === Infinity ? null : days;
   }, [settings]);
 
-  // 使用统计预测获取下次经期日期（与统计页面统一）
-  const { nextPeriodDate, predictedCycleLength } = useMemo(() => {
-    if (!phaseInfo || !settings?.lastPeriodStart) return { nextPeriodDate: null, predictedCycleLength: 28 };
-    
-    // 使用预测工具计算周期长度
-    const prediction = predictNextCycle(cycles);
-    const cycleLength = cycles.length >= 2 ? prediction.predictedCycleLength : settings.averageCycleLength;
-    
-    const lastStart = parseLocalDate(settings.lastPeriodStart);
-    const nextStart = new Date(lastStart);
-    const today = new Date();
-    today.setHours(12, 0, 0, 0);
-    while (nextStart <= today) {
-      nextStart.setDate(nextStart.getDate() + cycleLength);
-    }
-    
-    return { nextPeriodDate: nextStart, predictedCycleLength: cycleLength };
-  }, [phaseInfo, settings, cycles]);
+  const nextStart = cycleModel?.nextPeriodRange?.startDate || null;
+  const daysUntil = nextStart
+    ? Math.max(0, Math.ceil((nextStart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+    : cycleModel?.currentPhase?.daysUntilNextPeriod || settings?.averageCycleLength || 28;
+  const cycleLength = Math.max(1, Math.round(cycleModel?.effectiveCycleLength || settings?.averageCycleLength || 28));
+  const currentCycleDay = cycleModel?.currentPhase
+    ? ((cycleModel.currentPhase.dayInCycle - 1) % cycleLength + cycleLength) % cycleLength + 1
+    : 1;
+  const actualPeriodToday = Boolean(cycleModel?.periodDateSet.has(todayStr));
+  const expectedStart = cycleModel?.lastPeriodStartDateStr
+    ? getMostRecentExpectedStart(cycleModel.lastPeriodStartDateStr, cycleLength, today)
+    : null;
+  const lateDays = expectedStart && !actualPeriodToday
+    ? Math.floor((atNoon(today).getTime() - expectedStart.getTime()) / DAY_MS)
+    : null;
+  const periodDay = cycleModel?.currentPhase?.phase === 'menstrual'
+    ? cycleModel.currentPhase.phaseDay
+    : currentCycleDay;
+  const heroCopy = getHeroCopy({
+    actualPeriodToday,
+    lateDays,
+    periodDay,
+    daysUntil,
+    nextStart,
+  });
+  const heroPhaseName = getHeroPhaseName(
+    cycleModel?.currentPhase?.phase,
+    cycleModel?.currentPhase?.phaseDay,
+    actualPeriodToday
+  );
 
-  // 生成本周预览
-  const weekPreview = useMemo(() => {
-    if (!phaseInfo || !settings?.lastPeriodStart) return [];
-    
-    const days = [];
-    const today = new Date();
-    
-    // 使用预测的周期长度
-    const cycleLength = predictedCycleLength;
-    const lastStart = parseLocalDate(settings.lastPeriodStart);
-    
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() + i);
-      
-      const dateAtNoon = new Date(date);
-      dateAtNoon.setHours(12, 0, 0, 0);
-      const diffFromStart = Math.floor((dateAtNoon.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24));
-      const dayInCycle = (diffFromStart % cycleLength) + 1;
-      const ovulationDay = Math.round(cycleLength - 14);
-      
-      let phase: 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
-      if (dayInCycle <= settings.averagePeriodLength) {
-        phase = 'menstrual';
-      } else if (dayInCycle < ovulationDay - 2) {
-        phase = 'follicular';
-      } else if (dayInCycle <= ovulationDay + 2) {
-        phase = 'ovulation';
-      } else {
-        phase = 'luteal';
-      }
-      
-      days.push({
-        date,
-        dateStr: formatDate(date),
-        dayName: zh.calendar.weekdays[date.getDay()],
-        dayNum: date.getDate(),
-        phase,
-        isToday: i === 0,
-      });
-    }
-    
-    return days;
-  }, [phaseInfo, settings, predictedCycleLength]);
+  const fertilityWindow = cycleModel?.nextFertilityWindow || null;
 
-  const phaseColorClass = {
-    menstrual: 'bg-phase-menstrual',
-    follicular: 'bg-phase-follicular',
-    ovulation: 'bg-phase-ovulation',
-    luteal: 'bg-phase-luteal',
-  };
+  const statusItems: Array<{ label: string; icon: IconComponent; active: boolean }> = moodOptions.map((label, index) => ({
+    label,
+    icon: moodOptionIcons[index] || Smile,
+    active: todayLog?.mood === label,
+  }));
+  const latestCycleLabel =
+    settings && cycleModel && latestLog
+      ? getCycleLabelForDate(latestLog.date, settings, cycleModel, cycles)
+      : '';
 
-  const phaseRingColor = {
-    menstrual: 'stroke-phase-menstrual',
-    follicular: 'stroke-phase-follicular',
-    ovulation: 'stroke-phase-ovulation',
-    luteal: 'stroke-phase-luteal',
-  };
-
-  if (!phaseInfo || !settings) {
+  if (!settings || !cycleModel) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="text-center text-muted-foreground">{zh.common.loading}</div>
-      </div>
+      <PageShell title="早上好" subtitle="每一次记录，都是对自己的关爱" decor="home">
+        <div className="empty-state">正在加载你的周期数据...</div>
+      </PageShell>
     );
   }
 
-  const progressPercentage = (phaseInfo.phaseDay / phaseInfo.phaseTotalDays) * 100;
-  const circumference = 2 * Math.PI * 90;
-  const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
-
   return (
-    <div className="min-h-screen pb-24 px-4 pt-6 gradient-soft page-enter">
-      {/* 备份提醒 */}
+    <PageShell
+      title="早上好"
+      subtitle="每一次记录，都是对自己的关爱"
+      decor="home"
+      className="home-screen"
+    >
       {backupOverdue && (
-        <button
-          onClick={onBackupReminder}
-          className="w-full mb-4 p-3 rounded-xl bg-warning/10 border border-warning/30 flex items-center gap-3 text-left btn-press card-hover"
-        >
-          <AlertCircle className="w-5 h-5 text-warning flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-foreground">建议备份数据</p>
-            <p className="text-xs text-muted-foreground">
-              {daysSinceBackup === null 
-                ? zh.home.neverBackedUp
-                : `${zh.home.backupReminder} ${daysSinceBackup} ${zh.home.daysAgo}`}
-            </p>
-          </div>
+        <button type="button" className="backup-reminder" onClick={onBackupReminder}>
+          <span>建议备份数据</span>
+          <small>
+            {daysSinceBackup === null ? '你还没有备份过' : `上次备份 ${daysSinceBackup} 天前`}，去设置导出备份
+          </small>
         </button>
       )}
 
-      {/* 阶段圆环 */}
-      <div className="flex flex-col items-center mb-8">
-        <div className="relative w-56 h-56">
-          {/* 背景圆环 */}
-          <svg className="w-full h-full transform -rotate-90">
-            <circle
-              cx="112"
-              cy="112"
-              r="90"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="12"
-              className="text-muted/50"
-            />
-            <circle
-              cx="112"
-              cy="112"
-              r="90"
-              fill="none"
-              strokeWidth="12"
-              strokeLinecap="round"
-              className={phaseRingColor[phaseInfo.phase]}
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-            />
-          </svg>
-          
-          {/* 中心内容 */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-5xl mb-1">{getPhaseEmoji(phaseInfo.phase, settings?.customPhaseEmojis)}</span>
-            <span className="text-2xl font-bold text-foreground">第 {phaseInfo.dayInCycle} 天</span>
-            <span className="text-sm text-muted-foreground">{getPhaseName(phaseInfo.phase)}</span>
+      <section className="cycle-hero">
+        <DottedCycleRing today={today} cycleModel={cycleModel} />
+        <div className="cycle-hero-center">
+          <span>{heroCopy.label}</span>
+          <strong className={heroCopy.compact ? 'compact' : undefined}>
+            {heroCopy.value}
+            {heroCopy.unit && <small>{heroCopy.unit}</small>}
+          </strong>
+          {heroCopy.detail && <em>{heroCopy.detail}</em>}
+          <button type="button" onClick={() => onDaySelect(todayStr)}>
+            记录今天
+          </button>
+          <div className="hero-phase-summary">
+            <b>{heroPhaseName}</b>
           </div>
         </div>
-        
-        <p className="text-center text-muted-foreground mt-4 max-w-xs">
-          {getPhaseDescription(phaseInfo.phase, phaseInfo.phaseDay)}
-        </p>
-      </div>
+      </section>
 
-      {/* 下次经期卡片 */}
-      {nextPeriodDate && (
-        <Card className="mb-6 border-0 shadow-lg overflow-hidden card-hover">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">{zh.home.periodExpected}</p>
-              <p className="text-xl font-semibold text-foreground">
-                {phaseInfo.daysUntilNextPeriod === 1 
-                  ? '明天' 
-                  : phaseInfo.daysUntilNextPeriod <= 0 
-                    ? '今天或即将到来'
-                    : `${phaseInfo.daysUntilNextPeriod} ${zh.home.daysUntil}`}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-primary">
-                {formatDisplayDate(nextPeriodDate)}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      {fertilityWindow && (
+        <div className="phase-range-row">
+          <div>
+            <span>排卵期</span>
+            <strong>
+              {formatShortCN(fertilityWindow.ovulationRange.startDate).replace('月', '.').replace('日', '')} -{' '}
+              {formatShortCN(fertilityWindow.ovulationRange.endDate).replace('月', '.').replace('日', '')}
+            </strong>
+          </div>
+          <div>
+            <span>易孕期</span>
+            <strong>
+              {formatShortCN(fertilityWindow.fertileRange.startDate).replace('月', '.').replace('日', '')} -{' '}
+              {formatShortCN(fertilityWindow.fertileRange.endDate).replace('月', '.').replace('日', '')}
+            </strong>
+          </div>
+        </div>
       )}
 
-      {/* 本周预览 */}
-      <Card className="mb-6 border-0 shadow-lg card-hover">
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground mb-3">{zh.home.weekPreview}</p>
-          <div className="flex justify-between">
-            {weekPreview.map((day, i) => (
-              <button
-                key={i}
-                onClick={() => onDaySelect(day.dateStr)}
-                className="flex flex-col items-center gap-1 transition-transform active:scale-95"
-              >
-                <span className="text-xs text-muted-foreground">{day.dayName}</span>
-                <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 hover:scale-110 ${
-                    day.isToday 
-                      ? `${phaseColorClass[day.phase]} text-white ring-2 ring-offset-2 ring-primary` 
-                      : `${phaseColorClass[day.phase]}/20 text-foreground`
-                  }`}
-                >
-                  {day.dayNum}
-                </div>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <section className="today-status">
+        <div className="inline-section-title">
+          <h2>今日心情</h2>
+          <button type="button" className="icon-action" onClick={() => onDaySelect(todayStr)} aria-label="编辑今日记录">
+            <Pencil className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="status-scroll">
+          {statusItems.map((item) => (
+            <button
+              type="button"
+              key={item.label}
+              className={`status-chip ${item.active ? 'active' : ''}`}
+              aria-pressed={item.active}
+              onClick={() => onMoodSelect(todayStr, getNextMoodSelection(todayLog?.mood, item.label))}
+            >
+              <span>
+                <item.icon className="h-6 w-6" />
+              </span>
+              <small>{item.label}</small>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="care-tip">
+        <div className="water-cup" aria-hidden="true" />
+        <p>记得保持好心情，<br />多喝水多休息～</p>
+        <span className="leaf-mark" />
+      </section>
+
+      <section className="recent-record">
+        <div className="inline-section-title">
+          <h2>最近记录</h2>
+          <button type="button" onClick={() => navigate('/calendar')}>
+            查看日历
+            <span>›</span>
+          </button>
+        </div>
+        {latestLog ? (
+          <button type="button" className="recent-card" onClick={() => onDaySelect(latestLog.date)}>
+            <div className="recent-date">
+              <span>
+                {formatShortCN(dateFromISO(latestLog.date))} {weekdayCN(dateFromISO(latestLog.date))}
+              </span>
+              <small>{latestCycleLabel}</small>
+            </div>
+            <div className="recent-metrics">
+              <Metric icon={Droplet} label="流量" value={getFlowLabel(latestLog.flowIntensity)} />
+              <Metric icon={Zap} label="痛经" value={latestLog.symptoms?.[0] || '未记录'} />
+              <Metric icon={Smile} label="情绪" value={latestLog.mood || emptyMoodLabel} />
+            </div>
+          </button>
+        ) : (
+          <button type="button" className="recent-card empty" onClick={() => onDaySelect(todayStr)}>
+            还没有最近记录，今天从一个小状态开始吧。
+          </button>
+        )}
+      </section>
+    </PageShell>
+  );
+}
+
+function DottedCycleRing({
+  today,
+  cycleModel,
+}: {
+  today: Date;
+  cycleModel: CycleModel;
+}) {
+  const count = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const currentIndex = today.getDate() - 1;
+  const radius = 126;
+  const currentAngle = (currentIndex / count) * Math.PI * 2 - Math.PI / 2;
+  const currentX = Math.cos(currentAngle) * radius;
+  const currentY = Math.sin(currentAngle) * radius;
+  const currentPhase = getPhaseForDate(today, cycleModel);
+  const dots = Array.from({ length: count }, (_, index) => {
+    const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    const date = new Date(today.getFullYear(), today.getMonth(), index + 1, 12);
+    const phase = getPhaseForDate(date, cycleModel);
+    const wave = Math.sin((index / Math.max(1, count - 1)) * Math.PI);
+    const size = 4.5 + wave * 4.5;
+
+    return (
+      <i
+        key={index}
+        className={`phase-${phase}`}
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          transform: `translate(${x}px, ${y}px) translate(-50%, -50%)`,
+        }}
+      />
+    );
+  });
+
+  return (
+    <div className="dotted-ring" aria-hidden="true">
+      {dots}
+      <span
+        className={`ring-current-dot phase-${currentPhase}`}
+        style={{ transform: `translate(${currentX}px, ${currentY}px) translate(-50%, -50%)` }}
+      />
+    </div>
+  );
+}
+
+function getHeroCopy({
+  actualPeriodToday,
+  lateDays,
+  periodDay,
+  daysUntil,
+  nextStart,
+}: {
+  actualPeriodToday: boolean;
+  lateDays: number | null;
+  periodDay: number;
+  daysUntil: number;
+  nextStart: Date | null;
+}) {
+  if (actualPeriodToday) {
+    return {
+      label: '经期第',
+      value: String(Math.max(1, periodDay)),
+      unit: '天',
+      detail: '按今天的感受记录就好',
+    };
+  }
+
+  if (lateDays !== null && lateDays >= 0) {
+    return lateDays === 0
+      ? {
+          label: '预计今天开始',
+          value: '今天',
+          unit: '',
+          detail: '还没有标记经期开始',
+          compact: true,
+        }
+      : {
+          label: '比预计晚了',
+          value: String(lateDays),
+          unit: '天',
+          detail: '还没有标记经期开始',
+        };
+  }
+
+  return {
+    label: '距离下次月经还有',
+    value: String(daysUntil),
+    unit: '天',
+    detail: nextStart ? `预计 ${formatShortCN(nextStart)} ${weekdayCN(nextStart)}` : '',
+  };
+}
+
+function getHeroPhaseName(
+  phase: CyclePhase | undefined,
+  phaseDay: number | undefined,
+  actualPeriodToday: boolean
+) {
+  if (!phase) {
+    return '周期阶段待完善';
+  }
+
+  const phaseName = phase === 'menstrual' && !actualPeriodToday ? '预计经期' : getPhaseName(phase);
+  const dayText = phaseDay ? ` · 第 ${Math.max(1, phaseDay)} 天` : '';
+
+  return `${phaseName}${dayText}`;
+}
+
+function getCycleLabelForDate(
+  dateStr: string,
+  settings: Settings,
+  cycleModel: CycleModel,
+  cycles: CycleData[]
+) {
+  const recordedCycle = findPeriodCycleForDate(dateStr, cycles);
+  if (recordedCycle) {
+    const periodDay = Math.floor((parseLocalDate(dateStr).getTime() - parseLocalDate(recordedCycle.startDate).getTime()) / DAY_MS) + 1;
+    return `经期第 ${Math.max(1, periodDay)} 天`;
+  }
+
+  const anchorStart = getLatestCycleStartOnOrBefore(dateStr, settings, cycles);
+  if (!anchorStart) return '周期待完善';
+
+  const dayInCycle = getDayInCycle(dateStr, anchorStart, cycleModel.effectiveCycleLength);
+  const phase = getCyclePhase(dayInCycle, cycleModel.effectiveCycleLength, cycleModel.effectivePeriodLength);
+  const phaseDay = getPhaseDayFromCycleDay(dayInCycle, phase, cycleModel.effectiveCycleLength, cycleModel.effectivePeriodLength);
+  const phaseName = phase === 'menstrual' ? '预计经期' : getPhaseName(phase);
+
+  return `${phaseName}第 ${phaseDay} 天`;
+}
+
+function getLatestCycleStartOnOrBefore(dateStr: string, settings: Settings, cycles: CycleData[]) {
+  const recordedStarts = cycles
+    .map((cycle) => cycle.startDate)
+    .filter((startDate) => startDate <= dateStr)
+    .sort();
+
+  if (recordedStarts.length > 0) return recordedStarts[recordedStarts.length - 1];
+  return settings.lastPeriodStart && settings.lastPeriodStart <= dateStr ? settings.lastPeriodStart : settings.lastPeriodStart;
+}
+
+function getDayInCycle(dateStr: string, startDateStr: string, cycleLength: number) {
+  const diffDays = Math.floor((parseLocalDate(dateStr).getTime() - parseLocalDate(startDateStr).getTime()) / DAY_MS);
+  return ((diffDays % cycleLength) + cycleLength) % cycleLength + 1;
+}
+
+function getPhaseDayFromCycleDay(
+  dayInCycle: number,
+  phase: CyclePhase,
+  cycleLength: number,
+  periodLength: number
+) {
+  const ovulationDay = getOvulationDay(cycleLength);
+
+  switch (phase) {
+    case 'menstrual':
+      return dayInCycle;
+    case 'follicular':
+      return Math.max(1, dayInCycle - periodLength);
+    case 'ovulation':
+      return Math.max(1, dayInCycle - (ovulationDay - 2));
+    case 'luteal':
+      return Math.max(1, dayInCycle - (ovulationDay + 2));
+  }
+}
+
+function getPhaseForDate(date: Date, cycleModel: CycleModel): CyclePhase {
+  const dateStr = formatDate(date);
+
+  if (cycleModel.periodDateSet.has(dateStr) || cycleModel.predictedPeriodDateSet.has(dateStr)) {
+    return 'menstrual';
+  }
+
+  if (!cycleModel.lastPeriodStartDate) {
+    return 'follicular';
+  }
+
+  const dayInCycle = getDayInCycleForDate(date, cycleModel.lastPeriodStartDate, cycleModel.effectiveCycleLength);
+
+  return getCyclePhase(dayInCycle, cycleModel.effectiveCycleLength, cycleModel.effectivePeriodLength);
+}
+
+function getMostRecentExpectedStart(lastPeriodStart: string, cycleLength: number, today: Date): Date | null {
+  const todayAtNoon = atNoon(today);
+  const expected = parseLocalDate(lastPeriodStart);
+  expected.setDate(expected.getDate() + cycleLength);
+
+  if (expected > todayAtNoon) return null;
+
+  while (true) {
+    const next = new Date(expected);
+    next.setDate(next.getDate() + cycleLength);
+    if (next > todayAtNoon) return expected;
+    expected.setDate(expected.getDate() + cycleLength);
+  }
+}
+
+function atNoon(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
+}
+
+function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div>
+      <Icon className="h-7 w-7" />
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }

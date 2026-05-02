@@ -1,920 +1,594 @@
 import { useMemo, useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { 
-  XAxis, YAxis, ResponsiveContainer, BarChart, Bar, Cell, 
-  Tooltip, PieChart, Pie, Legend
-} from 'recharts';
-import { CycleData, DailyLog, Settings } from '@/lib/db';
-import { TrendingUp, Calendar, Activity, Heart, Droplets, Target, Zap, Moon, ChevronDown, Info } from 'lucide-react';
-import { zh } from '@/lib/i18n';
-import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { format, parseISO, differenceInDays, getYear } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
-import { predictNextCycle, evaluatePredictionAccuracy, getMethodName, extractCycleLengths, calculateStdDev } from '@/lib/prediction-utils';
+  Activity,
+  CalendarDays,
+  Heart,
+  Info,
+  Leaf,
+  Target,
+  TrendingUp,
+  type LucideIcon,
+} from 'lucide-react';
+import { PageShell } from '@/components/AppScaffold';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { CycleAnalytics, CycleModel, MetricConfidence } from '@/lib/cycle-engine';
+import { CycleData, DailyLog, Settings } from '@/lib/db';
+import { formatDateCN } from '@/lib/ui-model';
+import {
+  calculateStdDev,
+  evaluatePredictionAccuracy,
+  extractCycleLengths,
+  getMethodName,
+  predictNextCycle,
+  PredictionResult,
+} from '@/lib/prediction-utils';
+import { parseLocalDate } from '@/lib/cycle-utils';
 
 interface InsightsPageProps {
   settings: Settings | null;
   cycles: CycleData[];
   dailyLogs: DailyLog[];
-  statistics: {
-    averageCycleLength: number;
-    averagePeriodLength: number;
-    totalCyclesTracked: number;
-    totalDaysLogged: number;
+  statistics: CycleAnalytics;
+  cycleModel: CycleModel | null;
+}
+
+type TimeRange = 'recent6' | 'recent12' | 'year' | 'all';
+
+interface RangeStats {
+  averageCycleLength: number | null;
+  averagePeriodLength: number | null;
+  totalCyclesTracked: number;
+  cycleLengthRange: { min: number; max: number } | null;
+  periodLengthRange: { min: number; max: number; avg: number } | null;
+  regularity: {
+    score: number | null;
+    mean: number;
+    min: number;
+    max: number;
+    variation: number;
+    stdDev: number;
+    cv: number;
+    sampleSize: number;
+    confidence: MetricConfidence;
+    lengths: number[];
+  } | null;
+}
+
+const DAY_MS = 1000 * 60 * 60 * 24;
+const FIGO_MIN_CYCLE = 24;
+const FIGO_MAX_CYCLE = 38;
+const FIGO_MAX_VARIATION = 9;
+const FIGO_MAX_PERIOD = 8;
+
+export function InsightsPage({ cycles }: InsightsPageProps) {
+  const [timeRange, setTimeRange] = useState<TimeRange>('recent6');
+  const years = useMemo(() => getAvailableYears(cycles), [cycles]);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const activeYear = selectedYear ?? years[0] ?? new Date().getFullYear();
+
+  const filteredCycles = useMemo(
+    () => filterCycles(cycles, timeRange, activeYear),
+    [activeYear, cycles, timeRange]
+  );
+  const rangeStats = useMemo(() => buildRangeStats(filteredCycles), [filteredCycles]);
+  const chartRows = useMemo(() => buildChartRows(filteredCycles, rangeStats), [filteredCycles, rangeStats]);
+  const prediction = useMemo(
+    () => (extractCycleLengths(filteredCycles).length > 0 ? predictNextCycle(filteredCycles) : null),
+    [filteredCycles]
+  );
+  const predictionAccuracy = useMemo(() => evaluatePredictionAccuracy(filteredCycles), [filteredCycles]);
+  const recentPredictions = predictionAccuracy.predictions.slice(-6).reverse();
+  const healthMessages = getHealthMessages(rangeStats);
+  const hasCycles = filteredCycles.length > 0;
+
+  return (
+    <PageShell
+      title="趋势"
+      subtitle="了解身体的变化，掌握周期规律"
+      decor="insights"
+      className="insights-screen"
+    >
+      <section className="insights-range-panel" aria-label="时间范围">
+        <div className="insights-range-tabs">
+          {[
+            { value: 'recent6', label: '最近 6' },
+            { value: 'recent12', label: '最近 12' },
+            { value: 'year', label: '按年份' },
+            { value: 'all', label: '全部' },
+          ].map((item) => (
+            <button
+              type="button"
+              key={item.value}
+              className={timeRange === item.value ? 'active' : undefined}
+              onClick={() => setTimeRange(item.value as TimeRange)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {timeRange === 'year' && (
+          <div className="insights-year-rail" aria-label="年份筛选">
+            {years.length > 0 ? (
+              years.map((year) => (
+                <button
+                  type="button"
+                  key={year}
+                  className={activeYear === year ? 'active' : undefined}
+                  onClick={() => setSelectedYear(year)}
+                >
+                  {year}
+                </button>
+              ))
+            ) : (
+              <span>暂无年份</span>
+            )}
+          </div>
+        )}
+      </section>
+
+      {!hasCycles ? (
+        <section className="analysis-section">
+          <div className="empty-state">还没有可分析的周期记录。继续记录经期开始和结束后，这里会显示真实趋势。</div>
+        </section>
+      ) : (
+        <>
+          <section className="insight-stat-row">
+            <StatItem
+              icon={CalendarDays}
+              label="平均周期"
+              value={formatStatValue(rangeStats.averageCycleLength)}
+              unit={rangeStats.averageCycleLength === null ? '' : '天'}
+              desc={formatCycleRange(rangeStats.cycleLengthRange)}
+              tone="pink"
+            />
+            <StatItem
+              icon={Activity}
+              label="平均经期"
+              value={formatStatValue(rangeStats.averagePeriodLength)}
+              unit={rangeStats.averagePeriodLength === null ? '' : '天'}
+              desc={formatPeriodRange(rangeStats.periodLengthRange)}
+              tone="red"
+            />
+            <StatItem
+              icon={TrendingUp}
+              label="记录周期"
+              value={rangeStats.totalCyclesTracked}
+              unit="个"
+              desc={getRangeLabel(timeRange, activeYear)}
+              tone="orange"
+            />
+            <StatItem
+              icon={Heart}
+              label="规律评分"
+              value={formatStatValue(rangeStats.regularity?.score ?? null)}
+              unit={rangeStats.regularity?.score === null || !rangeStats.regularity ? '' : '分'}
+              desc={rangeStats.regularity ? `${rangeStats.regularity.sampleSize} 个有效周期` : '记录不足'}
+              tone="green"
+              score={rangeStats.regularity?.score ?? null}
+            />
+          </section>
+
+          <section className="analysis-section">
+            <h2>
+              <Target className="h-5 w-5 text-[#f06c86]" />
+              周期与经期时长分析
+            </h2>
+            <div className="chart-legend">
+              <span><i className="pink" />经期天数</span>
+              <span><i className="green-line" />周期长度</span>
+              {rangeStats.averageCycleLength !== null && (
+                <span><i className="orange-dash" />平均周期 {rangeStats.averageCycleLength}天</span>
+              )}
+            </div>
+
+            <div className="cycle-bar-chart">
+              {rangeStats.averageCycleLength !== null && (
+                <div
+                  className="avg-line"
+                  style={{ left: `${Math.min(86, (rangeStats.averageCycleLength / getChartScale(rangeStats)) * 100)}%` }}
+                >
+                  <span>平均 {rangeStats.averageCycleLength}天</span>
+                </div>
+              )}
+              {chartRows.length > 0 ? (
+                chartRows.map((row) => (
+                  <div className="cycle-row" key={row.key}>
+                    <div className="cycle-row-label">
+                      {row.current && <em>当前周期</em>}
+                      <span>{row.label}</span>
+                    </div>
+                    <div className="cycle-row-body">
+                      <div className="bar-track">
+                        <i className="cycle-length" style={{ width: row.cycleWidth }} />
+                        <i className="period-length" style={{ width: row.periodWidth }} />
+                      </div>
+                      <strong>{row.periodDays} 天 / {row.cycleLength ? `${row.cycleLength} 天` : '进行中'}</strong>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state">这个范围内还没有可展示的完整记录。</div>
+              )}
+            </div>
+          </section>
+
+          <section className="analysis-section health-section">
+            <div className="health-head">
+              <h2>
+                <Heart className="h-5 w-5 text-[#83ad75]" />
+                周期健康评估
+                <FigoDialog />
+              </h2>
+              {rangeStats.regularity?.score !== null && rangeStats.regularity ? (
+                <strong>{rangeStats.regularity.score}<span>分</span></strong>
+              ) : (
+                <strong className="muted">暂无</strong>
+              )}
+            </div>
+            <span>规律性评分</span>
+            {rangeStats.regularity?.score !== null && rangeStats.regularity ? (
+              <>
+                <div className="health-progress">
+                  <i style={{ width: `${rangeStats.regularity.score}%` }} />
+                </div>
+                <p>
+                  CV={rangeStats.regularity.cv.toFixed(1)}% ｜ 标准差=
+                  {rangeStats.regularity.stdDev.toFixed(1)}天 ｜ 样本=
+                  {rangeStats.regularity.sampleSize}个周期
+                </p>
+              </>
+            ) : (
+              <div className="empty-state compact">至少需要 2 个有效周期，才能计算规律性评分。</div>
+            )}
+            <div className="health-messages">
+              <span>{healthMessages.summary}</span>
+              {healthMessages.items.map((item) => (
+                <em className={item.tone} key={item.text}>{item.text}</em>
+              ))}
+            </div>
+            <Leaf className="health-leaf" />
+          </section>
+
+          <section className="analysis-section prediction-section">
+            <h2>
+              <Target className="h-5 w-5 text-[#f4a736]" />
+              预测准确性分析
+            </h2>
+
+            {prediction ? (
+              <PredictionMethodCard prediction={prediction} />
+            ) : (
+              <div className="empty-state compact">至少需要 2 个周期开始日期，才能生成预测方法说明。</div>
+            )}
+
+            {recentPredictions.length > 0 ? (
+              <>
+                <div className="prediction-metrics">
+                  <PredictionMetric icon={Leaf} label="准确率" value={`${predictionAccuracy.accuracyRate}%`} desc="±2天内" />
+                  <PredictionMetric icon={TrendingUp} label="平均误差" value={`${predictionAccuracy.avgError.toFixed(1)}天`} desc="绝对值" />
+                  <PredictionMetric
+                    icon={Heart}
+                    label="置信度"
+                    value={prediction ? `${Math.round(prediction.confidence * 100)}%` : '暂无'}
+                    desc="统计估算"
+                  />
+                </div>
+
+                <div className="prediction-list">
+                  <span>最近预测记录（使用统计方法回测）</span>
+                  {recentPredictions.map((item, index) => (
+                    <div key={`${item.cycleDate}-${index}`}>
+                      <span>{formatDateCN(parseLocalDate(item.cycleDate))} <small>({item.method.toUpperCase()})</small></span>
+                      <em>预测{item.predicted}天 / 实际{item.actual}天</em>
+                      <strong className={item.error >= 0 ? 'positive' : 'negative'}>
+                        {item.error > 0 ? `+${item.error}天` : `${item.error}天`}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="empty-state">真实回测数据不足。至少需要 3 个周期开始日期后，才能显示预测准确性列表。</div>
+            )}
+          </section>
+        </>
+      )}
+    </PageShell>
+  );
+}
+
+function PredictionMethodCard({ prediction }: { prediction: PredictionResult }) {
+  return (
+    <div className="method-card">
+      <Info className="h-5 w-5" />
+      <div>
+        <strong>当前使用：{getMethodName(prediction.method)}</strong>
+        <span>
+          预测周期：{prediction.predictedCycleLength} 天
+          （置信区间：{prediction.lowerBound}-{prediction.upperBound}天）
+        </span>
+        <small>
+          基于 {prediction.sampleSize} 个有效周期估算
+          {prediction.outlierCount > 0 ? `，已降低 ${prediction.outlierCount} 个偏长周期的权重` : ''}
+        </small>
+      </div>
+    </div>
+  );
+}
+
+function FigoDialog() {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button type="button" className="figo-info-button" aria-label="查看 FIGO 标准说明">
+          <Info className="h-4 w-4" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="figo-dialog">
+        <DialogHeader>
+          <DialogTitle>FIGO 标准说明</DialogTitle>
+          <DialogDescription>
+            这里使用 FIGO AUB System 1 中对月经频率、规律性和经期时长的常用参考范围做健康教育提示。
+          </DialogDescription>
+        </DialogHeader>
+        <div className="figo-dialog-body">
+          <p>成人常见参考范围：周期频率约 24-38 天，经期时长不超过 8 天，周期规律性变化通常不超过 7-9 天。</p>
+          <p>趋势页只根据你记录的数据做统计提醒，不能替代医生诊断；如果持续异常或伴随明显不适，建议咨询专业医生。</p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StatItem({
+  icon: Icon,
+  label,
+  value,
+  unit,
+  desc,
+  tone,
+  score = null,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: number | string;
+  unit: string;
+  desc: string;
+  tone: string;
+  score?: number | null;
+}) {
+  return (
+    <div className={`stat-item ${tone}`}>
+      <div>
+        <Icon className="h-5 w-5" />
+        <span>{label}</span>
+      </div>
+      <strong>{value}<small>{unit}</small></strong>
+      {score !== null ? <i style={{ width: `${score}%` }} /> : <em>{desc}</em>}
+    </div>
+  );
+}
+
+function PredictionMetric({
+  icon: Icon,
+  label,
+  value,
+  desc,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  desc: string;
+}) {
+  return (
+    <div>
+      <span>
+        <Icon className="h-9 w-9" />
+      </span>
+      <p>{label}</p>
+      <strong>{value}</strong>
+      <small>{desc}</small>
+    </div>
+  );
+}
+
+function filterCycles(cycles: CycleData[], timeRange: TimeRange, year: number) {
+  const sorted = getSortedCycles(cycles);
+  if (timeRange === 'recent6') return sorted.slice(-6);
+  if (timeRange === 'recent12') return sorted.slice(-12);
+  if (timeRange === 'year') {
+    return sorted.filter((cycle) => parseLocalDate(cycle.startDate).getFullYear() === year);
+  }
+  return sorted;
+}
+
+function getAvailableYears(cycles: CycleData[]) {
+  return Array.from(new Set(cycles.map((cycle) => parseLocalDate(cycle.startDate).getFullYear()))).sort((a, b) => b - a);
+}
+
+function getSortedCycles(cycles: CycleData[]) {
+  return [...cycles].sort(
+    (a, b) => parseLocalDate(a.startDate).getTime() - parseLocalDate(b.startDate).getTime()
+  );
+}
+
+function buildRangeStats(cycles: CycleData[]): RangeStats {
+  const cycleLengths = extractCycleLengths(cycles).map((item) => item.length);
+  const periodLengths = getPeriodLengths(cycles);
+  const regularity = getRegularity(cycleLengths);
+
+  return {
+    averageCycleLength: average(cycleLengths),
+    averagePeriodLength: average(periodLengths),
+    totalCyclesTracked: cycles.length,
+    cycleLengthRange: cycleLengths.length > 0 ? { min: Math.min(...cycleLengths), max: Math.max(...cycleLengths) } : null,
+    periodLengthRange:
+      periodLengths.length > 0
+        ? {
+            min: Math.min(...periodLengths),
+            max: Math.max(...periodLengths),
+            avg: average(periodLengths) ?? periodLengths[0],
+          }
+        : null,
+    regularity,
   };
 }
 
-type TimeRange = 'recent6' | 'recent12' | 'all' | 'year';
+function getPeriodLengths(cycles: CycleData[]) {
+  return cycles
+    .filter((cycle) => cycle.startDate && cycle.endDate)
+    .map((cycle) => {
+      const start = parseLocalDate(cycle.startDate);
+      const end = parseLocalDate(cycle.endDate!);
+      return Math.floor((end.getTime() - start.getTime()) / DAY_MS) + 1;
+    })
+    .filter((length) => length >= 1 && length <= 14);
+}
 
-export function InsightsPage({ settings, cycles, dailyLogs, statistics }: InsightsPageProps) {
-  const [timeRange, setTimeRange] = useState<TimeRange>('recent6');
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+function getRegularity(lengths: number[]): RangeStats['regularity'] {
+  if (lengths.length === 0) return null;
 
-  // 获取可用的年份
-  const availableYears = useMemo(() => {
-    const years = new Set<number>();
-    cycles.forEach(c => years.add(getYear(parseISO(c.startDate))));
-    return Array.from(years).sort((a, b) => b - a);
-  }, [cycles]);
+  const mean = lengths.reduce((sum, length) => sum + length, 0) / lengths.length;
+  const min = Math.min(...lengths);
+  const max = Math.max(...lengths);
+  const variation = max - min;
+  const stdDev = calculateStdDev(lengths);
+  const cv = mean > 0 ? (stdDev / mean) * 100 : 0;
+  const score = lengths.length >= 2 ? scoreRegularity(cv) : null;
 
-  // 根据时间范围过滤周期
-  const filteredCycles = useMemo(() => {
-    let filtered = [...cycles].sort((a, b) => 
-      parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
-    );
-    
-    switch (timeRange) {
-      case 'recent6':
-        return filtered.slice(-6);
-      case 'recent12':
-        return filtered.slice(-12);
-      case 'year':
-        return filtered.filter(c => getYear(parseISO(c.startDate)) === selectedYear);
-      case 'all':
-      default:
-        return filtered;
-    }
-  }, [cycles, timeRange, selectedYear]);
-
-  // 症状频率数据
-  const symptomData = useMemo(() => {
-    const symptomCount: Record<string, number> = {};
-    dailyLogs.forEach((log) => {
-      log.symptoms.forEach((symptom) => {
-        symptomCount[symptom] = (symptomCount[symptom] || 0) + 1;
-      });
-    });
-
-    return Object.entries(symptomCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([symptom, count]) => ({ symptom, count }));
-  }, [dailyLogs]);
-
-  // 心情分布（饼图数据）
-  const moodData = useMemo(() => {
-    const moodCount: Record<string, number> = {};
-    dailyLogs.forEach((log) => {
-      if (log.mood) {
-        moodCount[log.mood] = (moodCount[log.mood] || 0) + 1;
-      }
-    });
-
-    const colors = ['hsl(var(--phase-menstrual))', 'hsl(var(--phase-follicular))', 'hsl(var(--phase-ovulation))', 'hsl(var(--phase-luteal))', 'hsl(var(--primary))'];
-    
-    return Object.entries(moodCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([mood, count], index) => ({ mood, count, fill: colors[index % colors.length] }));
-  }, [dailyLogs]);
-
-  // 经量分布（只统计有 flowIntensity 的记录）
-  const flowData = useMemo(() => {
-    const flowCount: Record<string, number> = { light: 0, medium: 0, heavy: 0 };
-    dailyLogs.forEach((log) => {
-      if (log.flowIntensity) {
-        flowCount[log.flowIntensity]++;
-      }
-    });
-
-    return [
-      { name: '少量', value: flowCount.light, fill: 'hsl(var(--phase-follicular))' },
-      { name: '适中', value: flowCount.medium, fill: 'hsl(var(--phase-ovulation))' },
-      { name: '大量', value: flowCount.heavy, fill: 'hsl(var(--phase-menstrual))' },
-    ].filter(d => d.value > 0);
-  }, [dailyLogs]);
-
-  // 计算规律性评分（使用变异系数，与健康评估统一）
-  const regularityData = useMemo(() => {
-    const cycleLengthData = extractCycleLengths(cycles);
-    const lengths = cycleLengthData.map(d => d.length);
-    
-    if (lengths.length < 3) return null;
-    
-    const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
-    const stdDev = calculateStdDev(lengths);
-    const cv = (stdDev / mean) * 100;
-    
-    let score: number;
-    if (cv < 5) {
-      score = 90 + (5 - cv) * 2;
-    } else if (cv < 10) {
-      score = 75 + (10 - cv) * 3;
-    } else if (cv < 15) {
-      score = 60 + (15 - cv) * 3;
-    } else if (cv < 20) {
-      score = 40 + (20 - cv) * 4;
-    } else {
-      score = Math.max(0, 40 - (cv - 20) * 2);
-    }
-    score = Math.min(100, Math.round(score));
-    
-    return { score, cv, stdDev, lengths };
-  }, [cycles]);
-
-  // 周期长度范围（从相邻周期的开始日期计算）
-  const cycleLengthRange = useMemo(() => {
-    if (cycles.length < 2) return null;
-    
-    const sorted = [...cycles].sort((a, b) => 
-      parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
-    );
-    
-    const lengths: number[] = [];
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const diff = differenceInDays(parseISO(sorted[i + 1].startDate), parseISO(sorted[i].startDate));
-      if (diff > 0 && diff <= 60) {
-        lengths.push(diff);
-      }
-    }
-    
-    if (lengths.length === 0) return null;
-    return {
-      min: Math.min(...lengths),
-      max: Math.max(...lengths),
-    };
-  }, [cycles]);
-
-  // 经期天数范围
-  const periodLengthRange = useMemo(() => {
-    const lengths = filteredCycles.map(c => {
-      if (!c.endDate) return null;
-      return differenceInDays(parseISO(c.endDate), parseISO(c.startDate)) + 1;
-    }).filter(Boolean) as number[];
-    
-    if (lengths.length === 0) return null;
-    return {
-      min: Math.min(...lengths),
-      max: Math.max(...lengths),
-      avg: Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length),
-    };
-  }, [filteredCycles]);
-
-
-  // 症状统计（移除与经期的关联分析，因为不再有 isPeriod 字段）
-  const symptomPhaseData = useMemo(() => {
-    const symptomCount: Record<string, number> = {};
-
-    dailyLogs.forEach((log) => {
-      (log.symptoms || []).forEach((symptom) => {
-        symptomCount[symptom] = (symptomCount[symptom] || 0) + 1;
-      });
-    });
-
-    return Object.entries(symptomCount)
-      .map(([symptom, count]) => ({
-        symptom,
-        total: count,
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-  }, [dailyLogs]);
-
-  // 获取心情表情
-  const getMoodEmoji = (moodLabel: string): string => {
-    const mood = zh.moods.find(m => m.label === moodLabel);
-    return mood?.emoji || '😐';
+  return {
+    score,
+    mean,
+    min,
+    max,
+    variation,
+    stdDev,
+    cv,
+    sampleSize: lengths.length,
+    confidence: confidenceForSamples(lengths.length),
+    lengths,
   };
+}
 
-  const hasData = cycles.length > 0 || dailyLogs.length > 0;
+function scoreRegularity(cv: number) {
+  if (cv < 5) return Math.min(100, Math.round(90 + (5 - cv) * 2));
+  if (cv < 10) return Math.round(75 + (10 - cv) * 3);
+  if (cv < 15) return Math.round(60 + (15 - cv) * 3);
+  if (cv < 20) return Math.round(40 + (20 - cv) * 4);
+  return Math.max(0, Math.round(40 - (cv - 20) * 2));
+}
 
-  const getTimeRangeLabel = () => {
-    switch (timeRange) {
-      case 'recent6': return '最近6个周期';
-      case 'recent12': return '最近12个周期';
-      case 'year': return `${selectedYear}年`;
-      case 'all': return '全部记录';
-    }
-  };
+function confidenceForSamples(sampleSize: number): MetricConfidence {
+  if (sampleSize >= 4) return 'high';
+  if (sampleSize >= 2) return 'medium';
+  return 'low';
+}
 
-  if (!hasData) {
-    return (
-      <div className="min-h-screen pb-24 px-4 pt-6 flex flex-col items-center justify-center page-enter">
-        <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-          <TrendingUp className="w-10 h-10 text-muted-foreground" />
-        </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">{zh.insights.noData}</h2>
-        <p className="text-muted-foreground text-center max-w-xs">
-          {zh.insights.noDataDesc}
-        </p>
-      </div>
-    );
+function buildChartRows(cycles: CycleData[], stats: RangeStats) {
+  const chronological = getSortedCycles(cycles);
+  const scale = getChartScale(stats);
+
+  return [...chronological].reverse().map((cycle, index) => {
+    const originalIndex = chronological.findIndex((item) => item.startDate === cycle.startDate);
+    const next = chronological[originalIndex + 1];
+    const start = parseLocalDate(cycle.startDate);
+    const end = cycle.endDate ? parseLocalDate(cycle.endDate) : start;
+    const periodDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1);
+    const cycleLength = next
+      ? Math.round((parseLocalDate(next.startDate).getTime() - start.getTime()) / DAY_MS)
+      : null;
+    const current = index === 0 && !next;
+
+    return {
+      key: cycle.id || cycle.startDate,
+      label: `${formatDateCN(start)} - ${next ? formatDateCN(parseLocalDate(next.startDate)) : '进行中'}`,
+      periodDays,
+      cycleLength,
+      current,
+      periodWidth: `${Math.min(100, (periodDays / scale) * 100)}%`,
+      cycleWidth: `${cycleLength ? Math.min(100, (cycleLength / scale) * 100) : 22}%`,
+    };
+  });
+}
+
+function getChartScale(stats: RangeStats) {
+  return Math.max(
+    45,
+    stats.averageCycleLength ?? 0,
+    stats.cycleLengthRange?.max ?? 0,
+    stats.periodLengthRange?.max ?? 0
+  );
+}
+
+function average(values: number[]) {
+  if (values.length === 0) return null;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+}
+
+function formatStatValue(value: number | null) {
+  return value === null ? '暂无' : value;
+}
+
+function formatCycleRange(range: RangeStats['cycleLengthRange']) {
+  if (!range) return '记录不足';
+  return range.min === range.max ? `${range.min} 天` : `范围 ${range.min}-${range.max} 天`;
+}
+
+function formatPeriodRange(range: RangeStats['periodLengthRange']) {
+  if (!range) return '记录不足';
+  return range.min === range.max ? `${range.min} 天` : `范围 ${range.min}-${range.max} 天`;
+}
+
+function getRangeLabel(timeRange: TimeRange, activeYear: number) {
+  if (timeRange === 'recent6') return '最近 6 个周期';
+  if (timeRange === 'recent12') return '最近 12 个周期';
+  if (timeRange === 'year') return `${activeYear} 年`;
+  return '全部周期';
+}
+
+function getHealthMessages(stats: RangeStats) {
+  const summary = '参考 FIGO 标准：周期 24-38 天、经期 ≤8 天、周期变异 ≤7-9 天。';
+
+  if (!stats.regularity || stats.averageCycleLength === null) {
+    return {
+      summary,
+      items: [{ text: '△ 有效周期记录不足，继续记录后再评估规律性。', tone: 'neutral' }],
+    };
   }
 
-  return (
-    <div className="min-h-screen pb-24 px-4 pt-6 page-enter">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{zh.insights.title}</h1>
-        
-        {/* 时间范围选择器 */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1 btn-press">
-              {getTimeRangeLabel()}
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="animate-scale-in">
-            <DropdownMenuItem onClick={() => setTimeRange('recent6')}>
-              最近6个周期
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTimeRange('recent12')}>
-              最近12个周期
-            </DropdownMenuItem>
-            {availableYears.map(year => (
-              <DropdownMenuItem 
-                key={year} 
-                onClick={() => {
-                  setTimeRange('year');
-                  setSelectedYear(year);
-                }}
-              >
-                {year}年
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuItem onClick={() => setTimeRange('all')}>
-              全部记录
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+  const items: Array<{ text: string; tone: string }> = [];
+  const avgCycle = stats.averageCycleLength;
+  const avgPeriod = stats.averagePeriodLength;
+  const variation = stats.regularity.variation;
 
-      {/* 统计网格 */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <Card className="border-0 shadow-lg card-hover">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground">{zh.insights.avgCycleLength}</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">
-              {statistics.averageCycleLength}
-              <span className="text-sm font-normal text-muted-foreground ml-1">{zh.insights.days}</span>
-            </p>
-            {cycleLengthRange && cycleLengthRange.min !== cycleLengthRange.max && (
-              <p className="text-xs text-muted-foreground mt-1">
-                范围 {cycleLengthRange.min}-{cycleLengthRange.max} 天
-              </p>
-            )}
-          </CardContent>
-        </Card>
+  if (avgCycle < FIGO_MIN_CYCLE) {
+    items.push({ text: `△ 平均周期偏短（${avgCycle}天），建议持续观察。`, tone: 'warning' });
+  } else if (avgCycle > FIGO_MAX_CYCLE) {
+    items.push({ text: `△ 平均周期偏长（${avgCycle}天），建议持续观察。`, tone: 'warning' });
+  }
 
-        <Card className="border-0 shadow-lg card-hover">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Activity className="w-4 h-4 text-phase-menstrual" />
-              <span className="text-xs text-muted-foreground">{zh.insights.avgPeriodLength}</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">
-              {statistics.averagePeriodLength}
-              <span className="text-sm font-normal text-muted-foreground ml-1">{zh.insights.days}</span>
-            </p>
-            {periodLengthRange && periodLengthRange.min !== periodLengthRange.max && (
-              <p className="text-xs text-muted-foreground mt-1">
-                范围 {periodLengthRange.min}-{periodLengthRange.max} 天
-              </p>
-            )}
-          </CardContent>
-        </Card>
+  if (avgPeriod !== null && avgPeriod > FIGO_MAX_PERIOD) {
+    items.push({ text: `△ 平均经期偏长（${avgPeriod}天），如持续出现建议咨询医生。`, tone: 'warning' });
+  }
 
-        <Card className="border-0 shadow-lg card-hover">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="w-4 h-4 text-phase-ovulation" />
-              <span className="text-xs text-muted-foreground">{zh.insights.totalCycles}</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">
-              {statistics.totalCyclesTracked}
-              <span className="text-sm font-normal text-muted-foreground ml-1">{zh.insights.cycles}</span>
-            </p>
-          </CardContent>
-        </Card>
+  if (variation > FIGO_MAX_VARIATION) {
+    items.push({ text: `△ 周期变异 ${variation} 天，超过常用参考范围，建议记录更多周期。`, tone: 'warning' });
+  }
 
-        <Card className="border-0 shadow-lg card-hover">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Heart className="w-4 h-4 text-phase-follicular" />
-              <span className="text-xs text-muted-foreground">规律性评分</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">
-              {regularityData !== null ? (
-                <>
-                  {regularityData.score}
-                  <span className="text-sm font-normal text-muted-foreground ml-1">分</span>
-                </>
-              ) : (
-                <span className="text-sm font-normal text-muted-foreground">需3+周期</span>
-              )}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+  if (items.length === 0) {
+    items.push({
+      text: `✓ 当前记录接近常用参考范围：周期 ${stats.regularity.min}-${stats.regularity.max} 天，变异 ${variation} 天。`,
+      tone: 'ok',
+    });
+  }
 
-      {/* 周期与经期时长分析 - 自定义进度条样式 */}
-      {filteredCycles.length > 0 && (
-        <Card className="border-0 shadow-lg mb-6 card-hover">
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-              <Target className="w-4 h-4 text-primary" />
-              周期与经期时长分析
-            </h3>
-            <p className="text-xs text-muted-foreground mb-4">
-              红色=经期天数，虚线=平均周期长度 ({statistics.averageCycleLength}天)
-            </p>
-            
-            {/* 进度条图表容器 */}
-            <div className="relative pl-0 pr-12">
-              {/* 平均周期虚线 */}
-              {(() => {
-                // 计算每个周期的实际周期长度（从当前经期开始到下次经期开始）
-                const sortedCycles = [...filteredCycles].sort((a, b) => 
-                  parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
-                );
-                const cycleLengths = sortedCycles.map((cycle, idx) => {
-                  const nextCycle = sortedCycles[idx + 1];
-                  if (nextCycle) {
-                    return differenceInDays(parseISO(nextCycle.startDate), parseISO(cycle.startDate));
-                  }
-                  return null;
-                }).filter(Boolean) as number[];
-                
-                const maxCycleLength = Math.max(
-                  ...cycleLengths,
-                  statistics.averageCycleLength,
-                  45 // 最小显示宽度
-                );
-                const avgPosition = (statistics.averageCycleLength / maxCycleLength) * 100;
-                return (
-                  <div 
-                    className="absolute top-0 bottom-0 border-l border-dashed border-phase-ovulation/70 z-10"
-                    style={{ left: `${avgPosition}%` }}
-                  >
-                    <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-phase-ovulation whitespace-nowrap">
-                      平均 {statistics.averageCycleLength}天
-                    </span>
-                  </div>
-                );
-              })()}
-              
-              {/* 周期列表 - 最新的在上面 */}
-              <div className="space-y-3 pt-4">
-                {(() => {
-                  // 排序：时间早的在后面，时间近的在前面
-                  const sortedCycles = [...filteredCycles].sort((a, b) => 
-                    parseISO(b.startDate).getTime() - parseISO(a.startDate).getTime()
-                  );
-                  
-                  // 按时间正序排列用于计算周期长度
-                  const chronologicalCycles = [...filteredCycles].sort((a, b) => 
-                    parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
-                  );
-                  
-                  // 计算每个周期的实际周期长度
-                  const cycleLengthMap = new Map<string, number>();
-                  chronologicalCycles.forEach((cycle, idx) => {
-                    const nextCycle = chronologicalCycles[idx + 1];
-                    if (nextCycle) {
-                      const length = differenceInDays(parseISO(nextCycle.startDate), parseISO(cycle.startDate));
-                      cycleLengthMap.set(String(cycle.id || cycle.startDate), length);
-                    }
-                  });
-                  
-                  const allCycleLengths = Array.from(cycleLengthMap.values());
-                  const maxCycleLength = Math.max(
-                    ...allCycleLengths,
-                    statistics.averageCycleLength,
-                    45
-                  );
-                  
-                  const today = new Date();
-                  
-                  return sortedCycles.map((cycle, index) => {
-                    const startDate = parseISO(cycle.startDate);
-                    const endDate = cycle.endDate ? parseISO(cycle.endDate) : null;
-                    const periodDays = endDate 
-                      ? differenceInDays(endDate, startDate) + 1 
-                      : 0;
-                    
-                    // 获取当前周期的实际周期长度
-                    const cycleKey = String(cycle.id || cycle.startDate);
-                    const actualCycleLength = cycleLengthMap.get(cycleKey);
-                    
-                    // 找下一个周期的开始日期
-                    const chronoIndex = chronologicalCycles.findIndex(c => String(c.id || c.startDate) === cycleKey);
-                    const nextCycle = chronologicalCycles[chronoIndex + 1];
-                    const cycleEndDate = nextCycle ? parseISO(nextCycle.startDate) : null;
-                    
-                    // 判断是否是当前周期（包含今天的周期）
-                    const isCurrentCycle = !nextCycle && startDate <= today;
-                    
-                    const periodPercent = actualCycleLength 
-                      ? (periodDays / maxCycleLength) * 100 
-                      : (periodDays / maxCycleLength) * 100;
-                    const cyclePercent = actualCycleLength 
-                      ? (actualCycleLength / maxCycleLength) * 100 
-                      : 0;
-                    
-                    return (
-                      <div key={cycle.id || index} className="space-y-0.5">
-                        {/* 日期范围 */}
-                        <div className="flex items-center gap-2">
-                          {isCurrentCycle && (
-                            <span className="text-[10px] text-primary font-medium bg-primary/10 px-1.5 py-0.5 rounded">
-                              当前周期
-                            </span>
-                          )}
-                          <span className="text-[11px] text-muted-foreground/70">
-                            {format(startDate, 'yyyy年M月d日', { locale: zhCN })}
-                            {cycleEndDate 
-                              ? ` - ${format(cycleEndDate, 'yyyy年M月d日', { locale: zhCN })}` 
-                              : ' - 进行中'}
-                          </span>
-                        </div>
-                        
-                        {/* 进度条 - 更细更简洁 */}
-                        <div className="relative h-3 flex items-center">
-                          {/* 背景轨道 */}
-                          <div 
-                            className="absolute left-0 h-1.5 bg-muted/30 rounded-full"
-                            style={{ width: actualCycleLength ? `${cyclePercent}%` : `${periodPercent}%` }}
-                          />
-                          {/* 经期部分（填充） */}
-                          <div 
-                            className="absolute left-0 h-1.5 bg-phase-menstrual rounded-full transition-all duration-300"
-                            style={{ width: `${periodPercent}%` }}
-                          />
-                          
-                          {/* 数据标注 - 在右侧 */}
-                          <div 
-                            className="absolute flex items-center gap-1.5 text-[10px]"
-                            style={{ left: `${Math.max(cyclePercent, periodPercent) + 1}%` }}
-                          >
-                            <span className="text-phase-menstrual font-medium">{periodDays}天</span>
-                            {actualCycleLength && (
-                              <>
-                                <span className="text-muted-foreground/50">/</span>
-                                <span className="text-muted-foreground">{actualCycleLength}天</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
-            
-            {/* 图例 */}
-            <div className="flex items-center gap-4 mt-4 text-[10px] text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-1.5 rounded-full bg-phase-menstrual" />
-                <span>经期天数</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-1.5 rounded-full bg-muted/30" />
-                <span>周期长度</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-0 border-t border-dashed border-phase-ovulation/70" />
-                <span>平均周期</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 周期健康评估卡片 - 放在预测准确性分析前面 */}
-      {regularityData && (() => {
-        const lengths = regularityData.lengths;
-        const mean = lengths.reduce((a: number, b: number) => a + b, 0) / lengths.length;
-        const min = Math.min(...lengths);
-        const max = Math.max(...lengths);
-        const variation = max - min;
-        
-        let figoMessages: string[] = [];
-        
-        if (mean >= 24 && mean <= 38) {
-          figoMessages.push('✓ 平均周期在正常范围（24-38天）');
-        } else if (mean < 24) {
-          figoMessages.push('⚠ 平均周期偏短（<24天），建议关注');
-        } else {
-          figoMessages.push('⚠ 平均周期偏长（>38天），建议关注');
-        }
-        
-        if (variation <= 7) {
-          figoMessages.push('✓ 周期变异在正常范围（±7天）');
-        } else if (variation <= 9) {
-          figoMessages.push('△ 周期变异稍大（' + variation + '天）');
-        } else {
-          figoMessages.push('⚠ 周期变异较大（' + variation + '天），建议记录更多周期');
-        }
-        
-        return (
-          <Card className="border-0 shadow-lg mb-6 card-hover">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <Heart className="w-4 h-4 text-phase-menstrual" />
-                  周期健康评估
-                </h3>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button className="p-1 rounded-full hover:bg-muted transition-colors">
-                      <Info className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>FIGO标准说明</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 text-sm">
-                      <p className="text-muted-foreground">
-                        本评估参考国际妇产科联盟（FIGO）2018年发布的月经周期标准：
-                      </p>
-                      <div className="space-y-3">
-                        <div className="bg-muted/30 p-3 rounded-lg">
-                          <p className="font-medium mb-1">正常周期长度</p>
-                          <p className="text-muted-foreground text-xs">24-38天为正常范围</p>
-                        </div>
-                        <div className="bg-muted/30 p-3 rounded-lg">
-                          <p className="font-medium mb-1">周期规律性</p>
-                          <p className="text-muted-foreground text-xs">周期变异应在±7天以内</p>
-                        </div>
-                        <div className="bg-muted/30 p-3 rounded-lg">
-                          <p className="font-medium mb-1">正常经期</p>
-                          <p className="text-muted-foreground text-xs">经期持续≤8天为正常</p>
-                        </div>
-                      </div>
-                      <div className="bg-primary/10 p-3 rounded-lg">
-                        <p className="font-medium mb-1 flex items-center gap-1">
-                          <Info className="w-3 h-3" />
-                          规律性评分计算
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          使用变异系数（CV = 标准差/平均值）评估：
-                          <br />• CV &lt; 5%: 非常规律（90-100分）
-                          <br />• CV 5-10%: 规律（75-90分）
-                          <br />• CV 10-15%: 较规律（60-75分）
-                          <br />• CV 15-20%: 轻度不规律（40-60分）
-                          <br />• CV &gt; 20%: 不规律（&lt;40分）
-                        </p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        📌 此评估仅供参考，如有异常请咨询医生
-                      </p>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              
-              {/* 规律性评分 */}
-              <div className="flex items-center gap-4 mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">规律性评分</span>
-                    <span className="text-sm font-bold text-foreground">{regularityData.score}分</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all ${
-                        regularityData.score >= 80 ? 'bg-green-500' :
-                        regularityData.score >= 60 ? 'bg-phase-ovulation' :
-                        regularityData.score >= 40 ? 'bg-yellow-500' :
-                        'bg-phase-menstrual'
-                      }`}
-                      style={{ width: `${regularityData.score}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    CV={regularityData.cv.toFixed(1)}% | 标准差={regularityData.stdDev.toFixed(1)}天 | 样本={lengths.length}个周期
-                  </p>
-                </div>
-              </div>
-              
-              {/* FIGO评估结果 */}
-              <div className="space-y-1.5">
-                <p className="text-xs text-muted-foreground mb-2">
-                  参考FIGO标准（周期{min}-{max}天，变异{variation}天）：
-                </p>
-                {figoMessages.map((msg, idx) => (
-                  <p key={idx} className={`text-xs ${
-                    msg.startsWith('✓') ? 'text-green-600 dark:text-green-400' :
-                    msg.startsWith('⚠') ? 'text-yellow-600 dark:text-yellow-400' :
-                    'text-muted-foreground'
-                  }`}>
-                    {msg}
-                  </p>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
-
-      {/* 预测准确性分析 - 使用统计学方法 */}
-      {(() => {
-        // 使用新的统计预测方法
-        const prediction = predictNextCycle(cycles);
-        const accuracy = evaluatePredictionAccuracy(cycles);
-        
-        if (accuracy.predictions.length === 0) return null;
-        
-        // 只显示最近的预测记录
-        const recentPredictions = accuracy.predictions.slice(-6).reverse();
-        
-        return (
-          <Card className="border-0 shadow-lg mb-6 card-hover">
-            <CardContent className="p-4">
-              <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Target className="w-4 h-4 text-phase-ovulation" />
-                预测准确性分析
-              </h3>
-              
-              {/* 预测方法说明 */}
-              <div className="bg-muted/30 rounded-lg p-3 mb-4">
-                <div className="flex items-start gap-2">
-                  <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                  <div className="text-[11px] text-muted-foreground">
-                    <p className="font-medium text-foreground mb-1">
-                      当前使用: {getMethodName(prediction.method)}
-                    </p>
-                    <p>
-                      预测周期: {prediction.predictedCycleLength} 天
-                      (置信区间: {prediction.lowerBound}-{prediction.upperBound} 天)
-                    </p>
-                    <p className="mt-1 opacity-80">
-                      {prediction.method === 'sma' && '周期非常规律，使用简单移动平均'}
-                      {prediction.method === 'weighted' && '周期较规律，使用加权移动平均给近期更高权重'}
-                      {prediction.method === 'ewma' && '周期波动较大，使用指数加权平均更重视近期数据'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* 准确性统计 */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                <div className="bg-muted/30 rounded-lg p-2.5 text-center">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">准确率</p>
-                  <p className="text-lg font-bold text-foreground">
-                    {accuracy.accuracyRate}%
-                  </p>
-                  <p className="text-[9px] text-muted-foreground">±2天内</p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-2.5 text-center">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">平均误差</p>
-                  <p className="text-lg font-bold text-foreground">
-                    {accuracy.avgError.toFixed(1)}
-                    <span className="text-xs font-normal ml-0.5">天</span>
-                  </p>
-                  <p className="text-[9px] text-muted-foreground">绝对值</p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-2.5 text-center">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">置信度</p>
-                  <p className="text-lg font-bold text-foreground">
-                    {Math.round(prediction.confidence * 100)}%
-                  </p>
-                  <p className="text-[9px] text-muted-foreground">统计估算</p>
-                </div>
-              </div>
-              
-              {/* 预测记录 */}
-              <p className="text-xs text-muted-foreground mb-2">最近预测记录（使用统计方法回测）</p>
-              <div className="space-y-2">
-                {recentPredictions.map((p, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-[11px] py-1.5 border-b border-muted/30 last:border-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">
-                        {format(parseISO(p.cycleDate), 'yyyy年M月d日', { locale: zhCN })}
-                      </span>
-                      <span className="text-[9px] text-muted-foreground/60">
-                        ({p.method === 'sma' ? 'SMA' : p.method === 'ewma' ? 'EWMA' : 'WMA'})
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground/70 text-[10px]">
-                        预测{p.predicted}天 / 实际{p.actual}天
-                      </span>
-                      <span className={`font-medium min-w-[50px] text-right ${
-                        Math.abs(p.error) <= 2 
-                          ? 'text-green-500' 
-                          : Math.abs(p.error) <= 4 
-                            ? 'text-yellow-500' 
-                            : 'text-phase-menstrual'
-                      }`}>
-                        {p.error === 0 ? '准确' : p.error > 0 ? `+${p.error}天` : `${p.error}天`}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
-
-      {/* 经量分布 + 心情分布 */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        {/* 经量分布 */}
-        {flowData.length > 0 && (
-          <Card className="border-0 shadow-lg card-hover">
-            <CardContent className="p-4">
-              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
-                <Droplets className="w-4 h-4 text-phase-menstrual" />
-                经量分布
-              </h3>
-              <div className="h-24">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={flowData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={20}
-                      outerRadius={40}
-                      paddingAngle={2}
-                    >
-                      {flowData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => [`${value}天`, '']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-1 mt-2">
-                {flowData.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.fill }} />
-                      <span className="text-foreground">{item.name}</span>
-                    </div>
-                    <span className="text-muted-foreground">{item.value}天</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* 心情分布 */}
-        {moodData.length > 0 && (
-          <Card className="border-0 shadow-lg card-hover">
-            <CardContent className="p-4">
-              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
-                <Moon className="w-4 h-4 text-phase-luteal" />
-                心情分布
-              </h3>
-              <div className="space-y-2">
-                {moodData.slice(0, 4).map((item) => (
-                  <div key={item.mood} className="flex items-center gap-2">
-                    <span className="text-lg">{getMoodEmoji(item.mood)}</span>
-                    <div className="flex-1">
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{
-                            width: `${(item.count / moodData[0].count) * 100}%`,
-                            backgroundColor: item.fill,
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <span className="text-xs text-muted-foreground w-6 text-right">{item.count}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* 症状与经期关联分析 */}
-      {symptomPhaseData.length > 0 && (
-        <Card className="border-0 shadow-lg mb-6 card-hover">
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-phase-ovulation" />
-              症状与经期关联
-            </h3>
-            <p className="text-xs text-muted-foreground mb-4">
-              对比症状在经期与非经期的出现频率
-            </p>
-            <div className="h-40">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={symptomPhaseData} layout="vertical">
-                  <XAxis type="number" hide />
-                  <YAxis
-                    type="category"
-                    dataKey="symptom"
-                    tick={{ fontSize: 10 }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={60}
-                  />
-                  <Tooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-background border rounded-lg shadow-lg p-2 text-xs">
-                            <p className="font-medium">{data.symptom}</p>
-                            <p className="text-phase-menstrual">经期: {data.period}次</p>
-                            <p className="text-primary">非经期: {data.nonPeriod}次</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Legend 
-                    wrapperStyle={{ fontSize: '10px' }}
-                    payload={[
-                      { value: '经期', type: 'square', color: 'hsl(var(--phase-menstrual))' },
-                      { value: '非经期', type: 'square', color: 'hsl(var(--primary))' },
-                    ]}
-                  />
-                  <Bar dataKey="period" stackId="a" fill="hsl(var(--phase-menstrual))" />
-                  <Bar dataKey="nonPeriod" stackId="a" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 常见症状 */}
-      {symptomData.length > 0 && (
-        <Card className="border-0 shadow-lg mb-6 card-hover">
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-foreground mb-4">{zh.insights.symptomFrequency}</h3>
-            <div className="h-36">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={symptomData} layout="vertical">
-                  <XAxis type="number" hide />
-                  <YAxis
-                    type="category"
-                    dataKey="symptom"
-                    tick={{ fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={70}
-                  />
-                  <Tooltip 
-                    formatter={(value) => [`${value}次`, '出现次数']}
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  />
-                  <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                    {symptomData.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={`hsl(var(--phase-${['menstrual', 'follicular', 'ovulation', 'luteal', 'menstrual', 'follicular'][index]}))`}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-
-    </div>
-  );
+  return { summary, items };
 }

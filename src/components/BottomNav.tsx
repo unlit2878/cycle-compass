@@ -1,62 +1,54 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Calendar, Plus, BarChart3, Settings } from 'lucide-react';
-import { zh } from '@/lib/i18n';
+import { CalendarDays, ChartNoAxesColumn, Home, Plus, UserRound } from 'lucide-react';
 
 interface BottomNavProps {
   onLogClick: () => void;
+  onNavigate?: () => void;
+  active?: 'home' | 'calendar' | 'log' | 'insights' | 'settings';
 }
 
-export function BottomNav({ onLogClick }: BottomNavProps) {
-  const navItems = [
-    { to: '/', icon: Home, label: zh.nav.home },
-    { to: '/calendar', icon: Calendar, label: zh.nav.calendar },
-    { to: '/insights', icon: BarChart3, label: zh.nav.insights },
-    { to: '/settings', icon: Settings, label: zh.nav.settings },
-  ];
+const navItems = [
+  { to: '/', id: 'home', icon: Home, label: '首页' },
+  { to: '/calendar', id: 'calendar', icon: CalendarDays, label: '日历' },
+  { to: '/insights', id: 'insights', icon: ChartNoAxesColumn, label: '趋势' },
+  { to: '/settings', id: 'settings', icon: UserRound, label: '我的' },
+] as const;
+
+export function BottomNav({ onLogClick, onNavigate, active }: BottomNavProps) {
+  const renderNav = (items: typeof navItems) =>
+    items.map((item) => (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        onClick={onNavigate}
+        className={({ isActive }) =>
+          `bottom-nav-item ${
+            active === item.id || (!active && isActive) ? 'bottom-nav-item-active' : ''
+          }`
+        }
+      >
+        <item.icon className="bottom-nav-icon" strokeWidth={2.1} />
+        <span>{item.label}</span>
+      </NavLink>
+    ));
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 glass border-t border-border pb-safe">
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
-        {navItems.slice(0, 2).map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `nav-btn flex flex-col items-center gap-1 px-4 py-2 ${
-                isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-              }`
-            }
-          >
-            <item.icon className="w-5 h-5" />
-            <span className="text-xs">{item.label}</span>
-          </NavLink>
-        ))}
+    <nav className="bottom-nav" aria-label="主导航">
+      <div className="bottom-nav-inner">
+        {renderNav(navItems.slice(0, 2))}
 
-        {/* Center Log Button */}
         <button
+          type="button"
           onClick={onLogClick}
-          className="flex flex-col items-center gap-1 -mt-4"
+          className={`bottom-log-button ${active === 'log' ? 'bottom-log-button-active' : ''}`}
+          aria-label="记录"
         >
-          <div className="log-btn w-14 h-14 rounded-full gradient-primary shadow-lg flex items-center justify-center">
-            <Plus className="w-7 h-7 text-white" />
-          </div>
-          <span className="text-xs text-muted-foreground">{zh.nav.log}</span>
+          <span className="bottom-log-circle">
+            <Plus className="h-8 w-8" strokeWidth={2.8} />
+          </span>
         </button>
 
-        {navItems.slice(2).map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `nav-btn flex flex-col items-center gap-1 px-4 py-2 ${
-                isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-              }`
-            }
-          >
-            <item.icon className="w-5 h-5" />
-            <span className="text-xs">{item.label}</span>
-          </NavLink>
-        ))}
+        {renderNav(navItems.slice(2))}
       </div>
     </nav>
   );

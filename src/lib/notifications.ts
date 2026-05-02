@@ -1,5 +1,6 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
+import { getOvulationDateForNextPeriodStart } from './cycle-utils';
 
 // 通知ID常量
 const NOTIFICATION_IDS = {
@@ -200,6 +201,28 @@ export async function cancelDailyReminder(): Promise<void> {
   }
 }
 
+export async function cancelPeriodReminder(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id: NOTIFICATION_IDS.PERIOD_REMINDER }] });
+    console.log('经期提醒已取消');
+  } catch (error) {
+    console.error('取消经期提醒失败:', error);
+  }
+}
+
+export async function cancelOvulationReminder(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id: NOTIFICATION_IDS.OVULATION_REMINDER }] });
+    console.log('排卵期提醒已取消');
+  } catch (error) {
+    console.error('取消排卵期提醒失败:', error);
+  }
+}
+
 // 取消所有通知
 export async function cancelAllNotifications(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
@@ -218,7 +241,7 @@ export async function cancelAllNotifications(): Promise<void> {
 }
 
 // 获取已安排的通知列表（用于调试）
-export async function getPendingNotifications(): Promise<{ id: number; title?: string; body?: string; schedule?: any }[]> {
+export async function getPendingNotifications(): Promise<{ id: number; title?: string; body?: string; schedule?: unknown }[]> {
   if (!Capacitor.isNativePlatform()) return [];
   
   try {
@@ -261,7 +284,7 @@ export async function initializeNotifications(settings: {
     
     // 计算下次经期日期
     const now = new Date();
-    let nextPeriodDate = new Date(lastStart);
+    const nextPeriodDate = new Date(lastStart);
     while (nextPeriodDate <= now) {
       nextPeriodDate.setDate(nextPeriodDate.getDate() + cycleLength);
     }
@@ -273,8 +296,7 @@ export async function initializeNotifications(settings: {
     
     // 安排排卵期提醒（经期开始前14天）
     if (settings.reminderOvulation) {
-      const ovulationDate = new Date(nextPeriodDate);
-      ovulationDate.setDate(ovulationDate.getDate() - 14);
+      const ovulationDate = getOvulationDateForNextPeriodStart(nextPeriodDate, cycleLength);
       await scheduleOvulationReminder(ovulationDate, 1);
     }
   }

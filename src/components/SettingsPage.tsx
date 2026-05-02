@@ -1,53 +1,32 @@
-import { useState, useRef } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
+import { ChangeEvent, ReactNode, useEffect, useRef, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { useLocation } from 'react-router-dom';
+import {
+  ChevronRight,
+  Database,
+  Download,
+  Droplet,
+  Leaf,
+  Upload,
+  type LucideIcon,
+} from 'lucide-react';
+import { PageShell } from '@/components/AppScaffold';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Bell,
-  Database,
-  Moon,
-  Sun,
-  Download,
-  Upload,
-  Shield,
-  Info,
-  ChevronRight,
-  Check,
-  AlertCircle,
-  HelpCircle,
-  Smartphone,
-} from 'lucide-react';
-import { Settings as SettingsType, BackupData } from '@/lib/db';
-import { getDaysSinceBackup } from '@/lib/cycle-utils';
-import { zh } from '@/lib/i18n';
-import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { BackupData, Settings as SettingsType } from '@/lib/db';
 import { toast } from 'sonner';
-import { 
-  requestNotificationPermission, 
-  checkNotificationPermission, 
-  cancelAllNotifications,
-  scheduleDailyReminder,
-  cancelDailyReminder,
-  initializeNotifications,
-  sendTestNotification,
-  getPendingNotifications
-} from '@/lib/notifications';
 
 interface SettingsPageProps {
   settings: SettingsType | null;
   onUpdateSettings: (updates: Partial<SettingsType>) => Promise<SettingsType>;
   onExport: () => Promise<BackupData>;
   onImport: (data: BackupData) => Promise<void>;
-  onRequestPersistence: () => Promise<boolean>;
 }
 
 export function SettingsPage({
@@ -55,615 +34,312 @@ export function SettingsPage({
   onUpdateSettings,
   onExport,
   onImport,
-  onRequestPersistence,
 }: SettingsPageProps) {
-  const [exporting, setExporting] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [exportSuccess, setExportSuccess] = useState(false);
-  const [importSuccess, setImportSuccess] = useState(false);
-  const [testingNotification, setTestingNotification] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [importHelpOpen, setImportHelpOpen] = useState(false);
+  const [cycleSettingsOpen, setCycleSettingsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
 
-  const isNative = Capacitor.isNativePlatform();
+  useEffect(() => {
+    if (location.hash !== '#data-management') return;
+    requestAnimationFrame(() => {
+      document.getElementById('data-management')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [location.hash]);
+
+  const handleExport = async () => {
+    setBusy('export');
+    try {
+      const data = await onExport();
+      const fileName = `zhiqi-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      const json = JSON.stringify(data, null, 2);
+      const location = Capacitor.isNativePlatform()
+        ? await exportNativeBackup(fileName, json)
+        : exportWebBackup(fileName, json);
+
+      await onUpdateSettings({ lastBackupDate: new Date().toISOString() });
+      toast.success(`数据已导出：${location}`);
+    } catch {
+      toast.error('导出失败，请稍后再试');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy('import');
+    try {
+      const text = await file.text();
+      await onImport(JSON.parse(text) as BackupData);
+      toast.success('数据已导入');
+    } catch {
+      toast.error('导入失败，请检查文件格式');
+    } finally {
+      event.target.value = '';
+      setBusy(null);
+    }
+  };
 
   if (!settings) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">{zh.common.loading}</p>
-      </div>
+      <PageShell title="知期" subtitle="了解自己，掌握节奏，拥抱每一个阶段的你" decor="settings">
+        <div className="empty-state">正在加载设置...</div>
+      </PageShell>
     );
   }
 
-  const handleExport = async () => {
-    setExporting(true);
-    setExportSuccess(false);
-    try {
-      const data = await onExport();
-      const jsonString = JSON.stringify(data, null, 2);
-      const fileName = `zhiqi-backup-${new Date().toISOString().split('T')[0]}.json`;
-      
-      if (isNative) {
-        // 原生平台：写入文档文件夹
-        try {
-          await Filesystem.writeFile({
-            path: fileName,
-            data: jsonString,
-            directory: Directory.Documents,
-            encoding: Encoding.UTF8,
-          });
-          toast.success(`数据已导出到"文档"文件夹：${fileName}`);
-          setExportSuccess(true);
-          await onUpdateSettings({ lastBackupDate: new Date().toISOString() });
-        } catch (fsError) {
-          console.error('文件系统写入失败:', fsError);
-          // 尝试使用外部存储
-          try {
-            await Filesystem.writeFile({
-              path: `Download/${fileName}`,
-              data: jsonString,
-              directory: Directory.ExternalStorage,
-              encoding: Encoding.UTF8,
-            });
-            toast.success(`数据已导出到"下载"文件夹：${fileName}`);
-            setExportSuccess(true);
-            await onUpdateSettings({ lastBackupDate: new Date().toISOString() });
-          } catch (extError) {
-            console.error('外部存储写入也失败:', extError);
-            toast.error('导出失败，请检查存储权限。您可以在系统设置中授予应用存储权限。');
-          }
-        }
-      } else {
-        // Web 平台：使用下载链接
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        await onUpdateSettings({ lastBackupDate: new Date().toISOString() });
-        setExportSuccess(true);
-        toast.success('数据导出成功！');
-      }
-      
-      setTimeout(() => setExportSuccess(false), 3000);
-    } catch (error) {
-      console.error('导出失败:', error);
-      toast.error('导出失败，请重试');
-    } finally {
-      setExporting(false);
-    }
+  return (
+    <PageShell title="知期" subtitle="了解自己，掌握节奏，拥抱每一个阶段的你" decor="settings" className="settings-screen">
+      <SettingsGroup id="data-management" title="数据管理">
+        <SettingsRow
+          icon={Database}
+          tone="green"
+          title="备份状态"
+          desc={formatBackupStatus(settings.lastBackupDate)}
+        />
+        <SettingsRow
+          icon={Download}
+          tone="green"
+          title={busy === 'export' ? '导出中...' : '导出数据'}
+          desc={Capacitor.isNativePlatform() ? '导出 JSON 备份到 Documents/Download' : '导出 JSON 备份文件'}
+          onClick={handleExport}
+        />
+        <SettingsRow
+          icon={Upload}
+          tone="orange"
+          title={busy === 'import' ? '导入中...' : '导入数据'}
+          desc="查看说明后选择 JSON 备份文件"
+          onClick={() => setImportHelpOpen(true)}
+        />
+        <ImportHelpDialog
+          open={importHelpOpen}
+          onOpenChange={setImportHelpOpen}
+          onChooseFile={() => {
+            setImportHelpOpen(false);
+            window.setTimeout(() => fileInputRef.current?.click(), 120);
+          }}
+        />
+        <input ref={fileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleFileChange} />
+      </SettingsGroup>
+
+      <SettingsGroup title="周期设置">
+        <SettingsRow
+          icon={Droplet}
+          tone="pink"
+          title="周期设置"
+          desc={`周期 ${settings.averageCycleLength} 天，经期 ${settings.averagePeriodLength} 天`}
+          onClick={() => setCycleSettingsOpen(true)}
+        />
+        <CycleSettingsDialog
+          open={cycleSettingsOpen}
+          onOpenChange={setCycleSettingsOpen}
+          settings={settings}
+          onSave={async (updates) => {
+            await onUpdateSettings(updates);
+            toast.success('周期设置已保存');
+          }}
+        />
+      </SettingsGroup>
+
+      <footer className="settings-footer">
+        <Leaf className="h-10 w-10" />
+        <p>愿你在每个阶段，都被温柔以待</p>
+        <span>v 1.2.0</span>
+      </footer>
+    </PageShell>
+  );
+}
+
+function exportWebBackup(fileName: string, json: string) {
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  return `浏览器下载：${fileName}`;
+}
+
+async function exportNativeBackup(fileName: string, json: string) {
+  const path = `Download/${fileName}`;
+  await Filesystem.requestPermissions();
+  const result = await Filesystem.writeFile({
+    path,
+    data: json,
+    directory: Directory.Documents,
+    encoding: Encoding.UTF8,
+    recursive: true,
+  });
+  return result.uri || `Documents/${path}`;
+}
+
+function formatBackupStatus(lastBackupDate?: string) {
+  if (!lastBackupDate) return '从未备份';
+
+  const now = new Date();
+  const lastBackup = new Date(lastBackupDate);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const backupDay = new Date(lastBackup.getFullYear(), lastBackup.getMonth(), lastBackup.getDate());
+  const diffDays = Math.max(0, Math.floor((today.getTime() - backupDay.getTime()) / (1000 * 60 * 60 * 24)));
+
+  if (diffDays === 0) return '今天已备份';
+  return `${diffDays} 天前已备份`;
+}
+
+function SettingsGroup({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
+  return (
+    <section id={id} className="settings-group">
+      <h2>{title}</h2>
+      <div>{children}</div>
+    </section>
+  );
+}
+
+function ImportHelpDialog({
+  open,
+  onOpenChange,
+  onChooseFile,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChooseFile: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="import-help-dialog">
+        <DialogHeader>
+          <DialogTitle>导入数据格式</DialogTitle>
+          <DialogDescription>请选择由知期导出的 JSON 备份文件。</DialogDescription>
+        </DialogHeader>
+        <div className="import-help-body">
+          <p>文件会包含设置、周期记录和每日记录。导入后会合并到本地数据库中，并保留当前设备的持久化存储授权状态。</p>
+          <pre>{`{
+  "version": 3,
+  "exportDate": "2026-05-01T00:00:00.000Z",
+  "settings": { ... },
+  "cycles": [{ "startDate": "2026-04-01", "endDate": "2026-04-06" }],
+  "dailyLogs": [{ "date": "2026-04-01", "mood": "很好" }]
+}`}</pre>
+          <button type="button" className="dialog-primary-action" onClick={onChooseFile}>
+            选择 JSON 文件
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CycleSettingsDialog({
+  open,
+  onOpenChange,
+  settings,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  settings: SettingsType;
+  onSave: (updates: Pick<SettingsType, 'averageCycleLength' | 'averagePeriodLength'>) => Promise<void>;
+}) {
+  const [cycleLength, setCycleLength] = useState(settings.averageCycleLength);
+  const [periodLength, setPeriodLength] = useState(settings.averagePeriodLength);
+
+  useEffect(() => {
+    if (!open) return;
+    setCycleLength(settings.averageCycleLength);
+    setPeriodLength(settings.averagePeriodLength);
+  }, [open, settings.averageCycleLength, settings.averagePeriodLength]);
+
+  const handleSave = async () => {
+    await onSave({
+      averageCycleLength: clampWholeNumber(cycleLength, 18, 60),
+      averagePeriodLength: clampWholeNumber(periodLength, 1, 14),
+    });
+    onOpenChange(false);
   };
-
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImporting(true);
-    setImportSuccess(false);
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text) as BackupData;
-      await onImport(data);
-      setImportSuccess(true);
-      toast.success('数据导入成功！');
-    } catch (error) {
-      console.error('导入失败:', error);
-      toast.error('导入失败，请检查文件格式');
-    } finally {
-      setImporting(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleRequestPersistence = async () => {
-    const granted = await onRequestPersistence();
-    if (granted) {
-      toast.success('持久化存储已启用！');
-    } else {
-      toast.error('无法启用持久化存储');
-    }
-  };
-
-  // 处理经期提醒开关
-  const handlePeriodReminderToggle = async (checked: boolean) => {
-    if (checked && isNative) {
-      const granted = await requestNotificationPermission();
-      if (!granted) {
-        toast.error('请在系统设置中授予通知权限');
-        return;
-      }
-      toast.success('经期提醒已开启');
-    } else if (!checked) {
-      await cancelAllNotifications();
-    }
-    onUpdateSettings({ reminderPeriodApproaching: checked });
-  };
-
-  // 处理排卵期提醒开关
-  const handleOvulationReminderToggle = async (checked: boolean) => {
-    if (checked && isNative) {
-      const hasPermission = await checkNotificationPermission();
-      if (!hasPermission) {
-        const granted = await requestNotificationPermission();
-        if (!granted) {
-          toast.error('请在系统设置中授予通知权限');
-          return;
-        }
-      }
-      toast.success('排卵期提醒已开启');
-    }
-    onUpdateSettings({ reminderOvulation: checked });
-  };
-
-  const daysSinceBackup = getDaysSinceBackup(settings.lastBackupDate);
-  const backupStatusText =
-    daysSinceBackup === Infinity
-      ? '从未备份'
-      : daysSinceBackup === 0
-        ? '今天已备份'
-        : `上次备份：${daysSinceBackup} 天前`;
 
   return (
-    <div className="min-h-screen pb-24 px-4 pt-6">
-      <h1 className="text-2xl font-bold text-foreground mb-6">{zh.settings.title}</h1>
-
-      {/* 提醒设置 */}
-      <div className="mb-6">
-        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">通知提醒</h2>
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-0 divide-y divide-border">
-            {/* 经期临近提醒 */}
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <Bell className="w-5 h-5 text-primary" />
-                  <span className="font-medium text-foreground">{zh.settings.periodReminder}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {isNative && settings.reminderPeriodApproaching && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        setTestingNotification('period');
-                        const success = await sendTestNotification('period');
-                        if (success) {
-                          toast.success('测试通知将在5秒后发送');
-                        } else {
-                          toast.error('发送测试通知失败');
-                        }
-                        setTimeout(() => setTestingNotification(null), 2000);
-                      }}
-                      disabled={testingNotification === 'period'}
-                      className="text-xs h-7 px-2"
-                    >
-                      {testingNotification === 'period' ? '发送中...' : '测试'}
-                    </Button>
-                  )}
-                  <Switch
-                    checked={settings.reminderPeriodApproaching}
-                    onCheckedChange={handlePeriodReminderToggle}
-                  />
-                </div>
-              </div>
-              {settings.reminderPeriodApproaching && (
-                <div className="ml-8 mt-3">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    提前 {settings.reminderPeriodDays} 天提醒
-                  </p>
-                  <Slider
-                    value={[settings.reminderPeriodDays]}
-                    onValueChange={(v) => onUpdateSettings({ reminderPeriodDays: v[0] })}
-                    min={1}
-                    max={5}
-                    step={1}
-                    className="w-full"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* 排卵期提醒 */}
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-phase-ovulation" />
-                <span className="font-medium text-foreground">排卵期提醒</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {isNative && settings.reminderOvulation && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      setTestingNotification('ovulation');
-                      const success = await sendTestNotification('ovulation');
-                      if (success) {
-                        toast.success('测试通知将在5秒后发送');
-                      } else {
-                        toast.error('发送测试通知失败');
-                      }
-                      setTimeout(() => setTestingNotification(null), 2000);
-                    }}
-                    disabled={testingNotification === 'ovulation'}
-                    className="text-xs h-7 px-2"
-                  >
-                    {testingNotification === 'ovulation' ? '发送中...' : '测试'}
-                  </Button>
-                )}
-                <Switch
-                  checked={settings.reminderOvulation}
-                  onCheckedChange={handleOvulationReminderToggle}
-                />
-              </div>
-            </div>
-
-            {/* 每日记录提醒 */}
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-phase-follicular" />
-                <span className="font-medium text-foreground">{zh.settings.dailyReminder}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {isNative && settings.reminderDailyLog && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      setTestingNotification('daily');
-                      const success = await sendTestNotification('daily');
-                      if (success) {
-                        toast.success('测试通知将在5秒后发送');
-                      } else {
-                        toast.error('发送测试通知失败');
-                      }
-                      setTimeout(() => setTestingNotification(null), 2000);
-                    }}
-                    disabled={testingNotification === 'daily'}
-                    className="text-xs h-7 px-2"
-                  >
-                    {testingNotification === 'daily' ? '发送中...' : '测试'}
-                  </Button>
-                )}
-                <Switch
-                  checked={settings.reminderDailyLog}
-                  onCheckedChange={async (checked) => {
-                    if (checked && isNative) {
-                      const hasPermission = await checkNotificationPermission();
-                      if (!hasPermission) {
-                        const granted = await requestNotificationPermission();
-                        if (!granted) {
-                          toast.error('请在系统设置中授予通知权限');
-                          return;
-                        }
-                      }
-                      await scheduleDailyReminder();
-                      toast.success('每日提醒已开启，将在每晚8点提醒您记录');
-                    } else if (!checked && isNative) {
-                      await cancelDailyReminder();
-                    }
-                    onUpdateSettings({ reminderDailyLog: checked });
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* 原生平台提示 */}
-            {isNative && (
-              <div className="p-4 bg-muted/30">
-                <p className="text-xs text-muted-foreground">
-                  💡 开启提醒后可点击"测试"按钮验证通知是否正常工作（5秒后发送）
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-      </div>
-
-      {/* 数据管理 */}
-      <div className="mb-6">
-        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">{zh.settings.dataManagement}</h2>
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-0 divide-y divide-border">
-            {/* 备份状态 */}
-            <div className="p-4">
-              <div className="flex items-center gap-3 mb-1">
-                <Database className="w-5 h-5 text-primary" />
-                <span className="font-medium text-foreground">备份状态</span>
-              </div>
-              <p className="ml-8 text-sm text-muted-foreground flex items-center gap-2">
-                {daysSinceBackup !== Infinity && daysSinceBackup <= 7 ? (
-                  <Check className="w-4 h-4 text-success" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-warning" />
-                )}
-                {backupStatusText}
-              </p>
-            </div>
-
-            {/* 导出数据 */}
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Download className="w-5 h-5 text-primary" />
-                <span className="font-medium text-foreground">
-                  {exporting ? '导出中...' : exportSuccess ? '导出成功！' : zh.settings.exportData}
-                </span>
-              </div>
-              {exportSuccess ? (
-                <Check className="w-5 h-5 text-success" />
-              ) : (
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              )}
-            </button>
-
-            {/* 导入数据 */}
-            <div className="p-4 flex items-center justify-between">
-              <button
-                onClick={handleImportClick}
-                disabled={importing}
-                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-              >
-                <Upload className="w-5 h-5 text-primary" />
-                <span className="font-medium text-foreground">
-                  {importing ? '导入中...' : importSuccess ? '导入成功！' : zh.settings.importData}
-                </span>
-              </button>
-              <div className="flex items-center gap-2">
-                {importSuccess ? (
-                  <Check className="w-5 h-5 text-success" />
-                ) : (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <button className="p-1.5 rounded-full hover:bg-muted transition-colors">
-                        <HelpCircle className="w-5 h-5 text-muted-foreground" />
-                      </button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>导入数据格式说明</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 text-sm">
-                        <p className="text-muted-foreground">
-                          导入文件必须是JSON格式，包含以下结构：
-                        </p>
-                        <div className="bg-muted p-3 rounded-lg font-mono text-xs overflow-x-auto">
-                          <pre>{`{
-  "version": 1,
-  "exportDate": "2026-01-09T12:00:00Z",
-  "settings": {
-    "id": 1,
-    "onboardingComplete": true,
-    "lastPeriodStart": "2025-12-28",
-    "averageCycleLength": 28,
-    "averagePeriodLength": 5,
-    ...其他设置
-  },
-  "cycles": [
-    {
-      "id": 1767373323381,
-      "startDate": "2025-11-28",
-      "endDate": "2025-12-04",
-      "cycleLength": 28
-    }
-  ],
-  "dailyLogs": [
-    {
-      "id": 1,
-      "date": "2025-12-28",
-      "isPeriod": true,
-      "flowIntensity": "medium",
-      "symptoms": ["头痛", "疲劳"],
-      "mood": "一般",
-      "notes": "备注内容",
-      "createdAt": "...",
-      "updatedAt": "..."
-    }
-  ]
-}`}</pre>
-                        </div>
-                        <div className="space-y-2">
-                          <h4 className="font-medium">字段说明：</h4>
-                          <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
-                            <li><code className="text-primary">cycles</code>：周期记录数组
-                              <ul className="list-disc pl-4 mt-1">
-                                <li><code>startDate</code>：经期开始日期（必需）</li>
-                                <li><code>endDate</code>：经期结束日期（可选）</li>
-                                <li><code>cycleLength</code>：周期长度（可选）</li>
-                              </ul>
-                            </li>
-                            <li><code className="text-primary">dailyLogs</code>：每日记录数组
-                              <ul className="list-disc pl-4 mt-1">
-                                <li><code>date</code>：日期，格式YYYY-MM-DD</li>
-                                <li><code>isPeriod</code>：是否经期</li>
-                                <li><code>flowIntensity</code>：light/medium/heavy</li>
-                                <li><code>symptoms</code>：症状数组</li>
-                                <li><code>mood</code>：心情</li>
-                              </ul>
-                            </li>
-                          </ul>
-                        </div>
-                        <p className="text-muted-foreground text-xs">
-                          💡 提示：最简单的方式是先导出现有数据，查看格式后再修改导入。
-                        </p>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </div>
-            </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="import-help-dialog">
+        <DialogHeader>
+          <DialogTitle>周期设置</DialogTitle>
+          <DialogDescription>没有足够历史记录时，会使用这里的周期和经期长度进行预测。</DialogDescription>
+        </DialogHeader>
+        <div className="cycle-settings-form">
+          <label>
+            <span>平均周期长度</span>
             <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleFileChange}
-              className="hidden"
+              type="number"
+              min={18}
+              max={60}
+              value={cycleLength}
+              onChange={(event) => setCycleLength(Number(event.target.value))}
             />
-
-            {/* 备份提醒间隔 */}
-            <div className="p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <Bell className="w-5 h-5 text-primary" />
-                <span className="font-medium text-foreground">{zh.settings.backupReminder}</span>
-              </div>
-              <div className="ml-8 flex gap-2">
-                {(['weekly', 'monthly'] as const).map((interval) => (
-                  <button
-                    key={interval}
-                    onClick={() => onUpdateSettings({ backupReminderInterval: interval })}
-                    className={`px-4 py-2 rounded-xl text-sm transition-all ${
-                      settings.backupReminderInterval === interval
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {interval === 'weekly' ? '每周' : '每月'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 持久存储 - 仅在 Web 平台显示 */}
-            {!isNative && (
-              <button
-                onClick={handleRequestPersistence}
-                disabled={settings.persistentStorageGranted}
-                className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-primary" />
-                  <div className="text-left">
-                    <span className="font-medium text-foreground block">{zh.settings.persistentStorage}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {settings.persistentStorageGranted
-                        ? '存储保护已启用'
-                        : zh.settings.persistentStorageDesc}
-                    </span>
-                  </div>
-                </div>
-                {settings.persistentStorageGranted ? (
-                  <Check className="w-5 h-5 text-success" />
-                ) : (
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                )}
-              </button>
-            )}
-
-            {/* 原生平台通知提示 */}
-            {isNative && (
-              <div className="p-4 flex items-center gap-3">
-                <Smartphone className="w-5 h-5 text-primary" />
-                <span className="text-sm text-muted-foreground">
-                  数据安全存储在本机，无需额外权限
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 显示设置 */}
-      <div className="mb-6">
-        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">{zh.settings.display}</h2>
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-0 divide-y divide-border">
-            {/* 深色模式 */}
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {settings.darkMode ? (
-                  <Moon className="w-5 h-5 text-primary" />
-                ) : (
-                  <Sun className="w-5 h-5 text-primary" />
-                )}
-                <span className="font-medium text-foreground">{zh.settings.darkMode}</span>
-              </div>
-              <Switch
-                checked={settings.darkMode}
-                onCheckedChange={(checked) => {
-                  onUpdateSettings({ darkMode: checked });
-                  if (checked) {
-                    document.documentElement.classList.add('dark');
-                  } else {
-                    document.documentElement.classList.remove('dark');
-                  }
-                }}
-              />
-            </div>
-
-            {/* 自定义时期图标 */}
-            <div className="p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-xl">🌸</span>
-                <span className="font-medium text-foreground">时期图标</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 ml-8">
-                {(['menstrual', 'follicular', 'ovulation', 'luteal'] as const).map((phase) => {
-                  const defaultEmojis: Record<string, string> = {
-                    menstrual: '🌺',
-                    follicular: '🌷',
-                    ovulation: '🌻',
-                    luteal: '🌼',
-                  };
-                  const currentEmoji = settings.customPhaseEmojis?.[phase] || defaultEmojis[phase];
-                  const phaseNames: Record<string, string> = {
-                    menstrual: '经期',
-                    follicular: '卵泡期',
-                    ovulation: '排卵期',
-                    luteal: '黄体期',
-                  };
-                  
-                  return (
-                    <div key={phase} className="flex items-center gap-2 bg-muted/30 rounded-lg p-2">
-                      <input
-                        type="text"
-                        value={currentEmoji}
-                        onChange={(e) => {
-                          const newEmojis = {
-                            ...(settings.customPhaseEmojis || {}),
-                            [phase]: e.target.value.slice(-2) || defaultEmojis[phase],
-                          };
-                          onUpdateSettings({ customPhaseEmojis: newEmojis });
-                        }}
-                        className="w-10 h-10 text-2xl text-center bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
-                        maxLength={2}
-                      />
-                      <span className="text-sm text-muted-foreground">{phaseNames[phase]}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 ml-8">
-                点击图标可以自定义每个时期的表情
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 关于 */}
-      <div>
-        <h2 className="text-sm font-medium text-muted-foreground mb-3 px-1">{zh.settings.about}</h2>
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-4 flex items-center gap-3">
-            <Info className="w-5 h-5 text-primary" />
-            <div>
-              <span className="font-medium text-foreground block">{zh.appName}</span>
-              <span className="text-sm text-muted-foreground">{zh.settings.version} 1.0.0</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+            <small>18-60 天</small>
+          </label>
+          <label>
+            <span>平均经期长度</span>
+            <input
+              type="number"
+              min={1}
+              max={14}
+              value={periodLength}
+              onChange={(event) => setPeriodLength(Number(event.target.value))}
+            />
+            <small>1-14 天</small>
+          </label>
+          <button type="button" className="dialog-primary-action" onClick={handleSave}>
+            保存设置
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
+}
+
+function clampWholeNumber(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function SettingsRow({
+  icon: Icon,
+  tone,
+  title,
+  desc,
+  onClick,
+}: {
+  icon: LucideIcon;
+  tone: string;
+  title: string;
+  desc: string;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
+      <span className={`settings-row-icon ${tone}`}>
+        <Icon className="h-8 w-8" />
+      </span>
+      <span className="settings-row-copy">
+        <strong>{title}</strong>
+        <small>{desc}</small>
+      </span>
+      <ChevronRight className="settings-chevron" />
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" className="settings-row" onClick={onClick}>
+        {content}
+      </button>
+    );
+  }
+
+  return <div className="settings-row">{content}</div>;
 }

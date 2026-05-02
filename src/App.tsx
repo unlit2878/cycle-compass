@@ -1,38 +1,42 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { useCycleData } from "@/hooks/useCycleData";
-import { Onboarding } from "@/components/Onboarding";
-import { Home } from "@/components/Home";
-import { CalendarPage } from "@/components/CalendarPage";
-import { LoggingScreen } from "@/components/LoggingScreen";
-import { InsightsPage } from "@/components/InsightsPage";
-import { SettingsPage } from "@/components/SettingsPage";
-import { BottomNav } from "@/components/BottomNav";
-import { formatDate } from "@/lib/cycle-utils";
-import { BackupData, addCycle, updateCycle, getAllCycles } from "@/lib/db";
-import { toast } from "sonner";
-import { zh } from "@/lib/i18n";
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
+import { toast } from 'sonner';
+import { Toaster } from '@/components/ui/toaster';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { BottomNav } from '@/components/BottomNav';
+import { CalendarPage } from '@/components/CalendarPage';
+import { Home } from '@/components/Home';
+import { InsightsPage } from '@/components/InsightsPage';
+import { LoggingScreen } from '@/components/LoggingScreen';
+import { Onboarding } from '@/components/Onboarding';
+import { SettingsPage } from '@/components/SettingsPage';
+import { useCycleData } from '@/hooks/useCycleData';
+import { BackupData, DailyLog, getAllCycles, savePeriodStart, updateCycle } from '@/lib/db';
+import { findPeriodCycleToEndOnDate, formatDate } from '@/lib/cycle-utils';
 import { initializeNotifications } from '@/lib/notifications';
 
 const queryClient = new QueryClient();
+type LogPayload = Omit<DailyLog, 'id' | 'date' | 'createdAt' | 'updatedAt'>;
 
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastBackPressRef = useRef<number>(0);
+  const [loggingDate, setLoggingDate] = useState<string | null>(null);
+  const [loggingExistingLog, setLoggingExistingLog] = useState<DailyLog | undefined>(undefined);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+
   const {
     settings,
     cycles,
     dailyLogs,
     loading,
-    phaseInfo,
+    cycleModel,
     statistics,
     saveSettings,
     completeOnboarding,
@@ -45,29 +49,23 @@ function AppContent() {
     refresh,
   } = useCycleData();
 
-  const [loggingDate, setLoggingDate] = useState<string | null>(null);
-  const [loggingExistingLog, setLoggingExistingLog] = useState<any>(null);
-  const [calendarMonth, setCalendarMonth] = useState(new Date());
-
-  // Android 返回键处理
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    
+    let removeBackButtonListener: (() => void) | undefined;
+    let active = true;
+
     const handleBackButton = () => {
-      // 如果在记录页面，关闭记录
       if (loggingDate) {
         setLoggingDate(null);
-        setLoggingExistingLog(null);
+        setLoggingExistingLog(undefined);
         return;
       }
-      
-      // 如果不在首页，返回首页
+
       if (location.pathname !== '/') {
         navigate('/');
         return;
       }
-      
-      // 在首页，双击退出
+
       const now = Date.now();
       if (now - lastBackPressRef.current < 2000) {
         CapacitorApp.exitApp();
@@ -76,31 +74,27 @@ function AppContent() {
         toast('再按一次返回键退出应用');
       }
     };
-    
-    CapacitorApp.addListener('backButton', handleBackButton);
-    
+
+    CapacitorApp.addListener('backButton', handleBackButton).then((listener) => {
+      removeBackButtonListener = () => listener.remove();
+      if (!active) removeBackButtonListener();
+    });
+
     return () => {
-      CapacitorApp.removeAllListeners();
+      active = false;
+      removeBackButtonListener?.();
     };
   }, [location.pathname, loggingDate, navigate]);
 
-  // 加载时应用深色模式
   useEffect(() => {
-    if (settings?.darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', Boolean(settings?.darkMode));
   }, [settings?.darkMode]);
 
-
-  // 首次加载时请求持久存储并初始化通知
   useEffect(() => {
     if (settings && !settings.persistentStorageGranted) {
       requestPersistence();
     }
-    
-    // 初始化通知系统
+
     if (settings && Capacitor.isNativePlatform()) {
       initializeNotifications({
         reminderPeriodApproaching: settings.reminderPeriodApproaching,
@@ -108,128 +102,115 @@ function AppContent() {
         reminderDailyLog: settings.reminderDailyLog,
         reminderPeriodDays: settings.reminderPeriodDays,
         lastPeriodStart: settings.lastPeriodStart,
-        averageCycleLength: settings.averageCycleLength,
+        averageCycleLength: cycleModel?.effectiveCycleLength || settings.averageCycleLength,
       });
     }
-  }, [settings?.persistentStorageGranted, settings?.reminderPeriodApproaching, settings?.reminderOvulation, settings?.reminderDailyLog]);
+  }, [
+    settings,
+    cycleModel?.effectiveCycleLength,
+    requestPersistence,
+  ]);
 
-  // 判断当前是否在经期中（改用 cycles 表判断）
-  const isInPeriod = useMemo(() => {
-    if (!cycles || cycles.length === 0) return false;
-    
-    const today = formatDate(new Date());
-    const todayTime = new Date(today + 'T12:00:00').getTime();
-    
-    // 找到最新的周期记录
-    const sortedCycles = [...cycles].sort((a, b) => 
-      new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-    );
-    
-    const latestCycle = sortedCycles[0];
-    if (!latestCycle) return false;
-    
-    const startTime = new Date(latestCycle.startDate + 'T12:00:00').getTime();
-    const endTime = latestCycle.endDate 
-      ? new Date(latestCycle.endDate + 'T12:00:00').getTime() 
-      : startTime + 7 * 24 * 60 * 60 * 1000; // 如果没有结束日期，默认7天
-    
-    // 检查今天是否在最新周期的经期范围内
-    return todayTime >= startTime && todayTime <= endTime;
-  }, [cycles]);
-
-  const handleLogToday = async () => {
-    const today = formatDate(new Date());
-    const existing = await getLogForDate(today);
-    setLoggingExistingLog(existing);
-    setLoggingDate(today);
+  const closeLogging = () => {
+    setLoggingDate(null);
+    setLoggingExistingLog(undefined);
   };
 
-  const handleDaySelect = async (date: string) => {
+  const openLogging = async (date: string) => {
     const existing = await getLogForDate(date);
     setLoggingExistingLog(existing);
     setLoggingDate(date);
   };
 
-  const handleLogSave = async (data: any) => {
+  const handleLogToday = () => openLogging(formatDate(new Date()));
+
+  const handleLoggingRefresh = async () => {
+    await refresh();
     if (loggingDate) {
-      await logDay(loggingDate, data);
-      toast.success('记录已保存！');
-      setLoggingDate(null);
-      setLoggingExistingLog(null);
+      setLoggingExistingLog(await getLogForDate(loggingDate));
     }
   };
 
-  // 标记经期开始：只创建周期记录，不再创建冗余的 dailyLogs
-  const handleStartPeriod = async (date: string, autoFillDays: number) => {
-    const startDate = new Date(date + 'T12:00:00');
-    
-    // 更新设置中的最后经期开始日期
-    await saveSettings({ lastPeriodStart: date });
-    
-    // 创建新的周期记录（不再存储 cycleLength，不再创建 dailyLogs）
+  const handleLogSave = async (targetDate: string, data: LogPayload, originalDate: string) => {
+    if (!loggingDate) return;
+    if (targetDate !== originalDate && loggingExistingLog) {
+      await deleteLog(originalDate);
+    }
+    await logDay(targetDate, data);
+    toast.success('记录已保存');
+    closeLogging();
+  };
+
+  const handleMoodSelect = async (date: string, mood: string | undefined) => {
+    const existing = await getLogForDate(date);
+    await logDay(date, {
+      flowIntensity: existing?.flowIntensity,
+      flowColor: existing?.flowColor,
+      symptoms: existing?.symptoms,
+      mood,
+      notes: existing?.notes,
+    });
+    toast.success(mood ? `心情已记录：${mood}` : '已取消心情记录');
+  };
+
+  const handleStartPeriod = async (date: string, autoFillDays: number, cycleId?: number) => {
+    const startDate = new Date(`${date}T12:00:00`);
+
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + autoFillDays - 1);
-    await addCycle({
-      startDate: date,
-      endDate: formatDate(endDate),
-    });
-    
-    toast.success(`已标记经期：${date} 至 ${formatDate(endDate)}`);
+
+    await savePeriodStart(date, formatDate(endDate), cycleId);
+
     await refresh();
-    setLoggingDate(null);
-    setLoggingExistingLog(null);
   };
 
-  // 标记经期结束：只更新周期记录的结束日期
-  const handleEndPeriod = async (date: string) => {
-    // 更新最近周期的结束日期
+  const handleEndPeriod = async (date: string, cycleId?: number) => {
     const allCycles = await getAllCycles();
-    if (allCycles.length > 0) {
-      const sortedCycles = [...allCycles].sort((a, b) => 
-        new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-      );
-      const latestCycle = sortedCycles[0];
-      if (latestCycle.id) {
-        await updateCycle(latestCycle.id, { endDate: date });
-      }
+    const cycle = cycleId ? allCycles.find((item) => item.id === cycleId) : findPeriodCycleToEndOnDate(date, allCycles);
+
+    if (!cycle?.id) {
+      toast.error('请先标记这一段经期的开始日期');
+      return;
     }
-    
-    toast.success('已标记经期结束');
-    await refresh();
-    setLoggingDate(null);
-    setLoggingExistingLog(null);
+
+    try {
+      await updateCycle(cycle.id, { endDate: date });
+      await refresh();
+    } catch {
+      toast.error('经期结束日期不能早于开始日期');
+    }
   };
 
   const handleImportFromOnboarding = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileImport = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
+
     try {
       const text = await file.text();
-      const data = JSON.parse(text) as BackupData;
-      await restore(data);
-      toast.success('数据导入成功！');
+      await restore(JSON.parse(text) as BackupData);
+      toast.success('数据导入成功');
     } catch {
       toast.error('导入数据失败');
+    } finally {
+      event.target.value = '';
     }
-    e.target.value = '';
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center gradient-soft">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-full gradient-primary mx-auto mb-4 animate-pulse-soft" />
-          <p className="text-muted-foreground">{zh.common.loading}</p>
+      <div className="app-screen loading-screen">
+        <div>
+          <span />
+          <p>加载中...</p>
         </div>
       </div>
     );
   }
 
-  // 如果未完成引导则显示引导页面
   if (!settings?.onboardingComplete) {
     return (
       <>
@@ -239,50 +220,80 @@ function AppContent() {
     );
   }
 
-  // 如果正在记录则显示记录页面
-  if (loggingDate) {
-    return (
-      <LoggingScreen
-        date={loggingDate}
-        existingLog={loggingExistingLog}
-        settings={settings}
-        isInPeriod={isInPeriod}
-        statistics={statistics}
-        onSave={handleLogSave}
-        onStartPeriod={handleStartPeriod}
-        onEndPeriod={handleEndPeriod}
-        onBack={() => { setLoggingDate(null); setLoggingExistingLog(null); }}
-        onRefresh={refresh}
-        onDeleteLog={deleteLog}
-      />
-    );
-  }
-
   return (
-    <div className="min-h-screen">
-      <Routes>
-        <Route path="/" element={
-          <Home phaseInfo={phaseInfo} settings={settings} cycles={cycles} onDaySelect={handleDaySelect} onBackupReminder={() => navigate('/settings')} />
-        } />
-        <Route path="/calendar" element={
-          <CalendarPage 
-            settings={settings} 
-            dailyLogs={dailyLogs} 
-            cycles={cycles} 
-            currentMonth={calendarMonth}
-            onMonthChange={setCalendarMonth}
-            onDaySelect={handleDaySelect} 
+    <>
+      {loggingDate ? (
+        <LoggingScreen
+          date={loggingDate}
+          existingLog={loggingExistingLog}
+          settings={settings}
+          cycleModel={cycleModel}
+          statistics={statistics}
+          onSave={handleLogSave}
+          onStartPeriod={handleStartPeriod}
+          onEndPeriod={handleEndPeriod}
+          onBack={closeLogging}
+          onRefresh={handleLoggingRefresh}
+          onDeleteLog={deleteLog}
+        />
+      ) : (
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <Home
+                settings={settings}
+                cycleModel={cycleModel}
+                cycles={cycles}
+                dailyLogs={dailyLogs}
+                onDaySelect={openLogging}
+                onMoodSelect={handleMoodSelect}
+                onBackupReminder={() => navigate('/settings#data-management')}
+              />
+            }
           />
-        } />
-        <Route path="/insights" element={
-          <InsightsPage settings={settings} cycles={cycles} dailyLogs={dailyLogs} statistics={statistics} />
-        } />
-        <Route path="/settings" element={
-          <SettingsPage settings={settings} onUpdateSettings={saveSettings} onExport={backup} onImport={restore} onRequestPersistence={requestPersistence} />
-        } />
-      </Routes>
-      <BottomNav onLogClick={handleLogToday} />
-    </div>
+          <Route
+            path="/calendar"
+            element={
+              <CalendarPage
+                settings={settings}
+                dailyLogs={dailyLogs}
+                cycles={cycles}
+                cycleModel={cycleModel}
+                currentMonth={calendarMonth}
+                onMonthChange={setCalendarMonth}
+                onDaySelect={openLogging}
+                onMoodSelect={handleMoodSelect}
+              />
+            }
+          />
+          <Route
+            path="/insights"
+            element={
+              <InsightsPage
+                settings={settings}
+                cycles={cycles}
+                dailyLogs={dailyLogs}
+                statistics={statistics}
+                cycleModel={cycleModel}
+              />
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <SettingsPage
+                settings={settings}
+                onUpdateSettings={saveSettings}
+                onExport={backup}
+                onImport={restore}
+              />
+            }
+          />
+        </Routes>
+      )}
+      <BottomNav onLogClick={handleLogToday} onNavigate={closeLogging} active={loggingDate ? 'log' : undefined} />
+    </>
   );
 }
 

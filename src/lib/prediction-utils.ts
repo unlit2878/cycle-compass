@@ -1,150 +1,174 @@
 import { CycleData } from './db';
 import { parseISO, differenceInDays } from 'date-fns';
 
-/**
- * 周期预测统计工具
- * 使用多种统计学方法来提高周期预测的准确性
- */
+export type PredictionMethod = 'ewma' | 'sma' | 'weighted' | 'robust';
 
 export interface PredictionResult {
   predictedCycleLength: number;
   confidence: number;
-  method: 'ewma' | 'sma' | 'weighted';
+  method: PredictionMethod;
   lowerBound: number;
   upperBound: number;
+  sampleSize: number;
+  outlierCount: number;
+  windowRadius: number;
 }
 
 export interface CycleLengthData {
   date: string;
   length: number;
+  weight: number;
+  isOutlier: boolean;
 }
 
-/**
- * 从周期数据中提取周期长度
- */
+const MIN_REASONABLE_CYCLE = 18;
+const MAX_TYPICAL_CYCLE = 45;
+const MAX_EXTENDED_CYCLE = 60;
+const LONG_CYCLE_WEIGHT = 0.35;
+
 export function extractCycleLengths(cycles: CycleData[]): CycleLengthData[] {
-  const sortedCycles = [...cycles].sort((a, b) => 
+  const sortedCycles = [...cycles].sort((a, b) =>
     parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
   );
-  
+
   const lengths: CycleLengthData[] = [];
-  
+
   for (let i = 0; i < sortedCycles.length - 1; i++) {
     const currentStart = parseISO(sortedCycles[i].startDate);
     const nextStart = parseISO(sortedCycles[i + 1].startDate);
     const length = differenceInDays(nextStart, currentStart);
-    
-    // 过滤掉异常值（周期长度应该在合理范围内）
-    if (length >= 18 && length <= 45) {
+
+    if (length >= MIN_REASONABLE_CYCLE && length <= MAX_EXTENDED_CYCLE) {
+      const isOutlier = length > MAX_TYPICAL_CYCLE;
       lengths.push({
         date: sortedCycles[i].startDate,
         length,
+        weight: isOutlier ? LONG_CYCLE_WEIGHT : 1,
+        isOutlier,
       });
     }
   }
-  
+
   return lengths;
 }
 
-/**
- * 简单移动平均（SMA）
- * 适用于周期相对稳定的用户
- */
 export function calculateSMA(lengths: number[], window: number = 3): number {
   if (lengths.length === 0) return 28;
   if (lengths.length < window) {
     return Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length);
   }
-  
+
   const recentLengths = lengths.slice(-window);
   return Math.round(recentLengths.reduce((a, b) => a + b, 0) / window);
 }
 
-/**
- * 指数加权移动平均（EWMA）
- * 更重视近期数据，适用于周期可能有变化趋势的用户
- * 
- * @param lengths - 周期长度数组（按时间顺序）
- * @param alpha - 平滑因子 (0-1)，值越大对近期数据权重越高
- */
 export function calculateEWMA(lengths: number[], alpha: number = 0.3): number {
   if (lengths.length === 0) return 28;
   if (lengths.length === 1) return lengths[0];
-  
+
   let ewma = lengths[0];
-  
+
   for (let i = 1; i < lengths.length; i++) {
     ewma = alpha * lengths[i] + (1 - alpha) * ewma;
   }
-  
+
   return Math.round(ewma);
 }
 
-/**
- * 加权移动平均
- * 给最近的周期更高的权重
- */
 export function calculateWeightedMA(lengths: number[]): number {
   if (lengths.length === 0) return 28;
   if (lengths.length === 1) return lengths[0];
-  
-  // 使用最近的6个周期
+
   const recentLengths = lengths.slice(-6);
   const n = recentLengths.length;
-  
-  // 权重：最近的权重最高
-  // 例如 n=4: 权重为 1, 2, 3, 4
+
   let weightSum = 0;
   let weightedSum = 0;
-  
+
   for (let i = 0; i < n; i++) {
     const weight = i + 1;
     weightedSum += recentLengths[i] * weight;
     weightSum += weight;
   }
-  
+
   return Math.round(weightedSum / weightSum);
 }
 
-/**
- * 计算标准差
- */
 export function calculateStdDev(lengths: number[]): number {
   if (lengths.length < 2) return 0;
-  
+
   const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
   const squareDiffs = lengths.map(len => Math.pow(len - mean, 2));
   const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / lengths.length;
-  
+
   return Math.sqrt(avgSquareDiff);
 }
 
-/**
- * 计算置信区间
- * 使用正态分布的95%置信区间
- */
 export function calculateConfidenceInterval(
   mean: number,
   stdDev: number,
   n: number
 ): { lower: number; upper: number } {
-  // 95%置信区间使用1.96作为z值
   const marginOfError = 1.96 * (stdDev / Math.sqrt(n));
-  
+
   return {
-    lower: Math.round(Math.max(18, mean - marginOfError)),
-    upper: Math.round(Math.min(45, mean + marginOfError)),
+    lower: Math.round(Math.max(MIN_REASONABLE_CYCLE, mean - marginOfError)),
+    upper: Math.round(Math.min(MAX_EXTENDED_CYCLE, mean + marginOfError)),
   };
 }
 
-/**
- * 综合预测
- * 根据数据特征选择最佳预测方法
- */
+function calculateMean(lengths: number[]): number {
+  if (lengths.length === 0) return 28;
+  return lengths.reduce((a, b) => a + b, 0) / lengths.length;
+}
+
+function calculateWeightedMean(data: Array<{ length: number; weight: number }>): number {
+  if (data.length === 0) return 28;
+
+  const totals = data.reduce(
+    (acc, item) => ({
+      weightedSum: acc.weightedSum + item.length * item.weight,
+      weightSum: acc.weightSum + item.weight,
+    }),
+    { weightedSum: 0, weightSum: 0 }
+  );
+
+  return totals.weightedSum / totals.weightSum;
+}
+
+function calculateWeightedRecentMean(data: CycleLengthData[], window: number = 6): number {
+  const recent = data.slice(-window);
+  if (recent.length === 0) return 28;
+
+  return calculateWeightedMean(
+    recent.map((item, index) => ({
+      length: item.length,
+      weight: item.weight * (index + 1),
+    }))
+  );
+}
+
+function calculateMedian(lengths: number[]): number {
+  if (lengths.length === 0) return 28;
+  const sorted = [...lengths].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+function calculateQuantile(lengths: number[], quantile: number): number {
+  if (lengths.length === 0) return 28;
+  const sorted = [...lengths].sort((a, b) => a - b);
+  const index = (sorted.length - 1) * quantile;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return sorted[lower];
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower);
+}
+
 export function predictNextCycle(cycles: CycleData[]): PredictionResult {
   const cycleLengthData = extractCycleLengths(cycles);
   const lengths = cycleLengthData.map(d => d.length);
-  
+
   if (lengths.length === 0) {
     return {
       predictedCycleLength: 28,
@@ -152,52 +176,59 @@ export function predictNextCycle(cycles: CycleData[]): PredictionResult {
       method: 'sma',
       lowerBound: 25,
       upperBound: 31,
+      sampleSize: 0,
+      outlierCount: 0,
+      windowRadius: 3,
     };
   }
-  
+
+  const normalLengths = cycleLengthData.filter(d => !d.isOutlier).map(d => d.length);
+  const outlierCount = cycleLengthData.filter(d => d.isOutlier).length;
   const stdDev = calculateStdDev(lengths);
-  const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
-  
-  // 根据标准差选择方法
-  // 标准差小 -> 周期规律，用SMA
-  // 标准差大 -> 周期不规律，用EWMA（更重视近期）
+  const mean = calculateMean(lengths);
+
   let predictedLength: number;
-  let method: 'ewma' | 'sma' | 'weighted';
-  
+  let method: PredictionMethod;
+
   if (stdDev <= 2) {
-    // 非常规律，使用SMA
     predictedLength = calculateSMA(lengths, 3);
     method = 'sma';
-  } else if (stdDev <= 4) {
-    // 较规律，使用加权移动平均
-    predictedLength = calculateWeightedMA(lengths);
-    method = 'weighted';
   } else {
-    // 不太规律，使用EWMA，更重视近期数据
-    predictedLength = calculateEWMA(lengths, 0.4);
-    method = 'ewma';
+    const stableCenter = calculateMedian(normalLengths.length > 0 ? normalLengths : lengths);
+    const weightedAverage = calculateWeightedMean(cycleLengthData);
+    const recentAverage = calculateWeightedRecentMean(cycleLengthData, 6);
+    predictedLength = Math.round(stableCenter * 0.5 + weightedAverage * 0.3 + recentAverage * 0.2);
+    method = 'robust';
   }
-  
-  // 计算置信区间
-  const { lower, upper } = calculateConfidenceInterval(mean, stdDev, lengths.length);
-  
-  // 计算置信度（基于标准差和样本量）
-  const baseConfidence = Math.max(0.3, 1 - stdDev / 10);
+
+  const windowSource = normalLengths.length >= 4 ? normalLengths : lengths;
+  const q20 = calculateQuantile(windowSource, 0.2);
+  const q80 = calculateQuantile(windowSource, 0.8);
+  const windowRadius = Math.max(
+    3,
+    Math.round(stdDev),
+    Math.ceil(Math.max(predictedLength - q20, q80 - predictedLength))
+  );
+  const lower = Math.max(MIN_REASONABLE_CYCLE, predictedLength - windowRadius);
+  const upper = Math.min(MAX_EXTENDED_CYCLE, predictedLength + windowRadius);
+
+  const baseConfidence = Math.max(0.25, 1 - stdDev / 10);
   const sampleBonus = Math.min(0.2, lengths.length * 0.02);
-  const confidence = Math.min(0.95, baseConfidence + sampleBonus);
-  
+  const outlierPenalty = Math.min(0.12, outlierCount * 0.04);
+  const confidence = Math.min(0.9, Math.max(0.25, baseConfidence + sampleBonus - outlierPenalty));
+
   return {
     predictedCycleLength: predictedLength,
     confidence,
     method,
     lowerBound: lower,
     upperBound: upper,
+    sampleSize: lengths.length,
+    outlierCount,
+    windowRadius,
   };
 }
 
-/**
- * 使用改进的预测方法评估历史预测准确性
- */
 export function evaluatePredictionAccuracy(cycles: CycleData[]): {
   predictions: Array<{
     cycleDate: string;
@@ -205,57 +236,59 @@ export function evaluatePredictionAccuracy(cycles: CycleData[]): {
     actual: number;
     error: number;
     method: string;
+    wasOutlier: boolean;
   }>;
   avgError: number;
   accuracyRate: number;
+  windowHitRate: number;
 } {
-  const sortedCycles = [...cycles].sort((a, b) => 
+  const sortedCycles = [...cycles].sort((a, b) =>
     parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
   );
-  
+
   const predictions: Array<{
     cycleDate: string;
     predicted: number;
     actual: number;
     error: number;
     method: string;
+    wasOutlier: boolean;
   }> = [];
-  
-  // 从第3个周期开始，使用前面的数据进行预测
+
   for (let i = 2; i < sortedCycles.length; i++) {
     const historicalCycles = sortedCycles.slice(0, i);
     const prediction = predictNextCycle(historicalCycles);
-    
+
     const currentStart = parseISO(sortedCycles[i - 1].startDate);
     const nextStart = parseISO(sortedCycles[i].startDate);
     const actualLength = differenceInDays(nextStart, currentStart);
-    
-    if (actualLength >= 18 && actualLength <= 45) {
+
+    if (actualLength >= MIN_REASONABLE_CYCLE && actualLength <= MAX_EXTENDED_CYCLE) {
       predictions.push({
         cycleDate: sortedCycles[i].startDate,
         predicted: prediction.predictedCycleLength,
         actual: actualLength,
         error: actualLength - prediction.predictedCycleLength,
         method: prediction.method,
+        wasOutlier: actualLength > MAX_TYPICAL_CYCLE,
       });
     }
   }
-  
+
   if (predictions.length === 0) {
-    return { predictions: [], avgError: 0, accuracyRate: 0 };
+    return { predictions: [], avgError: 0, accuracyRate: 0, windowHitRate: 0 };
   }
-  
+
   const avgError = predictions.reduce((sum, p) => sum + Math.abs(p.error), 0) / predictions.length;
   const accurateCount = predictions.filter(p => Math.abs(p.error) <= 2).length;
+  const windowHitCount = predictions.filter(p => Math.abs(p.error) <= 5).length;
   const accuracyRate = Math.round((accurateCount / predictions.length) * 100);
-  
-  return { predictions, avgError, accuracyRate };
+  const windowHitRate = Math.round((windowHitCount / predictions.length) * 100);
+
+  return { predictions, avgError, accuracyRate, windowHitRate };
 }
 
-/**
- * 获取预测方法的中文名称
- */
-export function getMethodName(method: 'ewma' | 'sma' | 'weighted'): string {
+export function getMethodName(method: PredictionMethod): string {
   switch (method) {
     case 'sma':
       return '简单移动平均';
@@ -263,6 +296,8 @@ export function getMethodName(method: 'ewma' | 'sma' | 'weighted'): string {
       return '指数加权平均';
     case 'weighted':
       return '加权移动平均';
+    case 'robust':
+      return '稳健窗口预测';
     default:
       return '统计预测';
   }

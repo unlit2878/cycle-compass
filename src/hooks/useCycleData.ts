@@ -8,7 +8,6 @@ import {
   addOrUpdateDailyLog,
   getDailyLog,
   deleteDailyLog as deleteDailyLogFromDB,
-  getLatestCycle,
   exportData,
   importData,
   requestPersistentStorage,
@@ -18,22 +17,14 @@ import {
   DailyLog,
   BackupData,
 } from '@/lib/db';
-import {
-  getPhaseInfo,
-  calculateAverageCycleLength,
-  calculateAveragePeriodLength,
-  formatDate,
-  PhaseInfo,
-  parseLocalDate,
-} from '@/lib/cycle-utils';
-import { predictNextCycle } from '@/lib/prediction-utils';
+import { createCycleModel, CycleModel } from '@/lib/cycle-engine';
 
 export function useCycleData() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [cycles, setCycles] = useState<CycleData[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [phaseInfo, setPhaseInfo] = useState<PhaseInfo | null>(null);
+  const [cycleModel, setCycleModel] = useState<CycleModel | null>(null);
 
   // 加载所有数据
   const loadData = useCallback(async () => {
@@ -50,23 +41,7 @@ export function useCycleData() {
       setSettings(settingsData);
       setCycles(cyclesData);
       setDailyLogs(logsData);
-
-      // 如果有数据则计算当前阶段（使用统计预测的周期长度）
-      if (settingsData.lastPeriodStart) {
-        // 使用预测工具计算周期长度（与首页统一）
-        const prediction = predictNextCycle(cyclesData);
-        const cycleLength = cyclesData.length >= 2 ? prediction.predictedCycleLength : settingsData.averageCycleLength;
-        const currentDate = new Date();
-        currentDate.setHours(12, 0, 0, 0);
-        
-        const info = getPhaseInfo(
-          currentDate,
-          parseLocalDate(settingsData.lastPeriodStart),
-          cycleLength,
-          settingsData.averagePeriodLength
-        );
-        setPhaseInfo(info);
-      }
+      setCycleModel(createCycleModel(settingsData, cyclesData, logsData));
     } catch (error) {
       console.error('加载数据失败:', error);
     } finally {
@@ -82,26 +57,10 @@ export function useCycleData() {
   const saveSettings = useCallback(async (updates: Partial<Settings>) => {
     const updated = await updateSettings(updates);
     setSettings(updated);
-    
-    // 如果相关设置变更则重新计算阶段信息（使用统计预测的周期长度）
-    if (updates.lastPeriodStart || updates.averageCycleLength || updates.averagePeriodLength) {
-      const allCycles = await getAllCycles();
-      const prediction = predictNextCycle(allCycles);
-      const cycleLength = allCycles.length >= 2 ? prediction.predictedCycleLength : updated.averageCycleLength;
-      const currentDate = new Date();
-      currentDate.setHours(12, 0, 0, 0);
-      
-      const info = getPhaseInfo(
-        currentDate,
-        parseLocalDate(updated.lastPeriodStart!),
-        cycleLength,
-        updated.averagePeriodLength
-      );
-      setPhaseInfo(info);
-    }
+    setCycleModel(createCycleModel(updated, cycles, dailyLogs));
     
     return updated;
-  }, []);
+  }, [cycles, dailyLogs]);
 
   // 完成引导设置
   const completeOnboarding = useCallback(async (lastPeriodStart: string, cycleLength: number, periodLength: number = 5, lastPeriodEnd?: string) => {
@@ -163,12 +122,31 @@ export function useCycleData() {
     return granted;
   }, [saveSettings]);
 
-  // 计算统计数据（改用 cycles 计算经期长度）
-  const statistics = {
-    averageCycleLength: calculateAverageCycleLength(cycles),
-    averagePeriodLength: calculateAveragePeriodLength(cycles),
+  const statistics = cycleModel?.analytics || {
+    averageCycleLength: settings?.averageCycleLength || 28,
+    averagePeriodLength: settings?.averagePeriodLength || 5,
     totalCyclesTracked: cycles.length,
     totalDaysLogged: dailyLogs.length,
+    cycleLength: {
+      value: settings?.averageCycleLength || 28,
+      source: 'settings' as const,
+      sampleSize: 0,
+      ignoredCount: 0,
+      outlierCount: 0,
+      confidence: 'low' as const,
+    },
+    periodLength: {
+      value: settings?.averagePeriodLength || 5,
+      source: 'settings' as const,
+      sampleSize: 0,
+      ignoredCount: 0,
+      outlierCount: 0,
+      confidence: 'low' as const,
+    },
+    cycleLengthRange: null,
+    periodLengthRange: null,
+    regularity: null,
+    predictionAccuracy: { predictions: [], avgError: 0, accuracyRate: 0, windowHitRate: 0 },
   };
 
   return {
@@ -176,7 +154,8 @@ export function useCycleData() {
     cycles,
     dailyLogs,
     loading,
-    phaseInfo,
+    cycleModel,
+    phaseInfo: cycleModel?.currentPhase || null,
     statistics,
     saveSettings,
     completeOnboarding,

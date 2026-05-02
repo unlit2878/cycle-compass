@@ -17,11 +17,167 @@ export interface PredictedPeriod {
   isPrediction: boolean;
 }
 
+export interface DateRangeInfo {
+  startDate: Date;
+  endDate: Date;
+  startDateStr: string;
+  endDateStr: string;
+}
+
+export interface FertilityWindowInfo {
+  fertileRange: DateRangeInfo;
+  ovulationRange: DateRangeInfo;
+}
+
+export type CycleWindowKind = 'fertile' | 'ovulation';
+
+const OVULATION_DAY_OFFSET_FROM_NEXT_PERIOD = 14;
+const OVULATION_PHASE_RADIUS_DAYS = 2;
+const FERTILE_WINDOW_START_OFFSET_FROM_OVULATION = -5;
+const FERTILE_WINDOW_END_OFFSET_FROM_OVULATION = 1;
+
+function buildDateRange(startDate: Date, endDate: Date): DateRangeInfo {
+  return {
+    startDate,
+    endDate,
+    startDateStr: formatDate(startDate),
+    endDateStr: formatDate(endDate),
+  };
+}
+
+export function getOvulationDay(cycleLength: number): number {
+  return Math.round(cycleLength - OVULATION_DAY_OFFSET_FROM_NEXT_PERIOD);
+}
+
+export function getCycleWindowDays(cycleLength: number): Record<CycleWindowKind, { startDay: number; endDay: number }> {
+  const ovulationDay = getOvulationDay(cycleLength);
+  const ovulationStartDay = ovulationDay - OVULATION_PHASE_RADIUS_DAYS;
+  const ovulationEndDay = ovulationDay + OVULATION_PHASE_RADIUS_DAYS;
+
+  return {
+    ovulation: {
+      startDay: ovulationStartDay,
+      endDay: ovulationEndDay,
+    },
+    fertile: {
+      startDay: ovulationDay + FERTILE_WINDOW_START_OFFSET_FROM_OVULATION,
+      endDay: Math.min(ovulationDay + FERTILE_WINDOW_END_OFFSET_FROM_OVULATION, ovulationStartDay - 1),
+    },
+  };
+}
+
+export function getFertilityWindowForCycleStart(cycleStartDate: Date, cycleLength: number): FertilityWindowInfo {
+  const windows = getCycleWindowDays(cycleLength);
+  const fertileStart = new Date(cycleStartDate);
+  fertileStart.setDate(fertileStart.getDate() + windows.fertile.startDay - 1);
+  const fertileEnd = new Date(cycleStartDate);
+  fertileEnd.setDate(fertileEnd.getDate() + windows.fertile.endDay - 1);
+  const ovulationStart = new Date(cycleStartDate);
+  ovulationStart.setDate(ovulationStart.getDate() + windows.ovulation.startDay - 1);
+  const ovulationEnd = new Date(cycleStartDate);
+  ovulationEnd.setDate(ovulationEnd.getDate() + windows.ovulation.endDay - 1);
+
+  return {
+    fertileRange: buildDateRange(fertileStart, fertileEnd),
+    ovulationRange: buildDateRange(ovulationStart, ovulationEnd),
+  };
+}
+
+export function getOvulationDateForCycleStart(cycleStartDate: Date, cycleLength: number): Date {
+  const ovulationDate = new Date(cycleStartDate);
+  ovulationDate.setDate(ovulationDate.getDate() + getOvulationDay(cycleLength) - 1);
+  return ovulationDate;
+}
+
+export function getOvulationDateForNextPeriodStart(nextPeriodStart: Date, cycleLength: number): Date {
+  const cycleStartDate = new Date(nextPeriodStart);
+  cycleStartDate.setDate(cycleStartDate.getDate() - cycleLength);
+  return getOvulationDateForCycleStart(cycleStartDate, cycleLength);
+}
+
+export function getFertilityWindowForNextPeriodStart(nextPeriodStart: Date, cycleLength: number): FertilityWindowInfo {
+  const cycleStartDate = new Date(nextPeriodStart);
+  cycleStartDate.setDate(cycleStartDate.getDate() - cycleLength);
+  return getFertilityWindowForCycleStart(cycleStartDate, cycleLength);
+}
+
+export function getDayInCycleForDate(date: Date, cycleStartDate: Date, cycleLength: number): number {
+  const target = new Date(date);
+  target.setHours(12, 0, 0, 0);
+  const start = new Date(cycleStartDate);
+  start.setHours(12, 0, 0, 0);
+  const dayDiff = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return ((dayDiff % cycleLength) + cycleLength) % cycleLength + 1;
+}
+
+export function getCycleWindowKindForDay(dayInCycle: number, cycleLength: number): CycleWindowKind | null {
+  const windows = getCycleWindowDays(cycleLength);
+
+  if (dayInCycle >= windows.ovulation.startDay && dayInCycle <= windows.ovulation.endDay) {
+    return 'ovulation';
+  }
+
+  if (dayInCycle >= windows.fertile.startDay && dayInCycle <= windows.fertile.endDay) {
+    return 'fertile';
+  }
+
+  return null;
+}
+
+export function isValidPeriodRange(startDate: string, endDate?: string): boolean {
+  if (!endDate) return true;
+  return parseLocalDate(startDate).getTime() <= parseLocalDate(endDate).getTime();
+}
+
+export function isDateInPeriod(date: string, cycle: CycleData): boolean {
+  if (!cycle.endDate) return cycle.startDate === date;
+  return cycle.startDate <= date && date <= cycle.endDate;
+}
+
+export function findPeriodCycleForDate(date: string, cycles: CycleData[]): CycleData | undefined {
+  return [...cycles]
+    .filter((cycle) => isDateInPeriod(date, cycle))
+    .sort((a, b) => parseLocalDate(b.startDate).getTime() - parseLocalDate(a.startDate).getTime())[0];
+}
+
+export function findPeriodCycleToEndOnDate(
+  date: string,
+  cycles: CycleData[],
+  maxPeriodLength: number = 14
+): CycleData | undefined {
+  const targetDate = parseLocalDate(date);
+
+  return [...cycles]
+    .filter((cycle) => {
+      const startDate = parseLocalDate(cycle.startDate);
+      const daysFromStart = Math.floor((targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysFromStart >= 0 && daysFromStart < maxPeriodLength;
+    })
+    .sort((a, b) => parseLocalDate(b.startDate).getTime() - parseLocalDate(a.startDate).getTime())[0];
+}
+
+export function buildPeriodDateSet(cycles: CycleData[]): Set<string> {
+  const dates = new Set<string>();
+
+  cycles.forEach((cycle) => {
+    if (!isValidPeriodRange(cycle.startDate, cycle.endDate)) return;
+
+    const start = parseLocalDate(cycle.startDate);
+    const end = cycle.endDate ? parseLocalDate(cycle.endDate) : start;
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.add(formatDate(new Date(d)));
+    }
+  });
+
+  return dates;
+}
+
 // 根据周期天数和周期长度计算周期阶段
-export function getCyclePhase(dayInCycle: number, cycleLength: number): CyclePhase {
-  const ovulationDay = Math.round(cycleLength - 14); // 排卵通常在下次月经前14天
+export function getCyclePhase(dayInCycle: number, cycleLength: number, periodLength: number = 5): CyclePhase {
+  const ovulationDay = getOvulationDay(cycleLength); // 排卵通常在下次月经前14天
   
-  if (dayInCycle <= 5) {
+  if (dayInCycle <= periodLength) {
     return 'menstrual';
   } else if (dayInCycle < ovulationDay - 2) {
     return 'follicular';
@@ -47,12 +203,12 @@ export function getPhaseInfo(
   // 周期内相对位置（用于判断当前阶段和预测下次经期）
   const dayInCurrentCycle = ((diffDays % cycleLength) + cycleLength) % cycleLength + 1;
   
-  const phase = getCyclePhase(dayInCurrentCycle, cycleLength);
+  const phase = getCyclePhase(dayInCurrentCycle, cycleLength, periodLength);
   const daysUntilNextPeriod = cycleLength - dayInCurrentCycle + 1;
   
   
   // 计算阶段内的天数
-  const ovulationDay = Math.round(cycleLength - 14);
+  const ovulationDay = getOvulationDay(cycleLength);
   let phaseDay: number;
   let phaseTotalDays: number;
   
