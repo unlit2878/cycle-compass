@@ -1,4 +1,4 @@
-import { FlowColor, FlowIntensity, normalizeFlowIntensity } from './db';
+import { FlowColor, FlowIntensity, PainLevel, normalizeFlowIntensity, normalizePainLevel } from './db';
 
 export const flowOptions: Array<{ value: FlowIntensity; label: string; tone: string; drops: number }> = [
   { value: 'very_light', label: '极少', tone: '#b7bdc0', drops: 1 },
@@ -16,13 +16,18 @@ export const flowColorOptions: Array<{ value: FlowColor; label: string; color: s
   { value: 'other', label: '其他', color: '#aeb3b3' },
 ];
 
+export const painOptions: Array<{ value: PainLevel; label: string; tone: string }> = [
+  { value: 'none', label: '无', tone: '#9ba3aa' },
+  { value: 'mild', label: '轻微', tone: '#e6a14f' },
+  { value: 'moderate', label: '中等', tone: '#df6f75' },
+  { value: 'severe', label: '严重', tone: '#c7486a' },
+];
+
 export const symptomOptions = [
-  '痛经',
   '腰酸',
   '腹胀',
   '头痛',
   '乳房胀痛',
-  '情绪波动',
   '疲劳',
   '失眠',
   '便秘',
@@ -38,6 +43,11 @@ export const moodOptions = ['很好', '还不错', '一般', '有点差', '很�
 export function getFlowLabel(value?: string) {
   const normalized = normalizeFlowIntensity(value);
   return flowOptions.find((item) => item.value === normalized)?.label || '未记录';
+}
+
+export function getPainLevelLabel(value?: string) {
+  const normalized = normalizePainLevel(value);
+  return painOptions.find((item) => item.value === normalized)?.label || '未记录';
 }
 
 export function getFlowColor(value?: string) {

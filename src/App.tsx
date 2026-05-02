@@ -146,6 +146,7 @@ function AppContent() {
     await logDay(date, {
       flowIntensity: existing?.flowIntensity,
       flowColor: existing?.flowColor,
+      painLevel: existing?.painLevel,
       symptoms: existing?.symptoms,
       mood,
       notes: existing?.notes,

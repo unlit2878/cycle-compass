@@ -1,5 +1,4 @@
 import { ReactNode } from 'react';
-import { Sprout } from 'lucide-react';
 
 interface PageShellProps {
   title: string;
@@ -19,7 +18,6 @@ function DecorativeBackground({ variant = 'home' }: { variant?: PageShellProps['
       <span className="decor-dot decor-dot-one" />
       <span className="decor-dot decor-dot-two" />
       <span className="decor-dot decor-dot-three" />
-      <span className="decor-leaf decor-leaf-one" />
     </div>
   );
 }
@@ -30,7 +28,7 @@ export function PageHeader({ title, subtitle, action }: Pick<PageShellProps, 'ti
       <div>
         <div className="page-title-row">
           <h1>{title}</h1>
-          <Sprout className="title-sprout" strokeWidth={2.2} />
+          <img className="title-sprout" src="/decor/01_leaf_sprout.png" alt="" aria-hidden="true" />
         </div>
         {subtitle && <p>{subtitle}</p>}
       </div>

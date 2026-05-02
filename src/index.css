@@ -232,8 +232,7 @@
 }
 
 .decor-blob,
-.decor-dot,
-.decor-leaf {
+.decor-dot {
   position: absolute;
   display: block;
 }
@@ -241,6 +240,7 @@
 .decor-blob {
   filter: blur(0.2px);
   opacity: 0.78;
+  transform-origin: center;
 }
 
 .decor-blob-green {
@@ -252,6 +252,7 @@
   background:
     radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.2), transparent 32%),
     #dfe9d7;
+  animation: decor-blob-green-ripple 13s ease-in-out infinite alternate;
 }
 
 .decor-blob-orange {
@@ -262,6 +263,7 @@
   border-radius: 50%;
   background: var(--paper-amber-soft);
   opacity: 0.72;
+  animation: decor-blob-orange-ripple 11s ease-in-out infinite alternate-reverse;
 }
 
 .decor-blob-blue {
@@ -272,42 +274,35 @@
   border-radius: 50%;
   background: var(--paper-blue-soft);
   opacity: 0.72;
+  animation: decor-blob-blue-ripple 12.5s ease-in-out infinite alternate;
 }
 
 .decor-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  transform-origin: center;
 }
 
 .decor-dot-one {
   top: 154px;
   right: 150px;
   background: var(--paper-green-soft);
+  animation: decor-dot-drift-one 18s ease-in-out infinite;
 }
 
 .decor-dot-two {
   top: 188px;
   right: 92px;
   background: var(--paper-lavender-soft);
+  animation: decor-dot-drift-two 22s ease-in-out infinite;
 }
 
 .decor-dot-three {
   top: 254px;
   right: 45px;
   background: var(--paper-amber);
-}
-
-.decor-leaf-one {
-  right: 56px;
-  bottom: 260px;
-  width: 76px;
-  height: 54px;
-  opacity: 0.52;
-  background:
-    radial-gradient(ellipse at 35% 60%, transparent 0 30%, #a8c694 31% 44%, transparent 45%),
-    radial-gradient(ellipse at 68% 35%, transparent 0 30%, #a8c694 31% 44%, transparent 45%);
-  transform: rotate(-22deg);
+  animation: decor-dot-drift-three 20s ease-in-out infinite;
 }
 
 .decor-calendar .decor-blob-orange {
@@ -344,6 +339,119 @@
   background: var(--paper-lavender-soft);
 }
 
+@keyframes decor-blob-green-ripple {
+  0% {
+    border-radius: 42% 0 48% 53%;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  34% {
+    border-radius: 48% 8% 43% 59%;
+    transform: translate3d(5px, 3px, 0) scale(1.018, 0.992);
+  }
+  67% {
+    border-radius: 38% 4% 55% 47%;
+    transform: translate3d(-3px, 7px, 0) scale(0.992, 1.016);
+  }
+  100% {
+    border-radius: 46% 2% 44% 56%;
+    transform: translate3d(4px, -2px, 0) scale(1.01);
+  }
+}
+
+@keyframes decor-blob-orange-ripple {
+  0% {
+    border-radius: 50% 50% 50% 50%;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  30% {
+    border-radius: 56% 44% 48% 52%;
+    transform: translate3d(-3px, 5px, 0) scale(1.018, 0.986);
+  }
+  64% {
+    border-radius: 46% 54% 57% 43%;
+    transform: translate3d(4px, -2px, 0) scale(0.99, 1.018);
+  }
+  100% {
+    border-radius: 53% 47% 45% 55%;
+    transform: translate3d(-2px, -4px, 0) scale(1.012);
+  }
+}
+
+@keyframes decor-blob-blue-ripple {
+  0% {
+    border-radius: 50% 50% 50% 50%;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  28% {
+    border-radius: 43% 57% 51% 49%;
+    transform: translate3d(5px, -3px, 0) scale(0.992, 1.016);
+  }
+  62% {
+    border-radius: 58% 42% 45% 55%;
+    transform: translate3d(-4px, 4px, 0) scale(1.018, 0.988);
+  }
+  100% {
+    border-radius: 47% 53% 56% 44%;
+    transform: translate3d(3px, 6px, 0) scale(1.008);
+  }
+}
+
+@keyframes decor-dot-drift-one {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  24% {
+    transform: translate3d(18px, -10px, 0);
+  }
+  53% {
+    transform: translate3d(-9px, 16px, 0);
+  }
+  78% {
+    transform: translate3d(12px, 8px, 0);
+  }
+}
+
+@keyframes decor-dot-drift-two {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  21% {
+    transform: translate3d(-14px, 12px, 0);
+  }
+  49% {
+    transform: translate3d(10px, -18px, 0);
+  }
+  74% {
+    transform: translate3d(20px, 6px, 0);
+  }
+}
+
+@keyframes decor-dot-drift-three {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  27% {
+    transform: translate3d(9px, 18px, 0);
+  }
+  58% {
+    transform: translate3d(-18px, -7px, 0);
+  }
+  82% {
+    transform: translate3d(15px, -16px, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decor-blob-green,
+  .decor-blob-orange,
+  .decor-blob-blue,
+  .decor-dot-one,
+  .decor-dot-two,
+  .decor-dot-three {
+    animation: none;
+  }
+}
+
 .page-header {
   display: flex;
   min-height: 112px;
@@ -367,9 +475,10 @@
 }
 
 .title-sprout {
-  width: 25px;
-  height: 25px;
-  color: #8eb576;
+  width: 27px;
+  height: 29px;
+  object-fit: contain;
+  opacity: 0.88;
 }
 
 .page-header p {
@@ -834,21 +943,16 @@
 
 .water-cup {
   width: 68px;
-  height: 68px;
-  background:
-    linear-gradient(180deg, transparent 18%, rgba(167, 215, 232, 0.6) 19% 64%, transparent 65%),
-    radial-gradient(ellipse at 50% 16%, transparent 30%, #a5d6e9 31% 35%, transparent 36%),
-    linear-gradient(90deg, transparent 17%, #b7dff0 18% 22%, transparent 23% 77%, #b7dff0 78% 82%, transparent 83%);
-  opacity: 0.75;
+  height: 58px;
+  object-fit: contain;
+  opacity: 0.82;
 }
 
 .leaf-mark {
-  width: 76px;
-  height: 54px;
-  background:
-    radial-gradient(ellipse at 30% 60%, transparent 0 28%, #9fc18d 29% 43%, transparent 44%),
-    radial-gradient(ellipse at 66% 40%, transparent 0 28%, #9fc18d 29% 43%, transparent 44%);
-  opacity: 0.8;
+  width: 82px;
+  height: 70px;
+  object-fit: contain;
+  opacity: 0.82;
 }
 
 .recent-record {
@@ -1168,6 +1272,10 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.icon-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .circle-option {
   display: flex;
   min-width: 0;
@@ -1190,6 +1298,31 @@
   color: #737a80;
   background: rgba(248, 247, 244, 0.82);
   box-shadow: inset 0 0 0 1px rgba(222, 218, 212, 0.72);
+}
+
+.flow-intensity-icon,
+.pain-level-icon {
+  width: 31px;
+  height: 31px;
+}
+
+.flow-very_light {
+  transform: scale(0.78);
+  opacity: 0.82;
+}
+
+.flow-light {
+  transform: scale(0.9);
+}
+
+.flow-medium {
+  transform: scale(1);
+}
+
+.flow-heavy,
+.flow-very_heavy {
+  width: 34px;
+  height: 34px;
 }
 
 .circle-option span:last-child {
@@ -2250,7 +2383,8 @@
   bottom: -6px;
   width: 72px;
   height: 72px;
-  color: rgba(140, 174, 123, 0.35);
+  object-fit: contain;
+  opacity: 0.36;
 }
 
 .method-card {

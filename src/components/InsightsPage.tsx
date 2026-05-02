@@ -270,7 +270,7 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
                 <em className={item.tone} key={item.text}>{item.text}</em>
               ))}
             </div>
-            <Leaf className="health-leaf" />
+            <img className="health-leaf" src="/decor/leaf_cleaned.png" alt="" aria-hidden="true" />
           </section>
 
           <section className="analysis-section prediction-section">

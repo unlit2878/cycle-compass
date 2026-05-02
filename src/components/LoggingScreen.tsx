@@ -1,22 +1,22 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  Bed,
   BatteryLow,
-  Bean,
-  CirclePlus,
+  Brain,
+  CircleDot,
+  CloudRain,
   Droplet,
   Frown,
   Heart,
-  Meh,
-  Moon,
+  HeartPulse,
+  MoveHorizontal,
   RefreshCw,
   Smile,
-  SmilePlus,
-  Stethoscope,
   Trash2,
   Toilet,
+  Utensils,
   Waves,
-  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageShell } from '@/components/AppScaffold';
@@ -34,8 +34,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { CycleModel } from '@/lib/cycle-engine';
 import { CyclePhase, getCyclePhase, getOvulationDay, parseLocalDate } from '@/lib/cycle-utils';
-import { CycleData, DailyLog, FlowColor, FlowIntensity, Settings, getCycleByDate } from '@/lib/db';
-import { formatDateCN, flowColorOptions, flowOptions, moodOptions, symptomOptions, weekdayCN } from '@/lib/ui-model';
+import { CycleData, DailyLog, FlowColor, FlowIntensity, PainLevel, Settings, getCycleByDate } from '@/lib/db';
+import {
+  formatDateCN,
+  flowColorOptions,
+  flowOptions,
+  moodOptions,
+  painOptions,
+  symptomOptions,
+  weekdayCN,
+} from '@/lib/ui-model';
 
 interface LoggingScreenProps {
   date: string;
@@ -58,22 +66,25 @@ interface LoggingScreenProps {
 type PeriodMarker = 'start' | 'end' | null;
 
 const symptomIcons = [
-  Zap,
-  Activity,
+  MoveHorizontal,
   Waves,
-  Stethoscope,
-  Droplet,
-  Meh,
+  Brain,
+  HeartPulse,
   BatteryLow,
-  Moon,
+  Bed,
   Toilet,
+  Activity,
+  CircleDot,
+  Utensils,
+  CloudRain,
   Frown,
-  SmilePlus,
-  Bean,
-  Waves,
-  Frown,
-  CirclePlus,
 ];
+
+const visibleSymptomSet = new Set(symptomOptions);
+
+function cleanVisibleSymptoms(items: string[] = []) {
+  return items.filter((item) => visibleSymptomSet.has(item));
+}
 
 export function LoggingScreen({
   date,
@@ -97,7 +108,8 @@ export function LoggingScreen({
   const [flowIntensity, setFlowIntensity] = useState<FlowIntensity | undefined>(existingLog?.flowIntensity);
   const [flowColor, setFlowColor] = useState<FlowColor | undefined>(existingLog?.flowColor || 'deep_red');
   const [flowColorTouched, setFlowColorTouched] = useState(false);
-  const [symptoms, setSymptoms] = useState<string[]>(existingLog?.symptoms ?? []);
+  const [painLevel, setPainLevel] = useState<PainLevel | undefined>(existingLog?.painLevel);
+  const [symptoms, setSymptoms] = useState<string[]>(cleanVisibleSymptoms(existingLog?.symptoms));
   const [mood, setMood] = useState<string | undefined>(existingLog?.mood);
   const [notes, setNotes] = useState(existingLog?.notes ?? '');
   const [deleting, setDeleting] = useState(false);
@@ -111,6 +123,7 @@ export function LoggingScreen({
   const hasExistingLog = Boolean(
     existingLog?.flowIntensity ||
       existingLog?.flowColor ||
+      existingLog?.painLevel ||
       existingLog?.mood ||
       existingLog?.notes?.trim() ||
       existingLog?.symptoms?.length
@@ -127,7 +140,8 @@ export function LoggingScreen({
     setFlowIntensity(existingLog?.flowIntensity);
     setFlowColor(existingLog?.flowColor || 'deep_red');
     setFlowColorTouched(false);
-    setSymptoms(existingLog?.symptoms ?? []);
+    setPainLevel(existingLog?.painLevel);
+    setSymptoms(cleanVisibleSymptoms(existingLog?.symptoms));
     setMood(existingLog?.mood);
     setNotes(existingLog?.notes ?? '');
     setPeriodActionDirty(false);
@@ -190,7 +204,8 @@ export function LoggingScreen({
       flowColor: (periodMarker || relatedCycle) && (flowIntensity || flowColorTouched || existingLog?.flowColor)
         ? flowColor
         : undefined,
-      symptoms,
+      painLevel,
+      symptoms: cleanVisibleSymptoms(symptoms),
       mood: moodOptions.includes(mood || '') ? mood : undefined,
       notes: notes.trim() || undefined,
     }, date);
@@ -326,7 +341,7 @@ export function LoggingScreen({
               onClick={() => setFlowIntensity(option.value)}
             >
               <span className="option-icon">
-                <Droplet className="h-7 w-7" style={{ color: flowIntensity === option.value ? option.tone : undefined }} />
+                <FlowIntensityIcon intensity={option.value} selected={flowIntensity === option.value} />
               </span>
               <span>{option.label}</span>
             </button>
@@ -346,6 +361,22 @@ export function LoggingScreen({
             >
               <span className="option-icon">
                 <i style={{ backgroundColor: option.color }} />
+              </span>
+              <span>{option.label}</span>
+            </button>
+          ))}
+        </OptionGrid>
+
+        <OptionGrid label="疼痛" columns={4}>
+          {painOptions.map((option) => (
+            <button
+              type="button"
+              key={option.value}
+              className={`circle-option ${painLevel === option.value ? 'selected lavender' : ''}`}
+              onClick={() => setPainLevel(option.value)}
+            >
+              <span className="option-icon">
+                <PainLevelIcon level={option.value} selected={painLevel === option.value} />
               </span>
               <span>{option.label}</span>
             </button>
@@ -426,6 +457,114 @@ function OptionGrid({ label, columns, children }: { label: string; columns: numb
       <span className="record-option-label">{label}</span>
       <div className={`icon-grid icon-grid-${columns}`}>{children}</div>
     </div>
+  );
+}
+
+function FlowIntensityIcon({ intensity, selected }: { intensity: FlowIntensity; selected: boolean }) {
+  const strokeWidth = selected ? 2.4 : 2;
+  const commonProps = {
+    className: `flow-intensity-icon flow-${intensity}`,
+    viewBox: '0 0 32 32',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+
+  if (intensity === 'very_light') {
+    return (
+      <svg {...commonProps}>
+        <path d="M16 7c-3.5 4-5.2 6.8-5.2 9.5a5.2 5.2 0 0 0 10.4 0C21.2 13.8 19.5 11 16 7Z" />
+      </svg>
+    );
+  }
+
+  if (intensity === 'light') {
+    return (
+      <svg {...commonProps}>
+        <path d="M16 5.5c-4.4 5-6.5 8.3-6.5 11.6a6.5 6.5 0 0 0 13 0C22.5 13.8 20.4 10.5 16 5.5Z" />
+        <path d="M13 21.2c1.8 1.1 4.2 1.1 6 0" opacity="0.45" />
+      </svg>
+    );
+  }
+
+  if (intensity === 'medium') {
+    return (
+      <svg {...commonProps}>
+        <path d="M16 4.5c-5.1 5.8-7.4 9.4-7.4 13a7.4 7.4 0 0 0 14.8 0C23.4 13.9 21.1 10.3 16 4.5Z" />
+        <path d="M11.2 18.2h9.6" opacity="0.5" />
+        <path d="M12.7 22h6.6" opacity="0.5" />
+      </svg>
+    );
+  }
+
+  if (intensity === 'heavy') {
+    return (
+      <svg {...commonProps}>
+        <path d="M12.3 6.5c-3.3 3.8-4.8 6.3-4.8 8.8a4.9 4.9 0 0 0 9.8 0c0-2.5-1.7-5-5-8.8Z" />
+        <path d="M21 10.2c-2.8 3.2-4.1 5.4-4.1 7.5a4.2 4.2 0 0 0 8.4 0c0-2.1-1.4-4.3-4.3-7.5Z" />
+        <path d="M8.8 24.2c4.6 2 10 2 14.6 0" opacity="0.42" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...commonProps}>
+      <path d="M9.2 8.2c-2.8 3.2-4.1 5.4-4.1 7.5a4.2 4.2 0 0 0 8.4 0c0-2.1-1.4-4.3-4.3-7.5Z" />
+      <path d="M16.5 4.8c-3.5 4-5.1 6.7-5.1 9.2a5.1 5.1 0 0 0 10.2 0c0-2.5-1.7-5.2-5.1-9.2Z" />
+      <path d="M23.4 9.2c-2.9 3.3-4.3 5.5-4.3 7.7a4.4 4.4 0 0 0 8.8 0c0-2.2-1.5-4.4-4.5-7.7Z" />
+      <path d="M6.8 24.5c5.8 2.7 12.6 2.7 18.4 0" opacity="0.42" />
+    </svg>
+  );
+}
+
+function PainLevelIcon({ level, selected }: { level: PainLevel; selected: boolean }) {
+  const strokeWidth = selected ? 2.4 : 2;
+  const commonProps = {
+    className: `pain-level-icon pain-${level}`,
+    viewBox: '0 0 32 32',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+
+  if (level === 'none') {
+    return (
+      <svg {...commonProps}>
+        <circle cx="16" cy="16" r="8" />
+        <path d="M11.5 20.5 20.5 11.5" />
+      </svg>
+    );
+  }
+
+  if (level === 'mild') {
+    return (
+      <svg {...commonProps}>
+        <path d="m17 5-7 12h6l-1 10 7-13h-6l1-9Z" />
+      </svg>
+    );
+  }
+
+  if (level === 'moderate') {
+    return (
+      <svg {...commonProps}>
+        <path d="m13.5 5-5.5 10h5l-1 8 6-11h-5l.5-7Z" />
+        <path d="m22 8-4.2 7h3.7l-.7 6 4.7-8h-3.8l.3-5Z" opacity="0.62" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...commonProps}>
+      <path d="m15.2 3.8-7 12.2h6.2l-1.5 12 8.2-14h-6.2l.3-10.2Z" />
+      <path d="M23.8 6.8 21.7 12h3.4l-3.3 7.2" opacity="0.68" />
+      <path d="M8.4 6.8 6.8 11" opacity="0.68" />
+    </svg>
   );
 }
 

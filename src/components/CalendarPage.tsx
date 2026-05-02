@@ -38,7 +38,7 @@ import {
   getDaysInMonth,
   getOrdinalSuffix,
 } from '@/lib/cycle-utils';
-import { getFlowLabel, moodOptions, weekdayCN, weekdayShortCN } from '@/lib/ui-model';
+import { getFlowLabel, getPainLevelLabel, moodOptions, weekdayCN, weekdayShortCN } from '@/lib/ui-model';
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -362,7 +362,7 @@ export function CalendarPage({
 
         <div className="calendar-summary-metrics">
           <SummaryMetric icon={Droplet} label="流量" value={getFlowLabel(selectedLog?.flowIntensity)} />
-          <SummaryMetric icon={Zap} label="痛经" value={selectedLog?.symptoms?.[0] || '未记录'} />
+          <SummaryMetric icon={Zap} label="疼痛" value={getPainLevelLabel(selectedLog?.painLevel)} />
           <SummaryMetric icon={Smile} label="情绪" value={selectedLog?.mood || '未记录'} />
         </div>
 

@@ -9,12 +9,14 @@ export interface CycleData {
 
 export type FlowIntensity = 'very_light' | 'light' | 'medium' | 'heavy' | 'very_heavy';
 export type FlowColor = 'deep_red' | 'fresh_red' | 'dark_red' | 'brown' | 'other';
+export type PainLevel = 'none' | 'mild' | 'moderate' | 'severe';
 
 export interface DailyLog {
   id?: number;
   date: string;
   flowIntensity?: FlowIntensity;
   flowColor?: FlowColor;
+  painLevel?: PainLevel;
   symptoms?: string[];
   mood?: string;
   notes?: string;
@@ -99,10 +101,33 @@ export function normalizeFlowIntensity(value?: string): FlowIntensity | undefine
   return flowIntensityAliases[value] || undefined;
 }
 
+const painLevelAliases: Record<string, PainLevel> = {
+  none: 'none',
+  no_pain: 'none',
+  noPain: 'none',
+  无: 'none',
+  mild: 'mild',
+  light: 'mild',
+  slight: 'mild',
+  轻微: 'mild',
+  moderate: 'moderate',
+  medium: 'moderate',
+  中等: 'moderate',
+  severe: 'severe',
+  heavy: 'severe',
+  严重: 'severe',
+};
+
+export function normalizePainLevel(value?: string): PainLevel | undefined {
+  if (!value) return undefined;
+  return painLevelAliases[value] || undefined;
+}
+
 function hasDailyLogContent(log: Partial<DailyLog>): boolean {
   return Boolean(
     log.flowIntensity ||
       log.flowColor ||
+      log.painLevel ||
       log.mood ||
       (log.notes && log.notes.trim().length > 0) ||
       (log.symptoms && log.symptoms.length > 0)
@@ -327,6 +352,7 @@ export async function addOrUpdateDailyLog(
   const cleanedLog: Omit<DailyLog, 'id' | 'createdAt' | 'updatedAt'> = {
     ...log,
     flowIntensity: normalizeFlowIntensity(log.flowIntensity),
+    painLevel: normalizePainLevel(log.painLevel),
     notes: log.notes?.trim() || undefined,
     symptoms: log.symptoms?.length ? log.symptoms : undefined,
   };
@@ -463,11 +489,12 @@ export async function exportData(): Promise<BackupData> {
   }));
 
   const normalizedLogs = dailyLogs.map(
-    ({ id, date, flowIntensity, flowColor, symptoms, mood, notes, createdAt, updatedAt }) => ({
+    ({ id, date, flowIntensity, flowColor, painLevel, symptoms, mood, notes, createdAt, updatedAt }) => ({
       id,
       date,
       ...(normalizeFlowIntensity(flowIntensity) && { flowIntensity: normalizeFlowIntensity(flowIntensity) }),
       ...(flowColor && { flowColor }),
+      ...(normalizePainLevel(painLevel) && { painLevel: normalizePainLevel(painLevel) }),
       ...(symptoms && symptoms.length > 0 && { symptoms }),
       ...(mood && { mood }),
       ...(notes && { notes }),
@@ -477,7 +504,7 @@ export async function exportData(): Promise<BackupData> {
   );
 
   return {
-    version: 3,
+    version: 4,
     exportDate: new Date().toISOString(),
     settings,
     cycles: normalizedCycles,
@@ -514,10 +541,12 @@ export async function importData(data: BackupData): Promise<void> {
 
     const { isPeriod, ...logWithoutIsPeriod } = log;
     const flowIntensity = normalizeFlowIntensity(logWithoutIsPeriod.flowIntensity);
+    const painLevel = normalizePainLevel(logWithoutIsPeriod.painLevel);
     const cleanLog: DailyLog = {
       date: logWithoutIsPeriod.date,
       ...(flowIntensity && { flowIntensity }),
       ...(logWithoutIsPeriod.flowColor && { flowColor: logWithoutIsPeriod.flowColor }),
+      ...(painLevel && { painLevel }),
       ...(logWithoutIsPeriod.symptoms?.length && { symptoms: logWithoutIsPeriod.symptoms }),
       ...(logWithoutIsPeriod.mood && { mood: logWithoutIsPeriod.mood }),
       ...(logWithoutIsPeriod.notes && { notes: logWithoutIsPeriod.notes }),

@@ -23,7 +23,7 @@ import {
   parseLocalDate,
 } from '@/lib/cycle-utils';
 import { CycleData, DailyLog, Settings } from '@/lib/db';
-import { dateFromISO, formatShortCN, getFlowLabel, moodOptions, weekdayCN } from '@/lib/ui-model';
+import { dateFromISO, formatShortCN, getFlowLabel, getPainLevelLabel, moodOptions, weekdayCN } from '@/lib/ui-model';
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -44,7 +44,9 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
   const today = useMemo(() => new Date(), []);
   const todayStr = formatDate(today);
   const todayLog = dailyLogs.find((log) => log.date === todayStr);
-  const latestLog = [...dailyLogs].reverse().find((log) => log.flowIntensity || log.mood || log.symptoms?.length);
+  const latestLog = [...dailyLogs]
+    .reverse()
+    .find((log) => log.flowIntensity || log.painLevel || log.mood || log.symptoms?.length);
 
   const backupOverdue = useMemo(() => {
     if (!settings) return false;
@@ -187,9 +189,9 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
       </section>
 
       <section className="care-tip">
-        <div className="water-cup" aria-hidden="true" />
+        <img className="water-cup" src="/decor/02_water_glass.png" alt="" aria-hidden="true" />
         <p>记得保持好心情，<br />多喝水多休息～</p>
-        <span className="leaf-mark" />
+        <img className="leaf-mark" src="/decor/03_leaf_branch.png" alt="" aria-hidden="true" />
       </section>
 
       <section className="recent-record">
@@ -210,7 +212,7 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
             </div>
             <div className="recent-metrics">
               <Metric icon={Droplet} label="流量" value={getFlowLabel(latestLog.flowIntensity)} />
-              <Metric icon={Zap} label="痛经" value={latestLog.symptoms?.[0] || '未记录'} />
+              <Metric icon={Zap} label="疼痛" value={getPainLevelLabel(latestLog.painLevel)} />
               <Metric icon={Smile} label="情绪" value={latestLog.mood || emptyMoodLabel} />
             </div>
           </button>
