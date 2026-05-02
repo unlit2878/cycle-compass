@@ -140,6 +140,7 @@
 
   html {
     min-height: 100%;
+    background: #fffdf9;
     scroll-behavior: smooth;
   }
 
