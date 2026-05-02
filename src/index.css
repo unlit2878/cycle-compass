@@ -1318,12 +1318,12 @@
 }
 
 .flow-very_light {
-  transform: scale(0.78);
-  opacity: 0.82;
+  transform: none;
+  opacity: 1;
 }
 
 .flow-light {
-  transform: scale(0.9);
+  transform: none;
 }
 
 .flow-medium {

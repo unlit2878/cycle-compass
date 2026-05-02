@@ -1,25 +1,39 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
-  Bed,
-  BatteryLow,
-  Brain,
-  CircleDot,
-  CloudRain,
   Droplet,
-  Frown,
   Heart,
-  HeartPulse,
-  MoveHorizontal,
   Smile,
   Trash2,
-  Toilet,
-  Utensils,
-  Waves,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageShell } from '@/components/AppScaffold';
 import { emptyMoodLabel, getNextMoodSelection, moodOptionIcons } from '@/components/mood-options';
+import {
+  AcneIcon,
+  AppetiteIcon,
+  BloatingIcon,
+  BreastPainIcon,
+  ConstipationIcon,
+  DiarrheaIcon,
+  EdemaIcon,
+  FatigueIcon,
+  FlowHeavyIcon,
+  FlowLightIcon,
+  FlowMediumIcon,
+  FlowVeryHeavyIcon,
+  FlowVeryLightIcon,
+  HeadacheIcon,
+  InsomniaIcon,
+  NauseaIcon,
+  PainMildIcon,
+  PainModerateIcon,
+  PainNoneIcon,
+  PainSevereIcon,
+  PeriodEndIcon,
+  PeriodStartIcon,
+  WaistSorenessIcon,
+} from '@/components/record-icons';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,18 +79,18 @@ interface LoggingScreenProps {
 type PeriodMarker = 'start' | 'end' | null;
 
 const symptomIcons = [
-  MoveHorizontal,
-  Waves,
-  Brain,
-  HeartPulse,
-  BatteryLow,
-  Bed,
-  Toilet,
-  Activity,
-  CircleDot,
-  Utensils,
-  CloudRain,
-  Frown,
+  WaistSorenessIcon,
+  BloatingIcon,
+  HeadacheIcon,
+  BreastPainIcon,
+  FatigueIcon,
+  InsomniaIcon,
+  ConstipationIcon,
+  DiarrheaIcon,
+  AcneIcon,
+  AppetiteIcon,
+  EdemaIcon,
+  NauseaIcon,
 ];
 
 const visibleSymptomSet = new Set(symptomOptions);
@@ -313,7 +327,7 @@ export function LoggingScreen({
             className={periodMarker === 'start' ? 'selected' : ''}
             onClick={() => setMarkerFromUser('start')}
           >
-            <Droplet className="h-8 w-8" />
+            <PeriodStartIcon className="h-8 w-8" />
             <span>{visibleCycle ? '更新开始' : '标记开始'}</span>
             <small>{visibleCycle ? '将当前经期开始改为所选日期' : '记录经期第一天'}</small>
           </button>
@@ -322,7 +336,7 @@ export function LoggingScreen({
             className={periodMarker === 'end' ? 'selected muted' : ''}
             onClick={() => setMarkerFromUser('end')}
           >
-            <Droplet className="h-8 w-8" />
+            <PeriodEndIcon className="h-8 w-8" />
             <span>经期结束</span>
             <small>{periodRangeText ? '结束上方显示的这段经期' : '记录经期最后一天'}</small>
           </button>
@@ -457,67 +471,22 @@ function OptionGrid({ label, columns, children }: { label: string; columns: numb
 }
 
 function FlowIntensityIcon({ intensity, selected }: { intensity: FlowIntensity; selected: boolean }) {
-  const strokeWidth = selected ? 2.4 : 2;
-  const commonProps = {
-    className: `flow-intensity-icon flow-${intensity}`,
-    viewBox: '0 0 32 32',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true,
-  };
+  const Icon =
+    intensity === 'very_light'
+      ? FlowVeryLightIcon
+      : intensity === 'light'
+        ? FlowLightIcon
+        : intensity === 'medium'
+          ? FlowMediumIcon
+          : intensity === 'heavy'
+            ? FlowHeavyIcon
+            : FlowVeryHeavyIcon;
 
-  if (intensity === 'very_light') {
-    return (
-      <svg {...commonProps}>
-        <path d="M16 7c-3.5 4-5.2 6.8-5.2 9.5a5.2 5.2 0 0 0 10.4 0C21.2 13.8 19.5 11 16 7Z" />
-      </svg>
-    );
-  }
-
-  if (intensity === 'light') {
-    return (
-      <svg {...commonProps}>
-        <path d="M16 5.5c-4.4 5-6.5 8.3-6.5 11.6a6.5 6.5 0 0 0 13 0C22.5 13.8 20.4 10.5 16 5.5Z" />
-        <path d="M13 21.2c1.8 1.1 4.2 1.1 6 0" opacity="0.45" />
-      </svg>
-    );
-  }
-
-  if (intensity === 'medium') {
-    return (
-      <svg {...commonProps}>
-        <path d="M16 4.5c-5.1 5.8-7.4 9.4-7.4 13a7.4 7.4 0 0 0 14.8 0C23.4 13.9 21.1 10.3 16 4.5Z" />
-        <path d="M11.2 18.2h9.6" opacity="0.5" />
-        <path d="M12.7 22h6.6" opacity="0.5" />
-      </svg>
-    );
-  }
-
-  if (intensity === 'heavy') {
-    return (
-      <svg {...commonProps}>
-        <path d="M12.3 6.5c-3.3 3.8-4.8 6.3-4.8 8.8a4.9 4.9 0 0 0 9.8 0c0-2.5-1.7-5-5-8.8Z" />
-        <path d="M21 10.2c-2.8 3.2-4.1 5.4-4.1 7.5a4.2 4.2 0 0 0 8.4 0c0-2.1-1.4-4.3-4.3-7.5Z" />
-        <path d="M8.8 24.2c4.6 2 10 2 14.6 0" opacity="0.42" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg {...commonProps}>
-      <path d="M9.2 8.2c-2.8 3.2-4.1 5.4-4.1 7.5a4.2 4.2 0 0 0 8.4 0c0-2.1-1.4-4.3-4.3-7.5Z" />
-      <path d="M16.5 4.8c-3.5 4-5.1 6.7-5.1 9.2a5.1 5.1 0 0 0 10.2 0c0-2.5-1.7-5.2-5.1-9.2Z" />
-      <path d="M23.4 9.2c-2.9 3.3-4.3 5.5-4.3 7.7a4.4 4.4 0 0 0 8.8 0c0-2.2-1.5-4.4-4.5-7.7Z" />
-      <path d="M6.8 24.5c5.8 2.7 12.6 2.7 18.4 0" opacity="0.42" />
-    </svg>
-  );
+  return <Icon className={`flow-intensity-icon flow-${intensity}`} strokeWidth={selected ? 2.15 : 1.9} />;
 }
 
 function PainLevelIcon({ level, selected }: { level: PainLevel; selected: boolean }) {
-  const strokeWidth = selected ? 2.4 : 2;
+  const strokeWidth = selected ? 2.15 : 1.9;
   const commonProps = {
     className: `pain-level-icon pain-${level}`,
     viewBox: '0 0 32 32',
@@ -530,38 +499,18 @@ function PainLevelIcon({ level, selected }: { level: PainLevel; selected: boolea
   };
 
   if (level === 'none') {
-    return (
-      <svg {...commonProps}>
-        <circle cx="16" cy="16" r="8" />
-        <path d="M11.5 20.5 20.5 11.5" />
-      </svg>
-    );
+    return <PainNoneIcon {...commonProps} />;
   }
 
   if (level === 'mild') {
-    return (
-      <svg {...commonProps}>
-        <path d="m17 5-7 12h6l-1 10 7-13h-6l1-9Z" />
-      </svg>
-    );
+    return <PainMildIcon {...commonProps} />;
   }
 
   if (level === 'moderate') {
-    return (
-      <svg {...commonProps}>
-        <path d="m13.5 5-5.5 10h5l-1 8 6-11h-5l.5-7Z" />
-        <path d="m22 8-4.2 7h3.7l-.7 6 4.7-8h-3.8l.3-5Z" opacity="0.62" />
-      </svg>
-    );
+    return <PainModerateIcon {...commonProps} />;
   }
 
-  return (
-    <svg {...commonProps}>
-      <path d="m15.2 3.8-7 12.2h6.2l-1.5 12 8.2-14h-6.2l.3-10.2Z" />
-      <path d="M23.8 6.8 21.7 12h3.4l-3.3 7.2" opacity="0.68" />
-      <path d="M8.4 6.8 6.8 11" opacity="0.68" />
-    </svg>
-  );
+  return <PainSevereIcon {...commonProps} />;
 }
 
 function getPeriodMarkerForDate(cycle: CycleData | undefined, date: string): PeriodMarker {

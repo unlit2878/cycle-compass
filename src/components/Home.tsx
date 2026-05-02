@@ -1,14 +1,11 @@
 import { ComponentType, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Droplet,
   Pencil,
-  Smile,
-  Zap,
-  type LucideIcon,
 } from 'lucide-react';
 import { PageShell } from '@/components/AppScaffold';
 import { emptyMoodLabel, getNextMoodSelection, moodOptionIcons } from '@/components/mood-options';
+import { getFlowSummaryIcon, getMoodSummaryIcon, getPainSummaryIcon, type RecordSummaryIcon } from '@/components/record-icon-maps';
 import { CycleModel } from '@/lib/cycle-engine';
 import {
   CyclePhase,
@@ -211,9 +208,9 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
               <small>{latestCycleLabel}</small>
             </div>
             <div className="recent-metrics">
-              <Metric icon={Droplet} label="流量" value={getFlowLabel(latestLog.flowIntensity)} />
-              <Metric icon={Zap} label="疼痛" value={getPainLevelLabel(latestLog.painLevel)} />
-              <Metric icon={Smile} label="情绪" value={latestLog.mood || emptyMoodLabel} />
+              <Metric icon={getFlowSummaryIcon(latestLog.flowIntensity)} label="流量" value={getFlowLabel(latestLog.flowIntensity)} />
+              <Metric icon={getPainSummaryIcon(latestLog.painLevel)} label="疼痛" value={getPainLevelLabel(latestLog.painLevel)} />
+              <Metric icon={getMoodSummaryIcon(latestLog.mood)} label="情绪" value={latestLog.mood || emptyMoodLabel} />
             </div>
           </button>
         ) : (
@@ -428,7 +425,7 @@ function atNoon(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
 }
 
-function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+function Metric({ icon: Icon, label, value }: { icon: RecordSummaryIcon; label: string; value: string }) {
   return (
     <div>
       <Icon className="h-7 w-7" />

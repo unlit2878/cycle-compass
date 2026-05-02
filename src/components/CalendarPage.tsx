@@ -5,15 +5,12 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  Droplet,
   HelpCircle,
   Pencil,
-  Smile,
-  Zap,
-  type LucideIcon,
 } from 'lucide-react';
 import { PageShell } from '@/components/AppScaffold';
 import { getNextMoodSelection, moodOptionIcons } from '@/components/mood-options';
+import { getFlowSummaryIcon, getMoodSummaryIcon, getPainSummaryIcon, type RecordSummaryIcon } from '@/components/record-icon-maps';
 import {
   Dialog,
   DialogContent,
@@ -358,9 +355,21 @@ export function CalendarPage({
         </div>
 
         <div className="calendar-summary-metrics">
-          <SummaryMetric icon={Droplet} label="流量" value={getFlowLabel(selectedLog?.flowIntensity)} />
-          <SummaryMetric icon={Zap} label="疼痛" value={getPainLevelLabel(selectedLog?.painLevel)} />
-          <SummaryMetric icon={Smile} label="情绪" value={selectedLog?.mood || '未记录'} />
+          <SummaryMetric
+            icon={getFlowSummaryIcon(selectedLog?.flowIntensity)}
+            label="流量"
+            value={getFlowLabel(selectedLog?.flowIntensity)}
+          />
+          <SummaryMetric
+            icon={getPainSummaryIcon(selectedLog?.painLevel)}
+            label="疼痛"
+            value={getPainLevelLabel(selectedLog?.painLevel)}
+          />
+          <SummaryMetric
+            icon={getMoodSummaryIcon(selectedLog?.mood)}
+            label="情绪"
+            value={selectedLog?.mood || '未记录'}
+          />
         </div>
 
         <div className="today-status compact">
@@ -426,7 +435,7 @@ function PhaseHelpDot({ phase, title, text }: { phase: CyclePhase; title: string
   );
 }
 
-function SummaryMetric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+function SummaryMetric({ icon: Icon, label, value }: { icon: RecordSummaryIcon; label: string; value: string }) {
   return (
     <div>
       <Icon className="h-8 w-8" />
