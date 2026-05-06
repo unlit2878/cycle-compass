@@ -88,8 +88,6 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
     actualPeriodToday
   );
 
-  const fertilityWindow = cycleModel?.nextFertilityWindow || null;
-
   const statusItems: Array<{ label: string; icon: IconComponent; active: boolean }> = moodOptions.map((label, index) => ({
     label,
     icon: moodOptionIcons[index] || Smile,
@@ -141,25 +139,6 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
           </div>
         </div>
       </section>
-
-      {fertilityWindow && (
-        <div className="phase-range-row">
-          <div>
-            <span>排卵期</span>
-            <strong>
-              {formatShortCN(fertilityWindow.ovulationRange.startDate).replace('月', '.').replace('日', '')} -{' '}
-              {formatShortCN(fertilityWindow.ovulationRange.endDate).replace('月', '.').replace('日', '')}
-            </strong>
-          </div>
-          <div>
-            <span>易孕期</span>
-            <strong>
-              {formatShortCN(fertilityWindow.fertileRange.startDate).replace('月', '.').replace('日', '')} -{' '}
-              {formatShortCN(fertilityWindow.fertileRange.endDate).replace('月', '.').replace('日', '')}
-            </strong>
-          </div>
-        </div>
-      )}
 
       <section className="today-status">
         <div className="inline-section-title">

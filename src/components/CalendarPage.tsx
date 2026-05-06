@@ -30,7 +30,6 @@ import {
   CyclePhase,
   formatDate,
   getCyclePhase,
-  getCycleWindowKindForDay,
   getDayInCycleForDate,
   getDaysInMonth,
   getOrdinalSuffix,
@@ -38,6 +37,7 @@ import {
 import { getFlowLabel, getPainLevelLabel, moodOptions, weekdayCN, weekdayShortCN } from '@/lib/ui-model';
 
 type IconComponent = ComponentType<{ className?: string }>;
+type CalendarLegendKind = CyclePhase | 'predicted';
 
 interface CalendarPageProps {
   settings: Settings | null;
@@ -199,15 +199,6 @@ export function CalendarPage({
     return Math.floor((atNoon(date).getTime() - cycleStart.getTime()) / 86400000) + 1;
   };
 
-  const isInFertileWindow = (date: Date) => {
-    if (!cycleModel?.lastPeriodStartDate) return false;
-    const dateStr = formatDate(date);
-    if (periodDates.has(dateStr) || cycleModel.predictedPeriodDateSet.has(dateStr)) return false;
-
-    const dayInCycle = getDayInCycleForDate(date, cycleModel.lastPeriodStartDate, cycleModel.effectiveCycleLength);
-    return getCycleWindowKindForDay(dayInCycle, cycleModel.effectiveCycleLength) === 'fertile';
-  };
-
   return (
     <PageShell
       title="日历"
@@ -277,7 +268,7 @@ export function CalendarPage({
               const isRecordedPeriod = periodDates.has(dateStr);
               const isPredictedPeriod = cycleModel?.predictedPeriodDateSet.has(dateStr) && !isRecordedPeriod;
               const isOvulation = phase === 'ovulation' && !isRecordedPeriod && current;
-              const isFertile = isInFertileWindow(date) && !isOvulation && current;
+              const backgroundPhase = current && (phase === 'follicular' || phase === 'luteal') ? phase : null;
               const periodDay = getPeriodDay(date);
 
               return (
@@ -291,6 +282,7 @@ export function CalendarPage({
                     isRecordedPeriod ? 'period' : '',
                     isPredictedPeriod ? 'predicted-period' : '',
                     isOvulation ? 'ovulation' : '',
+                    backgroundPhase ? backgroundPhase : '',
                   ].join(' ')}
                   onClick={() => {
                     setSelectedDate(dateStr);
@@ -299,7 +291,6 @@ export function CalendarPage({
                 >
                   <span>{date.getDate()}</span>
                   {periodDay && <small>{getOrdinalSuffix(periodDay)}</small>}
-                  {isFertile && <i className="fertile-dot" />}
                   {log && <i className="log-dot" />}
                 </button>
               );
@@ -309,8 +300,9 @@ export function CalendarPage({
 
       <div className="calendar-legend">
         <span><i className="legend-period" />经期</span>
+        <span><i className="legend-follicular" />卵泡期</span>
         <span><i className="legend-ovulation" />排卵期</span>
-        <span><i className="legend-fertile" />易孕期</span>
+        <span><i className="legend-luteal" />黄体期</span>
         <span><i className="legend-predicted" />预测经期</span>
         <Dialog>
           <DialogTrigger asChild>
@@ -324,10 +316,11 @@ export function CalendarPage({
             </DialogHeader>
             <div className="phase-help-content">
               <p>根据你的经期记录、平均周期长度和经期长度预测不同阶段。记录越完整，预测越稳定。</p>
-              <PhaseHelpDot phase="menstrual" title="经期" text="已记录经期优先显示；未来经期使用淡色虚线标记。" />
-              <PhaseHelpDot phase="follicular" title="卵泡期" text="经期结束后到排卵窗口前的阶段。" />
-              <PhaseHelpDot phase="ovulation" title="排卵期" text="通常在下次经期前约 14 天，前后会有浮动。" />
-              <PhaseHelpDot phase="luteal" title="易孕期" text="围绕排卵日前后的可孕窗口，日历用小圆点提示。" />
+              <PhaseHelpDot kind="menstrual" title="经期" text="已记录的经期日期会优先显示。" />
+              <PhaseHelpDot kind="follicular" title="卵泡期" text="经期结束后到排卵期前的阶段，日历用蜡笔浅蓝背景提示。" />
+              <PhaseHelpDot kind="ovulation" title="排卵期" text="通常在下次经期前约 14 天，前后会有浮动。" />
+              <PhaseHelpDot kind="luteal" title="黄体期" text="排卵期之后到下次经期前的阶段，日历用蜡笔浅紫背景提示。" />
+              <PhaseHelpDot kind="predicted" title="预测经期" text="未来经期使用淡色虚线标记。" />
             </div>
           </DialogContent>
         </Dialog>
@@ -423,16 +416,21 @@ function atNoon(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
 }
 
-function PhaseHelpDot({ phase, title, text }: { phase: CyclePhase; title: string; text: string }) {
+function PhaseHelpDot({ kind, title, text }: { kind: CalendarLegendKind; title: string; text: string }) {
   return (
     <div className="phase-help-row">
-      <i className={`legend-${phase === 'menstrual' ? 'period' : phase === 'ovulation' ? 'ovulation' : 'fertile'}`} />
+      <i className={getLegendClass(kind)} />
       <div>
         <strong>{title}</strong>
         <span>{text}</span>
       </div>
     </div>
   );
+}
+
+function getLegendClass(kind: CalendarLegendKind) {
+  if (kind === 'menstrual') return 'legend-period';
+  return `legend-${kind}`;
 }
 
 function SummaryMetric({ icon: Icon, label, value }: { icon: RecordSummaryIcon; label: string; value: string }) {
