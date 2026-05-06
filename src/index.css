@@ -311,11 +311,11 @@
 }
 
 .decor-blob-green {
-  top: -48px;
-  right: -64px;
-  width: 176px;
-  height: 210px;
-  border-radius: 42% 0 48% 53%;
+  top: calc(18px + env(safe-area-inset-top, 0px));
+  right: 8px;
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
   background:
     radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.2), transparent 32%),
     #dfe9d7;
@@ -323,7 +323,7 @@
 }
 
 .decor-blob-orange {
-  top: 162px;
+  top: calc(204px + env(safe-area-inset-top, 0px));
   right: -46px;
   width: 92px;
   height: 92px;
@@ -373,8 +373,9 @@
 }
 
 .decor-calendar .decor-blob-orange {
-  top: -22px;
-  right: 66px;
+  top: 318px;
+  right: auto;
+  left: -40px;
   width: 110px;
   height: 110px;
 }

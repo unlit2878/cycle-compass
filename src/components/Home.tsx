@@ -1,4 +1,4 @@
-import { ComponentType, useMemo } from 'react';
+import { ComponentType, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Pencil,
@@ -38,7 +38,8 @@ const DAY_MS = 1000 * 60 * 60 * 24;
 
 export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onMoodSelect, onBackupReminder }: HomeProps) {
   const navigate = useNavigate();
-  const today = useMemo(() => new Date(), []);
+  const today = useCurrentTime();
+  const greeting = getTimeGreeting(today);
   const todayStr = formatDate(today);
   const todayLog = dailyLogs.find((log) => log.date === todayStr);
   const latestLog = [...dailyLogs]
@@ -101,7 +102,7 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
 
   if (!settings || !cycleModel) {
     return (
-      <PageShell title="早上好" subtitle="每一次记录，都是对自己的关爱" decor="home">
+      <PageShell title={greeting} subtitle="每一次记录，都是对自己的关爱" decor="home">
         <div className="empty-state">正在加载你的周期数据...</div>
       </PageShell>
     );
@@ -109,7 +110,7 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
 
   return (
     <PageShell
-      title="早上好"
+      title={greeting}
       subtitle="每一次记录，都是对自己的关爱"
       decor="home"
       className="home-screen"
@@ -221,6 +222,29 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
       </section>
     </PageShell>
   );
+}
+
+function useCurrentTime() {
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60 * 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return currentTime;
+}
+
+function getTimeGreeting(date: Date) {
+  const hour = date.getHours();
+
+  if (hour >= 5 && hour < 11) return '早上好';
+  if (hour >= 11 && hour < 14) return '中午好';
+  if (hour >= 14 && hour < 18) return '下午好';
+  return '晚上好';
 }
 
 function DottedCycleRing({
