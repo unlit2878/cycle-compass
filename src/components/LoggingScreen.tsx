@@ -46,7 +46,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { CycleModel } from '@/lib/cycle-engine';
-import { CyclePhase, getCyclePhase, getOvulationDay, parseLocalDate } from '@/lib/cycle-utils';
+import { CyclePhase, getCyclePhaseInfoForDate, parseLocalDate } from '@/lib/cycle-utils';
 import { CycleData, DailyLog, FlowColor, FlowIntensity, PainLevel, Settings, getCycleByDate } from '@/lib/db';
 import {
   formatDateCN,
@@ -61,6 +61,7 @@ import {
 interface LoggingScreenProps {
   date: string;
   existingLog?: DailyLog;
+  cycles: CycleData[];
   settings?: Settings | null;
   cycleModel?: CycleModel | null;
   statistics?: { averagePeriodLength: number };
@@ -102,6 +103,7 @@ function cleanVisibleSymptoms(items: string[] = []) {
 export function LoggingScreen({
   date,
   existingLog,
+  cycles,
   settings,
   cycleModel,
   statistics,
@@ -146,7 +148,7 @@ export function LoggingScreen({
         visibleCycle.endDate ? formatDateCN(new Date(`${visibleCycle.endDate}T12:00:00`)) : '未结束'
       }`
     : null;
-  const phaseLabel = getRecordPhaseLabel(selectedDate, visibleCycle, settings, cycleModel);
+  const phaseLabel = getRecordPhaseLabel(selectedDate, visibleCycle, cycles, settings, cycleModel);
 
   useEffect(() => {
     setSelectedDate(date);
@@ -522,6 +524,7 @@ function getPeriodMarkerForDate(cycle: CycleData | undefined, date: string): Per
 function getRecordPhaseLabel(
   date: string,
   cycle: CycleData | null,
+  cycles: CycleData[],
   settings?: Settings | null,
   cycleModel?: CycleModel | null
 ) {
@@ -532,28 +535,19 @@ function getRecordPhaseLabel(
 
   if (!settings?.lastPeriodStart || !cycleModel) return '周期待完善';
 
-  const dayInCycle = getDayInCycle(date, settings.lastPeriodStart, cycleModel.effectiveCycleLength);
-  const phase = getCyclePhase(dayInCycle, cycleModel.effectiveCycleLength, cycleModel.effectivePeriodLength);
+  const phaseInfo = getCyclePhaseInfoForDate(parseLocalDate(date), {
+    cycles,
+    lastPeriodStart: settings.lastPeriodStart,
+    cycleLength: cycleModel.effectiveCycleLength,
+    periodLength: cycleModel.effectivePeriodLength,
+    predictedPeriodDateSet: cycleModel.predictedPeriodDateSet,
+  });
 
-  if (cycleModel.predictedPeriodDateSet.has(date)) {
-    return `预计经期·第${Math.max(1, dayInCycle)}天`;
-  }
+  if (!phaseInfo) return '周期待完善';
 
-  return `${getPhaseShortName(phase)}·第${getPhaseDay(dayInCycle, phase, cycleModel.effectiveCycleLength, cycleModel.effectivePeriodLength)}天`;
-}
+  const phaseName = phaseInfo.phase === 'menstrual' && !phaseInfo.isRecordedPeriod ? '预计经期' : getPhaseShortName(phaseInfo.phase);
 
-function getDayInCycle(date: string, startDate: string, cycleLength: number) {
-  const diffDays = Math.floor((parseLocalDate(date).getTime() - parseLocalDate(startDate).getTime()) / 86400000);
-  return ((diffDays % cycleLength) + cycleLength) % cycleLength + 1;
-}
-
-function getPhaseDay(dayInCycle: number, phase: CyclePhase, cycleLength: number, periodLength: number) {
-  const ovulationDay = getOvulationDay(cycleLength);
-
-  if (phase === 'menstrual') return dayInCycle;
-  if (phase === 'follicular') return Math.max(1, dayInCycle - periodLength);
-  if (phase === 'ovulation') return Math.max(1, dayInCycle - (ovulationDay - 2));
-  return Math.max(1, dayInCycle - (ovulationDay + 2));
+  return `${phaseName}·第${phaseInfo.phaseDay}天`;
 }
 
 function getPhaseShortName(phase: CyclePhase) {

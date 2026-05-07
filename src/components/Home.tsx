@@ -11,10 +11,8 @@ import {
   CyclePhase,
   findPeriodCycleForDate,
   formatDate,
-  getCyclePhase,
-  getDayInCycleForDate,
+  getCyclePhaseInfoForDate,
   getDaysSinceBackup,
-  getOvulationDay,
   getPhaseName,
   isBackupOverdue,
   parseLocalDate,
@@ -123,7 +121,7 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
       )}
 
       <section className="cycle-hero">
-        <DottedCycleRing today={today} cycleModel={cycleModel} />
+        <DottedCycleRing today={today} cycleModel={cycleModel} cycles={cycles} />
         <div className="cycle-hero-center">
           <span>{heroCopy.label}</span>
           <strong className={heroCopy.compact ? 'compact' : undefined}>
@@ -229,9 +227,11 @@ function getTimeGreeting(date: Date) {
 function DottedCycleRing({
   today,
   cycleModel,
+  cycles,
 }: {
   today: Date;
   cycleModel: CycleModel;
+  cycles: CycleData[];
 }) {
   const count = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
   const currentIndex = today.getDate() - 1;
@@ -239,13 +239,13 @@ function DottedCycleRing({
   const currentAngle = (currentIndex / count) * Math.PI * 2 - Math.PI / 2;
   const currentX = Math.cos(currentAngle) * radius;
   const currentY = Math.sin(currentAngle) * radius;
-  const currentPhase = getPhaseForDate(today, cycleModel);
+  const currentPhase = getPhaseForDate(today, cycleModel, cycles);
   const dots = Array.from({ length: count }, (_, index) => {
     const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
     const x = Math.cos(angle) * radius;
     const y = Math.sin(angle) * radius;
     const date = new Date(today.getFullYear(), today.getMonth(), index + 1, 12);
-    const phase = getPhaseForDate(date, cycleModel);
+    const phase = getPhaseForDate(date, cycleModel, cycles);
     const wave = Math.sin((index / Math.max(1, count - 1)) * Math.PI);
     const size = 4.5 + wave * 4.5;
 
@@ -347,66 +347,32 @@ function getCycleLabelForDate(
     return `经期第 ${Math.max(1, periodDay)} 天`;
   }
 
-  const anchorStart = getLatestCycleStartOnOrBefore(dateStr, settings, cycles);
-  if (!anchorStart) return '周期待完善';
+  const phaseInfo = getCyclePhaseInfoForDate(parseLocalDate(dateStr), {
+    cycles,
+    lastPeriodStart: settings.lastPeriodStart,
+    cycleLength: cycleModel.effectiveCycleLength,
+    periodLength: cycleModel.effectivePeriodLength,
+    predictedPeriodDateSet: cycleModel.predictedPeriodDateSet,
+  });
+  if (!phaseInfo) return '周期待完善';
 
-  const dayInCycle = getDayInCycle(dateStr, anchorStart, cycleModel.effectiveCycleLength);
-  const phase = getCyclePhase(dayInCycle, cycleModel.effectiveCycleLength, cycleModel.effectivePeriodLength);
-  const phaseDay = getPhaseDayFromCycleDay(dayInCycle, phase, cycleModel.effectiveCycleLength, cycleModel.effectivePeriodLength);
-  const phaseName = phase === 'menstrual' ? '预计经期' : getPhaseName(phase);
+  const phaseName = phaseInfo.phase === 'menstrual' && !phaseInfo.isRecordedPeriod ? '预计经期' : getPhaseName(phaseInfo.phase);
 
-  return `${phaseName}第 ${phaseDay} 天`;
+  return `${phaseName}第 ${phaseInfo.phaseDay} 天`;
 }
 
-function getLatestCycleStartOnOrBefore(dateStr: string, settings: Settings, cycles: CycleData[]) {
-  const recordedStarts = cycles
-    .map((cycle) => cycle.startDate)
-    .filter((startDate) => startDate <= dateStr)
-    .sort();
-
-  if (recordedStarts.length > 0) return recordedStarts[recordedStarts.length - 1];
-  return settings.lastPeriodStart && settings.lastPeriodStart <= dateStr ? settings.lastPeriodStart : settings.lastPeriodStart;
-}
-
-function getDayInCycle(dateStr: string, startDateStr: string, cycleLength: number) {
-  const diffDays = Math.floor((parseLocalDate(dateStr).getTime() - parseLocalDate(startDateStr).getTime()) / DAY_MS);
-  return ((diffDays % cycleLength) + cycleLength) % cycleLength + 1;
-}
-
-function getPhaseDayFromCycleDay(
-  dayInCycle: number,
-  phase: CyclePhase,
-  cycleLength: number,
-  periodLength: number
-) {
-  const ovulationDay = getOvulationDay(cycleLength);
-
-  switch (phase) {
-    case 'menstrual':
-      return dayInCycle;
-    case 'follicular':
-      return Math.max(1, dayInCycle - periodLength);
-    case 'ovulation':
-      return Math.max(1, dayInCycle - (ovulationDay - 2));
-    case 'luteal':
-      return Math.max(1, dayInCycle - (ovulationDay + 2));
-  }
-}
-
-function getPhaseForDate(date: Date, cycleModel: CycleModel): CyclePhase {
-  const dateStr = formatDate(date);
-
-  if (cycleModel.periodDateSet.has(dateStr) || cycleModel.predictedPeriodDateSet.has(dateStr)) {
-    return 'menstrual';
-  }
-
+function getPhaseForDate(date: Date, cycleModel: CycleModel, cycles: CycleData[]): CyclePhase {
   if (!cycleModel.lastPeriodStartDate) {
     return 'follicular';
   }
 
-  const dayInCycle = getDayInCycleForDate(date, cycleModel.lastPeriodStartDate, cycleModel.effectiveCycleLength);
-
-  return getCyclePhase(dayInCycle, cycleModel.effectiveCycleLength, cycleModel.effectivePeriodLength);
+  return getCyclePhaseInfoForDate(date, {
+    cycles,
+    lastPeriodStart: cycleModel.lastPeriodStartDateStr,
+    cycleLength: cycleModel.effectiveCycleLength,
+    periodLength: cycleModel.effectivePeriodLength,
+    predictedPeriodDateSet: cycleModel.predictedPeriodDateSet,
+  })?.phase || 'follicular';
 }
 
 function getMostRecentExpectedStart(lastPeriodStart: string, cycleLength: number, today: Date): Date | null {

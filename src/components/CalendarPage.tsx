@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  HelpCircle,
   Pencil,
 } from 'lucide-react';
 import { PageShell } from '@/components/AppScaffold';
@@ -29,8 +28,7 @@ import { CycleData, DailyLog, Settings } from '@/lib/db';
 import {
   CyclePhase,
   formatDate,
-  getCyclePhase,
-  getDayInCycleForDate,
+  getCyclePhaseInfoForDate,
   getDaysInMonth,
   getOrdinalSuffix,
 } from '@/lib/cycle-utils';
@@ -52,6 +50,7 @@ interface CalendarPageProps {
 
 export function CalendarPage({
   dailyLogs,
+  cycles,
   cycleModel,
   currentMonth,
   onMonthChange,
@@ -116,11 +115,13 @@ export function CalendarPage({
 
   function getPhaseForDate(date: Date): CyclePhase | null {
     if (!cycleModel?.lastPeriodStartDate) return null;
-    const dateStr = formatDate(date);
-    if (periodDates.has(dateStr) || cycleModel.predictedPeriodDateSet.has(dateStr)) return 'menstrual';
-
-    const dayInCycle = getDayInCycleForDate(date, cycleModel.lastPeriodStartDate, cycleModel.effectiveCycleLength);
-    return getCyclePhase(dayInCycle, cycleModel.effectiveCycleLength, cycleModel.effectivePeriodLength);
+    return getCyclePhaseInfoForDate(date, {
+      cycles,
+      lastPeriodStart: cycleModel.lastPeriodStartDateStr,
+      cycleLength: cycleModel.effectiveCycleLength,
+      periodLength: cycleModel.effectivePeriodLength,
+      predictedPeriodDateSet: cycleModel.predictedPeriodDateSet,
+    })?.phase || null;
   }
 
   const setYear = (value: string) => {
@@ -298,33 +299,30 @@ export function CalendarPage({
           </div>
       </div>
 
-      <div className="calendar-legend">
-        <span><i className="legend-period" />经期</span>
-        <span><i className="legend-follicular" />卵泡期</span>
-        <span><i className="legend-ovulation" />排卵期</span>
-        <span><i className="legend-luteal" />黄体期</span>
-        <span><i className="legend-predicted" />预测经期</span>
-        <Dialog>
-          <DialogTrigger asChild>
-            <button type="button" className="calendar-help" aria-label="周期阶段预测说明">
-              <HelpCircle className="h-4 w-4" />
-            </button>
-          </DialogTrigger>
-          <DialogContent className="phase-help-dialog">
-            <DialogHeader>
-              <DialogTitle>周期阶段预测说明</DialogTitle>
-            </DialogHeader>
-            <div className="phase-help-content">
-              <p>根据你的经期记录、平均周期长度和经期长度预测不同阶段。记录越完整，预测越稳定。</p>
-              <PhaseHelpDot kind="menstrual" title="经期" text="已记录的经期日期会优先显示。" />
-              <PhaseHelpDot kind="follicular" title="卵泡期" text="经期结束后到排卵期前的阶段，日历用蜡笔浅蓝背景提示。" />
-              <PhaseHelpDot kind="ovulation" title="排卵期" text="通常在下次经期前约 14 天，前后会有浮动。" />
-              <PhaseHelpDot kind="luteal" title="黄体期" text="排卵期之后到下次经期前的阶段，日历用蜡笔浅紫背景提示。" />
-              <PhaseHelpDot kind="predicted" title="预测经期" text="未来经期使用淡色虚线标记。" />
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+      <Dialog>
+        <DialogTrigger asChild>
+          <button type="button" className="calendar-legend" aria-label="周期阶段预测说明">
+            <span><i className="legend-period" />经期</span>
+            <span><i className="legend-follicular" />卵泡期</span>
+            <span><i className="legend-ovulation" />排卵期</span>
+            <span><i className="legend-luteal" />黄体期</span>
+            <span><i className="legend-predicted" />预测经期</span>
+          </button>
+        </DialogTrigger>
+        <DialogContent className="phase-help-dialog">
+          <DialogHeader>
+            <DialogTitle>周期阶段预测说明</DialogTitle>
+          </DialogHeader>
+          <div className="phase-help-content">
+            <p>根据你的经期记录、平均周期长度和经期长度预测不同阶段。记录越完整，预测越稳定。</p>
+            <PhaseHelpDot kind="menstrual" title="经期" text="已记录的经期日期会优先显示。" />
+            <PhaseHelpDot kind="follicular" title="卵泡期" text="经期结束后到排卵期前的阶段，日历用蜡笔浅蓝背景提示。" />
+            <PhaseHelpDot kind="ovulation" title="排卵期" text="通常在下次经期前约 14 天，前后会有浮动。" />
+            <PhaseHelpDot kind="luteal" title="黄体期" text="排卵期之后到下次经期前的阶段，日历用蜡笔浅紫背景提示。" />
+            <PhaseHelpDot kind="predicted" title="预测经期" text="未来经期使用淡色虚线标记。" />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <button
         type="button"

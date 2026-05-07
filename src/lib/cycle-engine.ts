@@ -4,7 +4,7 @@ import {
   FertilityWindowInfo,
   formatDate,
   getFertilityWindowForNextPeriodStart,
-  getPhaseInfo,
+  getCyclePhaseInfoForDate,
   parseLocalDate,
   PhaseInfo,
 } from './cycle-utils';
@@ -339,14 +339,12 @@ export function createCycleModel(
   const currentDate = new Date(today);
   currentDate.setHours(12, 0, 0, 0);
 
-  const currentPhase = lastPeriodStartDate
-    ? getPhaseInfo(
-        currentDate,
-        lastPeriodStartDate,
-        effectiveCycleLength,
-        effectivePeriodLength
-      )
-    : null;
+  const currentPhase = getCyclePhaseInfoForDate(currentDate, {
+    cycles,
+    lastPeriodStart,
+    cycleLength: effectiveCycleLength,
+    periodLength: effectivePeriodLength,
+  });
 
   const nextPeriodRange = getNextPeriodRange(
     lastPeriodStart,

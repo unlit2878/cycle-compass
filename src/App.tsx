@@ -202,14 +202,7 @@ function AppContent() {
   };
 
   if (loading) {
-    return (
-      <div className="app-screen loading-screen">
-        <div>
-          <span />
-          <p>加载中...</p>
-        </div>
-      </div>
-    );
+    return <div className="app-screen loading-screen" aria-label="应用启动中" />;
   }
 
   if (!settings?.onboardingComplete) {
@@ -227,6 +220,7 @@ function AppContent() {
         <LoggingScreen
           date={loggingDate}
           existingLog={loggingExistingLog}
+          cycles={cycles}
           settings={settings}
           cycleModel={cycleModel}
           statistics={statistics}

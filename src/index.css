@@ -778,28 +778,7 @@
 }
 
 .loading-screen {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.loading-screen div {
-  text-align: center;
-  color: #7f897c;
-}
-
-.loading-screen span {
-  display: block;
-  width: 58px;
-  height: 58px;
-  margin: 0 auto 14px;
-  border-radius: 50%;
-  background: var(--paper-green);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  50% { opacity: 0.48; transform: scale(0.92); }
+  background: hsl(var(--background));
 }
 
 .empty-state {
@@ -1966,13 +1945,18 @@
 
 .calendar-legend {
   display: flex;
+  width: 100%;
   flex-wrap: wrap;
   justify-content: center;
   gap: 14px;
-  margin: 38px -4px 18px;
+  margin: 38px 0 18px;
+  padding: 0;
+  border: 0;
   color: #747b84;
   font-size: 13px;
   font-weight: 600;
+  background: transparent;
+  cursor: pointer;
 }
 
 .calendar-legend span {

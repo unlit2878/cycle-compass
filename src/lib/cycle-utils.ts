@@ -1,4 +1,4 @@
-import { CycleData } from './db';
+import type { CycleData } from './db';
 import { zh } from './i18n';
 
 export type CyclePhase = 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
@@ -9,6 +9,13 @@ export interface PhaseInfo {
   daysUntilNextPeriod: number;
   phaseDay: number;
   phaseTotalDays: number;
+}
+
+export interface CyclePhaseInfoForDate extends PhaseInfo {
+  isRecordedPeriod: boolean;
+  isPredictedPeriod: boolean;
+  anchorStartDateStr: string;
+  periodLengthUsed: number;
 }
 
 export interface PredictedPeriod {
@@ -35,6 +42,7 @@ const OVULATION_DAY_OFFSET_FROM_NEXT_PERIOD = 14;
 const OVULATION_PHASE_RADIUS_DAYS = 2;
 const FERTILE_WINDOW_START_OFFSET_FROM_OVULATION = -5;
 const FERTILE_WINDOW_END_OFFSET_FROM_OVULATION = 1;
+const DAY_MS = 1000 * 60 * 60 * 24;
 
 function buildDateRange(startDate: Date, endDate: Date): DateRangeInfo {
   return {
@@ -156,6 +164,12 @@ export function findPeriodCycleToEndOnDate(
     .sort((a, b) => parseLocalDate(b.startDate).getTime() - parseLocalDate(a.startDate).getTime())[0];
 }
 
+export function getLatestCycleStartOnOrBeforeDate(date: string, cycles: CycleData[]): CycleData | undefined {
+  return [...cycles]
+    .filter((cycle) => cycle.startDate <= date)
+    .sort((a, b) => parseLocalDate(b.startDate).getTime() - parseLocalDate(a.startDate).getTime())[0];
+}
+
 export function buildPeriodDateSet(cycles: CycleData[]): Set<string> {
   const dates = new Set<string>();
 
@@ -173,6 +187,50 @@ export function buildPeriodDateSet(cycles: CycleData[]): Set<string> {
   return dates;
 }
 
+function getDaysBetweenDates(startDate: string, endDate: string): number {
+  return Math.floor((parseLocalDate(endDate).getTime() - parseLocalDate(startDate).getTime()) / DAY_MS);
+}
+
+function getRecordedPeriodLength(cycle: CycleData, fallbackPeriodLength: number): number {
+  if (!cycle.endDate) return fallbackPeriodLength;
+  return Math.max(1, getDaysBetweenDates(cycle.startDate, cycle.endDate) + 1);
+}
+
+function getPhaseProgressFromCycleDay(
+  dayInCurrentCycle: number,
+  phase: CyclePhase,
+  cycleLength: number,
+  periodLength: number
+) {
+  const ovulationDay = getOvulationDay(cycleLength);
+  let phaseDay: number;
+  let phaseTotalDays: number;
+
+  switch (phase) {
+    case 'menstrual':
+      phaseDay = dayInCurrentCycle;
+      phaseTotalDays = periodLength;
+      break;
+    case 'follicular':
+      phaseDay = dayInCurrentCycle - periodLength;
+      phaseTotalDays = ovulationDay - periodLength - 2;
+      break;
+    case 'ovulation':
+      phaseDay = dayInCurrentCycle - (ovulationDay - 2);
+      phaseTotalDays = 5;
+      break;
+    case 'luteal':
+      phaseDay = dayInCurrentCycle - (ovulationDay + 2);
+      phaseTotalDays = cycleLength - ovulationDay - 2;
+      break;
+  }
+
+  return {
+    phaseDay: Math.max(1, phaseDay),
+    phaseTotalDays: Math.max(1, phaseTotalDays),
+  };
+}
+
 // 根据周期天数和周期长度计算周期阶段
 export function getCyclePhase(dayInCycle: number, cycleLength: number, periodLength: number = 5): CyclePhase {
   const ovulationDay = getOvulationDay(cycleLength); // 排卵通常在下次月经前14天
@@ -186,6 +244,67 @@ export function getCyclePhase(dayInCycle: number, cycleLength: number, periodLen
   } else {
     return 'luteal';
   }
+}
+
+export function getCyclePhaseInfoForDate(
+  date: Date,
+  options: {
+    cycles: CycleData[];
+    lastPeriodStart?: string | null;
+    cycleLength: number;
+    periodLength: number;
+    predictedPeriodDateSet?: Set<string>;
+  }
+): CyclePhaseInfoForDate | null {
+  const dateStr = formatDate(date);
+  const recordedCycle = findPeriodCycleForDate(dateStr, options.cycles);
+  const anchorCycle = recordedCycle || getLatestCycleStartOnOrBeforeDate(dateStr, options.cycles);
+  const anchorStartDateStr = anchorCycle?.startDate || options.lastPeriodStart;
+
+  if (!anchorStartDateStr) return null;
+
+  const safeCycleLength = Math.max(1, Math.round(options.cycleLength));
+  let periodLengthUsed = Math.max(1, Math.round(options.periodLength));
+  const isRecordedPeriod = Boolean(recordedCycle);
+  const isPredictedPeriod = Boolean(!isRecordedPeriod && options.predictedPeriodDateSet?.has(dateStr));
+  const dayDiff = getDaysBetweenDates(anchorStartDateStr, dateStr);
+  const dayInCycle = dayDiff + 1;
+  const dayInCurrentCycle = ((dayDiff % safeCycleLength) + safeCycleLength) % safeCycleLength + 1;
+
+  if (anchorCycle?.endDate && dateStr > anchorCycle.endDate && dayDiff < safeCycleLength) {
+    periodLengthUsed = getRecordedPeriodLength(anchorCycle, periodLengthUsed);
+  }
+
+  if (recordedCycle) {
+    periodLengthUsed = getRecordedPeriodLength(recordedCycle, periodLengthUsed);
+  }
+
+  let phase = isRecordedPeriod || isPredictedPeriod
+    ? 'menstrual'
+    : getCyclePhase(dayInCurrentCycle, safeCycleLength, periodLengthUsed);
+
+  if (
+    phase === 'menstrual' &&
+    !isRecordedPeriod &&
+    !isPredictedPeriod &&
+    anchorCycle?.endDate &&
+    dateStr > anchorCycle.endDate
+  ) {
+    phase = 'follicular';
+  }
+  const progress = getPhaseProgressFromCycleDay(dayInCurrentCycle, phase, safeCycleLength, periodLengthUsed);
+
+  return {
+    phase,
+    dayInCycle,
+    daysUntilNextPeriod: safeCycleLength - dayInCurrentCycle + 1,
+    phaseDay: isRecordedPeriod ? Math.max(1, dayDiff + 1) : progress.phaseDay,
+    phaseTotalDays: progress.phaseTotalDays,
+    isRecordedPeriod,
+    isPredictedPeriod,
+    anchorStartDateStr,
+    periodLengthUsed,
+  };
 }
 
 export function getPhaseInfo(
