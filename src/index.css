@@ -151,7 +151,10 @@
   html {
     min-height: 100%;
     background: #fffdf9;
+    font-size: 16px;
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -2941,14 +2944,529 @@
   bottom: 104px !important;
 }
 
-@media (max-width: 380px) {
-  .page-content {
-    padding-left: 22px;
-    padding-right: 22px;
+@media (max-width: 430px) {
+  :root {
+    --text-page-title: 29px;
+    --text-section-title: 19px;
+    --text-subsection-title: 15.5px;
+    --text-body: 14.5px;
+    --text-label: 13.5px;
+    --text-metric: 32px;
   }
 
-  .page-title-row h1 {
-    font-size: 29px;
+  .page-content {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .page-header {
+    min-height: 108px;
+    padding-top: calc(22px + env(safe-area-inset-top, 0px));
+  }
+
+  .page-header p {
+    margin-top: 10px;
+    line-height: 1.46;
+  }
+
+  .calendar-screen .page-header {
+    min-height: 102px;
+  }
+
+  .calendar-month-control {
+    margin-bottom: 25px;
+  }
+
+  .calendar-month-control > button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .calendar-month-control svg {
+    width: 25px;
+    height: 25px;
+  }
+
+  .calendar-selectors {
+    gap: 6px;
+  }
+
+  .calendar-select-trigger {
+    min-width: 114px;
+    height: 33px;
+    padding: 0 7px;
+    font-size: 17px;
+  }
+
+  .calendar-select-trigger.month {
+    min-width: 66px;
+  }
+
+  .weekday-grid {
+    margin-bottom: 18px;
+  }
+
+  .calendar-grid {
+    row-gap: 18px;
+  }
+
+  .calendar-day {
+    width: 40px;
+    height: 40px;
+    font-size: 17px;
+  }
+
+  .calendar-day .log-dot {
+    bottom: -9px;
+  }
+
+  .calendar-legend {
+    gap: 10px 12px;
+    margin: 32px 0 15px;
+    font-size: 12.5px;
+    line-height: 1.2;
+  }
+
+  .calendar-detail-head {
+    margin-bottom: 20px;
+  }
+
+  .calendar-detail-head strong {
+    font-size: 21px;
+  }
+
+  .calendar-detail-head span {
+    font-size: 15px;
+  }
+
+  .calendar-summary-metrics div {
+    grid-template-columns: 30px 1fr;
+    column-gap: 8px;
+    padding: 0 8px;
+  }
+
+  .calendar-summary-metrics svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .calendar-summary-metrics span {
+    font-size: 12.5px;
+  }
+
+  .calendar-summary-metrics strong {
+    font-size: 14.5px;
+  }
+
+  .today-status.compact {
+    margin-top: 24px;
+  }
+
+  .today-status.compact .status-scroll {
+    gap: 10px;
+  }
+
+  .today-status.compact .status-chip {
+    gap: 7px;
+  }
+
+  .today-status.compact .status-chip span {
+    width: 49px;
+    height: 49px;
+  }
+}
+
+@media (max-width: 410px) {
+  :root {
+    --text-page-title: 28px;
+    --text-section-title: 18px;
+    --text-subsection-title: 15px;
+    --text-body: 14px;
+    --text-label: 13px;
+    --text-metric: 30px;
+  }
+
+  .page-content {
+    padding-left: 21px;
+    padding-right: 21px;
+  }
+
+  .page-header {
+    min-height: 104px;
+    padding-top: calc(20px + env(safe-area-inset-top, 0px));
+  }
+
+  .page-title-row {
+    gap: 8px;
+  }
+
+  .title-sprout {
+    width: 24px;
+    height: 26px;
+  }
+
+  .page-header p {
+    margin-top: 8px;
+    line-height: 1.42;
+  }
+
+  .calendar-screen .page-header {
+    min-height: 98px;
+  }
+
+  .calendar-month-control {
+    margin-bottom: 22px;
+  }
+
+  .calendar-month-control > button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .calendar-month-control svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .calendar-selectors {
+    gap: 4px;
+  }
+
+  .calendar-select-trigger {
+    min-width: 108px;
+    height: 32px;
+    padding: 0 6px;
+    font-size: 16px;
+  }
+
+  .calendar-select-trigger.month {
+    min-width: 62px;
+  }
+
+  .calendar-select-trigger svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .weekday-grid {
+    margin-bottom: 15px;
+  }
+
+  .weekday-grid span {
+    font-size: 12px;
+  }
+
+  .calendar-grid {
+    row-gap: 16px;
+  }
+
+  .calendar-day {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+  }
+
+  .calendar-day small {
+    font-size: 6.5px;
+  }
+
+  .calendar-day .log-dot {
+    bottom: -8px;
+  }
+
+  .log-dot {
+    width: 5px;
+    height: 5px;
+  }
+
+  .calendar-legend {
+    gap: 9px 10px;
+    margin: 28px 0 13px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .calendar-legend span {
+    gap: 5px;
+  }
+
+  .detail-caret {
+    width: 34px;
+    height: 28px;
+    margin-bottom: 10px;
+  }
+
+  .calendar-detail-head {
+    margin-bottom: 18px;
+  }
+
+  .calendar-detail-head div {
+    gap: 8px;
+  }
+
+  .calendar-detail-head strong {
+    font-size: 20px;
+  }
+
+  .calendar-detail-head span {
+    font-size: 14px;
+  }
+
+  .calendar-detail-head button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .calendar-summary-metrics div {
+    grid-template-columns: 28px 1fr;
+    column-gap: 7px;
+    padding: 0 7px;
+  }
+
+  .calendar-summary-metrics svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .calendar-summary-metrics span {
+    font-size: 12px;
+  }
+
+  .calendar-summary-metrics strong {
+    font-size: 14px;
+  }
+
+  .today-status.compact {
+    margin-top: 22px;
+  }
+
+  .today-status.compact .status-scroll {
+    grid-template-columns: repeat(5, minmax(40px, 1fr));
+    gap: 8px;
+  }
+
+  .today-status.compact .status-chip {
+    gap: 6px;
+  }
+
+  .today-status.compact .status-chip span {
+    width: 46px;
+    height: 46px;
+  }
+
+  .today-status.compact .status-chip svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .today-status.compact .status-chip small {
+    min-height: 28px;
+    font-size: 11px;
+  }
+
+  .calendar-today-fab {
+    right: 20px;
+    bottom: 92px;
+    height: 34px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  :root {
+    --text-page-title: 28px;
+    --text-section-title: 18px;
+    --text-subsection-title: 15px;
+    --text-body: 14px;
+    --text-label: 13px;
+    --text-metric: 30px;
+  }
+
+  .page-content {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .page-header {
+    min-height: 104px;
+    padding-top: calc(20px + env(safe-area-inset-top, 0px));
+  }
+
+  .page-title-row {
+    gap: 8px;
+  }
+
+  .title-sprout {
+    width: 24px;
+    height: 26px;
+  }
+
+  .page-header p {
+    margin-top: 8px;
+    line-height: 1.42;
+  }
+
+  .calendar-screen .page-header {
+    min-height: 98px;
+  }
+
+  .calendar-month-control {
+    margin-bottom: 22px;
+  }
+
+  .calendar-month-control > button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .calendar-month-control svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .calendar-selectors {
+    gap: 4px;
+  }
+
+  .calendar-select-trigger {
+    min-width: 108px;
+    height: 32px;
+    padding: 0 6px;
+    font-size: 16px;
+  }
+
+  .calendar-select-trigger.month {
+    min-width: 62px;
+  }
+
+  .calendar-select-trigger svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .weekday-grid {
+    margin-bottom: 15px;
+  }
+
+  .weekday-grid span {
+    font-size: 12px;
+  }
+
+  .calendar-grid {
+    row-gap: 16px;
+  }
+
+  .calendar-day {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+  }
+
+  .calendar-day small {
+    font-size: 6.5px;
+  }
+
+  .calendar-day .log-dot {
+    bottom: -8px;
+  }
+
+  .log-dot {
+    width: 5px;
+    height: 5px;
+  }
+
+  .calendar-legend {
+    gap: 9px 10px;
+    margin: 28px 0 13px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .calendar-legend span {
+    gap: 5px;
+  }
+
+  .detail-caret {
+    width: 34px;
+    height: 28px;
+    margin-bottom: 10px;
+  }
+
+  .calendar-detail-head {
+    margin-bottom: 18px;
+  }
+
+  .calendar-detail-head div {
+    gap: 8px;
+  }
+
+  .calendar-detail-head strong {
+    font-size: 20px;
+  }
+
+  .calendar-detail-head span {
+    font-size: 14px;
+  }
+
+  .calendar-detail-head button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .calendar-summary-metrics div {
+    grid-template-columns: 28px 1fr;
+    column-gap: 7px;
+    padding: 0 7px;
+  }
+
+  .calendar-summary-metrics svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .calendar-summary-metrics span {
+    font-size: 12px;
+  }
+
+  .calendar-summary-metrics strong {
+    font-size: 14px;
+  }
+
+  .today-status.compact {
+    margin-top: 22px;
+  }
+
+  .today-status.compact .status-scroll {
+    grid-template-columns: repeat(5, minmax(40px, 1fr));
+    gap: 8px;
+  }
+
+  .today-status.compact .status-chip {
+    gap: 6px;
+  }
+
+  .today-status.compact .status-chip span {
+    width: 46px;
+    height: 46px;
+  }
+
+  .today-status.compact .status-chip svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .today-status.compact .status-chip small {
+    min-height: 28px;
+    font-size: 11px;
+  }
+
+  .calendar-today-fab {
+    right: 20px;
+    bottom: 92px;
+    height: 34px;
+    padding: 0 12px;
+    font-size: 12px;
   }
 
   .period-toggle {
@@ -2980,5 +3498,689 @@
 
   .stat-item strong {
     font-size: 29px;
+  }
+}
+
+@media (max-width: 350px) {
+  :root {
+    --text-page-title: 26px;
+    --text-section-title: 17px;
+    --text-body: 13.5px;
+    --text-label: 12.5px;
+    --text-metric: 28px;
+  }
+
+  .page-content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .page-header {
+    min-height: 98px;
+  }
+
+  .calendar-screen .page-header {
+    min-height: 92px;
+  }
+
+  .calendar-month-control {
+    margin-bottom: 18px;
+  }
+
+  .calendar-month-control > button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .calendar-month-control svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .calendar-select-trigger {
+    min-width: 100px;
+    font-size: 15px;
+  }
+
+  .calendar-select-trigger.month {
+    min-width: 56px;
+  }
+
+  .weekday-grid {
+    margin-bottom: 12px;
+  }
+
+  .calendar-grid {
+    row-gap: 13px;
+  }
+
+  .calendar-day {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+  }
+
+  .calendar-legend {
+    justify-content: flex-start;
+    gap: 8px 9px;
+    margin-top: 24px;
+  }
+
+  .calendar-detail-head strong {
+    font-size: 18px;
+  }
+
+  .calendar-summary-metrics div {
+    grid-template-columns: 24px 1fr;
+    column-gap: 6px;
+    padding: 0 5px;
+  }
+
+  .calendar-summary-metrics svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .calendar-summary-metrics strong {
+    font-size: 13px;
+  }
+
+  .today-status.compact .status-scroll {
+    gap: 6px;
+  }
+
+  .today-status.compact .status-chip span {
+    width: 42px;
+    height: 42px;
+  }
+
+  .bottom-nav-inner {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+@media (max-width: 430px) {
+  .home-screen .backup-reminder {
+    align-items: center;
+  }
+
+  .home-screen .backup-reminder span {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .home-screen .backup-reminder small {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .calendar-legend {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 430px) {
+  :root {
+    --compact-page-x: 24px;
+    --compact-header-min: 106px;
+    --compact-header-top: 22px;
+    --compact-header-subtitle-gap: 9px;
+    --compact-section-gap: 16px;
+    --compact-list-gap: 12px;
+    --compact-calendar-day: 38px;
+    --compact-calendar-day-font: 14.5px;
+    --compact-calendar-row-gap: 16px;
+    --compact-calendar-weekday-gap: 15px;
+    --compact-calendar-month-font: 16px;
+    --compact-calendar-month-button: 38px;
+    --compact-calendar-detail-title: 19px;
+    --compact-calendar-detail-label: 13px;
+    --compact-ring-scale: 1.04;
+    --compact-home-hero-height: 322px;
+    --compact-hero-copy-gap: 10px;
+    --compact-insight-heading: 17px;
+    --compact-analysis-label: 13px;
+    --compact-analysis-small: 12px;
+    --compact-settings-title: 15px;
+    --compact-settings-desc: 12.5px;
+    --text-page-title: 28px;
+    --text-section-title: 18px;
+    --text-subsection-title: 15px;
+    --text-body: 14px;
+    --text-label: 13px;
+    --text-metric: 29px;
+  }
+
+  .page-content {
+    padding-right: var(--compact-page-x);
+    padding-left: var(--compact-page-x);
+  }
+
+  .page-header {
+    min-height: var(--compact-header-min);
+    padding-top: calc(var(--compact-header-top) + env(safe-area-inset-top, 0px));
+  }
+
+  .page-title-row {
+    gap: 8px;
+  }
+
+  .title-sprout {
+    width: 24px;
+    height: 26px;
+  }
+
+  .page-header p {
+    margin-top: var(--compact-header-subtitle-gap);
+    line-height: 1.42;
+  }
+
+  .inline-section-title {
+    margin-bottom: var(--compact-section-gap);
+  }
+
+  .home-screen .backup-reminder {
+    align-items: flex-start;
+    gap: 10px;
+    margin: 10px 0 16px;
+    font-size: var(--text-label);
+    line-height: 1.35;
+  }
+
+  .home-screen .backup-reminder small {
+    max-width: 54%;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .home-screen .cycle-hero {
+    height: var(--compact-home-hero-height);
+    margin-top: 0;
+  }
+
+  .home-screen .dotted-ring {
+    transform: scale(var(--compact-ring-scale));
+    transform-origin: center;
+  }
+
+  .home-screen .cycle-hero-center {
+    width: 176px;
+    max-width: 50vw;
+  }
+
+  .home-screen .cycle-hero-center span {
+    font-size: 12.5px;
+    line-height: 1.32;
+  }
+
+  .home-screen .cycle-hero-center strong {
+    gap: 5px;
+    margin-top: var(--compact-hero-copy-gap);
+    font-size: 58px;
+  }
+
+  .home-screen .cycle-hero-center strong.compact {
+    font-size: 35px;
+  }
+
+  .home-screen .cycle-hero-center strong small {
+    font-size: 15px;
+  }
+
+  .home-screen .cycle-hero-center em,
+  .home-screen .hero-phase-summary {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .home-screen .cycle-hero-center button {
+    height: 38px;
+    min-width: 102px;
+    margin-top: 12px;
+    font-size: 13px;
+  }
+
+  .calendar-screen .page-header {
+    min-height: 96px;
+  }
+
+  .calendar-month-control {
+    margin-bottom: 20px;
+  }
+
+  .calendar-month-control > button {
+    width: var(--compact-calendar-month-button);
+    height: var(--compact-calendar-month-button);
+  }
+
+  .calendar-month-control svg {
+    width: 23px;
+    height: 23px;
+  }
+
+  .calendar-selectors {
+    gap: 4px;
+  }
+
+  .calendar-select-trigger {
+    min-width: 104px;
+    height: 31px;
+    padding: 0 6px;
+    font-size: var(--compact-calendar-month-font);
+  }
+
+  .calendar-select-trigger.month {
+    min-width: 58px;
+  }
+
+  .calendar-select-trigger svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .weekday-grid {
+    margin-bottom: var(--compact-calendar-weekday-gap);
+  }
+
+  .weekday-grid span {
+    font-size: 11.5px;
+  }
+
+  .calendar-grid {
+    row-gap: var(--compact-calendar-row-gap);
+  }
+
+  .calendar-day {
+    width: var(--compact-calendar-day);
+    height: var(--compact-calendar-day);
+    font-size: var(--compact-calendar-day-font);
+  }
+
+  .calendar-day small {
+    font-size: 6px;
+  }
+
+  .calendar-day .log-dot {
+    bottom: -8px;
+  }
+
+  .calendar-legend {
+    justify-content: flex-start;
+    gap: 8px 10px;
+    margin: 26px 0 12px;
+    font-size: 11.5px;
+    line-height: 1.2;
+  }
+
+  .detail-caret {
+    width: 34px;
+    height: 28px;
+    margin-bottom: 9px;
+  }
+
+  .calendar-detail-head {
+    margin-bottom: 16px;
+  }
+
+  .calendar-detail-head strong {
+    font-size: var(--compact-calendar-detail-title);
+  }
+
+  .calendar-detail-head span {
+    font-size: var(--compact-calendar-detail-label);
+  }
+
+  .calendar-detail-head button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .calendar-summary-metrics div {
+    grid-template-columns: 26px 1fr;
+    column-gap: 6px;
+    padding: 0 6px;
+  }
+
+  .calendar-summary-metrics svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .calendar-summary-metrics span {
+    font-size: 11.5px;
+  }
+
+  .calendar-summary-metrics strong {
+    font-size: 13px;
+  }
+
+  .today-status.compact {
+    margin-top: 20px;
+  }
+
+  .today-status.compact .status-scroll {
+    grid-template-columns: repeat(5, minmax(38px, 1fr));
+    gap: 7px;
+  }
+
+  .today-status.compact .status-chip {
+    gap: 5px;
+  }
+
+  .today-status.compact .status-chip span {
+    width: 43px;
+    height: 43px;
+  }
+
+  .today-status.compact .status-chip svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .today-status.compact .status-chip small {
+    min-height: 26px;
+    font-size: 10.5px;
+  }
+
+  .insights-screen .page-header,
+  .settings-screen .page-header {
+    min-height: 100px;
+  }
+
+  .insight-stat-row {
+    column-gap: 14px;
+    row-gap: 18px;
+    margin-bottom: 30px;
+  }
+
+  .stat-item div {
+    min-height: 34px;
+    gap: 5px;
+    font-size: 12px;
+  }
+
+  .stat-item svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .stat-item strong {
+    font-size: var(--text-metric);
+  }
+
+  .stat-item small {
+    margin-left: 2px;
+    font-size: 12px;
+  }
+
+  .stat-item em {
+    margin-top: 9px;
+    font-size: 11.5px;
+  }
+
+  .analysis-section {
+    margin-top: 28px;
+  }
+
+  .analysis-section h2,
+  .analysis-heading-row h2 {
+    gap: 7px;
+    font-size: var(--compact-insight-heading);
+    line-height: 1.25;
+  }
+
+  .analysis-heading-row {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .analysis-heading-row h2 {
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .analysis-heading-row h2 svg,
+  .analysis-section h2 svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+  }
+
+  .analysis-filter-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .chart-legend {
+    gap: 10px 14px;
+    margin-bottom: 20px;
+    font-size: var(--compact-analysis-small);
+  }
+
+  .cycle-bar-chart {
+    padding-top: 18px;
+  }
+
+  .avg-line span {
+    top: -18px;
+    left: -30px;
+    font-size: 11px;
+  }
+
+  .cycle-row {
+    margin-bottom: 16px;
+  }
+
+  .cycle-row-label {
+    gap: 6px;
+    margin-bottom: 7px;
+  }
+
+  .cycle-row-label em {
+    padding: 2px 6px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .cycle-row-label span {
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--compact-analysis-small);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cycle-row-body {
+    grid-template-columns: 1fr 72px;
+    gap: 8px;
+  }
+
+  .cycle-row-body strong {
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  .health-head strong {
+    font-size: 25px;
+  }
+
+  .health-head strong span,
+  .health-section > span,
+  .health-section p,
+  .health-messages span,
+  .health-messages em {
+    font-size: var(--compact-analysis-small);
+  }
+
+  .prediction-metrics {
+    gap: 8px;
+    margin: 18px 0;
+  }
+
+  .prediction-metrics p,
+  .prediction-metrics small,
+  .prediction-list div,
+  .prediction-list > span {
+    font-size: var(--compact-analysis-small);
+  }
+
+  .prediction-metrics strong {
+    font-size: 21px;
+  }
+
+  .prediction-metrics strong small {
+    font-size: 12px;
+  }
+
+  .prediction-list div {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.92fr) 38px;
+    gap: 6px;
+  }
+
+  .prediction-list div > span,
+  .prediction-list em {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .settings-group {
+    margin-top: 24px;
+  }
+
+  .settings-group h2 {
+    margin-bottom: 15px;
+  }
+
+  .settings-row {
+    grid-template-columns: 42px minmax(0, 1fr) 20px;
+    gap: 12px;
+    min-height: 68px;
+  }
+
+  .settings-row-icon svg {
+    width: 25px;
+    height: 25px;
+  }
+
+  .settings-row-copy strong {
+    font-size: var(--compact-settings-title);
+  }
+
+  .settings-row-copy small {
+    margin-top: 4px;
+    font-size: var(--compact-settings-desc);
+    line-height: 1.32;
+  }
+
+  .settings-chevron {
+    width: 18px;
+    height: 18px;
+  }
+
+  .settings-footer {
+    margin-top: 30px;
+  }
+
+  .settings-footer svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  .settings-footer p {
+    font-size: 13px;
+  }
+
+  .settings-footer span {
+    font-size: 12px;
+  }
+
+  .calendar-today-fab {
+    right: var(--compact-page-x);
+    bottom: 92px;
+    height: 32px;
+    padding: 0 11px;
+    font-size: 11.5px;
+  }
+}
+
+@media (max-width: 410px) {
+  :root {
+    --compact-page-x: 20px;
+    --compact-header-min: 102px;
+    --compact-header-top: 20px;
+    --compact-calendar-day: 36px;
+    --compact-calendar-day-font: 13.5px;
+    --compact-calendar-row-gap: 14px;
+    --compact-calendar-weekday-gap: 13px;
+    --compact-calendar-month-font: 15px;
+    --compact-calendar-month-button: 36px;
+    --compact-calendar-detail-title: 18px;
+    --compact-calendar-detail-label: 12.5px;
+    --compact-ring-scale: 1.07;
+    --compact-home-hero-height: 326px;
+    --compact-insight-heading: 16px;
+    --compact-analysis-label: 12.5px;
+    --compact-analysis-small: 11.5px;
+    --compact-settings-title: 14.5px;
+    --compact-settings-desc: 12px;
+    --text-page-title: 26px;
+    --text-section-title: 17px;
+    --text-body: 13.5px;
+    --text-label: 12.5px;
+    --text-metric: 27px;
+  }
+
+  .home-screen .backup-reminder {
+    margin-top: 12px;
+  }
+
+  .home-screen .cycle-hero-center {
+    width: 168px;
+  }
+
+  .calendar-legend {
+    font-size: 11px;
+  }
+
+  .cycle-row-body {
+    grid-template-columns: 1fr 66px;
+  }
+
+  .settings-row {
+    grid-template-columns: 38px minmax(0, 1fr) 18px;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 350px) {
+  :root {
+    --compact-page-x: 16px;
+    --compact-header-min: 96px;
+    --compact-header-top: 18px;
+    --compact-calendar-day: 34px;
+    --compact-calendar-day-font: 13px;
+    --compact-calendar-row-gap: 12px;
+    --compact-calendar-weekday-gap: 11px;
+    --compact-calendar-month-font: 14px;
+    --compact-calendar-month-button: 34px;
+    --compact-ring-scale: 1.03;
+    --compact-home-hero-height: 310px;
+    --text-page-title: 25px;
+    --text-section-title: 16px;
+    --text-metric: 25px;
+  }
+
+  .bottom-nav-inner {
+    padding-right: 16px;
+    padding-left: 16px;
   }
 }

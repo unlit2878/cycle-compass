@@ -147,7 +147,7 @@ export function SettingsPage({
       <footer className="settings-footer">
         <Leaf className="h-10 w-10" />
         <p>愿你在每个阶段，都被温柔以待</p>
-        <span>v 1.2.0</span>
+        <span>v 1.2.1</span>
       </footer>
     </PageShell>
   );
