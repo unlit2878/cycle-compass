@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { TouchEvent, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Capacitor } from '@capacitor/core';
@@ -9,27 +9,42 @@ import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BottomNav } from '@/components/BottomNav';
 import { CalendarPage } from '@/components/CalendarPage';
+import { DataImportPage } from '@/components/DataImportPage';
 import { Home } from '@/components/Home';
 import { InsightsPage } from '@/components/InsightsPage';
 import { LoggingScreen } from '@/components/LoggingScreen';
 import { Onboarding } from '@/components/Onboarding';
 import { SettingsPage } from '@/components/SettingsPage';
 import { useCycleData } from '@/hooks/useCycleData';
-import { BackupData, DailyLog, getAllCycles, savePeriodStart, updateCycle } from '@/lib/db';
+import { DailyLog, getAllCycles, savePeriodStart, updateCycle } from '@/lib/db';
 import { findPeriodCycleToEndOnDate, formatDate } from '@/lib/cycle-utils';
 import { initializeNotifications } from '@/lib/notifications';
 
 const queryClient = new QueryClient();
 type LogPayload = Omit<DailyLog, 'id' | 'date' | 'createdAt' | 'updatedAt'>;
+type MainRouteId = 'home' | 'calendar' | 'insights' | 'settings';
+type RouteSlideDirection = 'left' | 'right' | null;
+
+const MAIN_ROUTES: Array<{ id: MainRouteId; path: string }> = [
+  { id: 'home', path: '/' },
+  { id: 'calendar', path: '/calendar' },
+  { id: 'insights', path: '/insights' },
+  { id: 'settings', path: '/settings' },
+];
+
+const SWIPE_THRESHOLD_X = 72;
+const SWIPE_MAX_VERTICAL_DRIFT = 70;
 
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const lastBackPressRef = useRef<number>(0);
+  const swipeStartRef = useRef({ x: 0, y: 0 });
+  const swipeLatestRef = useRef({ x: 0, y: 0 });
   const [loggingDate, setLoggingDate] = useState<string | null>(null);
   const [loggingExistingLog, setLoggingExistingLog] = useState<DailyLog | undefined>(undefined);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [routeSlideDirection, setRouteSlideDirection] = useState<RouteSlideDirection>(null);
 
   const {
     settings,
@@ -156,12 +171,10 @@ function AppContent() {
 
   const handleStartPeriod = async (date: string, autoFillDays: number, cycleId?: number) => {
     const startDate = new Date(`${date}T12:00:00`);
-
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + autoFillDays - 1);
 
     await savePeriodStart(date, formatDate(endDate), cycleId);
-
     await refresh();
   };
 
@@ -183,22 +196,41 @@ function AppContent() {
   };
 
   const handleImportFromOnboarding = () => {
-    fileInputRef.current?.click();
+    navigate('/settings/import');
   };
 
-  const handleFileImport = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const getCurrentMainRouteIndex = () => MAIN_ROUTES.findIndex((route) => route.path === location.pathname);
 
-    try {
-      const text = await file.text();
-      await restore(JSON.parse(text) as BackupData);
-      toast.success('数据导入成功');
-    } catch {
-      toast.error('导入数据失败');
-    } finally {
-      event.target.value = '';
-    }
+  const handleMainTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (shouldIgnoreRouteSwipe(event.target)) return;
+    const touch = event.touches[0];
+    swipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+    swipeLatestRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleMainTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    if (shouldIgnoreRouteSwipe(event.target)) return;
+    const touch = event.touches[0];
+    swipeLatestRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleMainTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    if (shouldIgnoreRouteSwipe(event.target)) return;
+
+    const routeIndex = getCurrentMainRouteIndex();
+    if (routeIndex < 0) return;
+
+    const diffX = swipeStartRef.current.x - swipeLatestRef.current.x;
+    const diffY = Math.abs(swipeStartRef.current.y - swipeLatestRef.current.y);
+    if (Math.abs(diffX) < SWIPE_THRESHOLD_X || diffY > SWIPE_MAX_VERTICAL_DRIFT) return;
+
+    const direction: RouteSlideDirection = diffX > 0 ? 'left' : 'right';
+    const nextIndex = routeIndex + (direction === 'left' ? 1 : -1);
+    const nextRoute = MAIN_ROUTES[nextIndex];
+    if (!nextRoute) return;
+
+    setRouteSlideDirection(direction);
+    navigate(nextRoute.path);
   };
 
   if (loading) {
@@ -206,12 +238,11 @@ function AppContent() {
   }
 
   if (!settings?.onboardingComplete) {
-    return (
-      <>
-        <Onboarding onComplete={completeOnboarding} onImport={handleImportFromOnboarding} />
-        <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileImport} className="hidden" />
-      </>
-    );
+    if (location.pathname === '/settings/import') {
+      return <DataImportPage onImport={restore} />;
+    }
+
+    return <Onboarding onComplete={completeOnboarding} onImport={handleImportFromOnboarding} />;
   }
 
   return (
@@ -232,60 +263,72 @@ function AppContent() {
           onDeleteLog={deleteLog}
         />
       ) : (
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <Home
-                settings={settings}
-                cycleModel={cycleModel}
-                cycles={cycles}
-                dailyLogs={dailyLogs}
-                onDaySelect={openLogging}
-                onMoodSelect={handleMoodSelect}
-                onBackupReminder={() => navigate('/settings#data-management')}
-              />
-            }
-          />
-          <Route
-            path="/calendar"
-            element={
-              <CalendarPage
-                settings={settings}
-                dailyLogs={dailyLogs}
-                cycles={cycles}
-                cycleModel={cycleModel}
-                currentMonth={calendarMonth}
-                onMonthChange={setCalendarMonth}
-                onDaySelect={openLogging}
-                onMoodSelect={handleMoodSelect}
-              />
-            }
-          />
-          <Route
-            path="/insights"
-            element={
-              <InsightsPage
-                settings={settings}
-                cycles={cycles}
-                dailyLogs={dailyLogs}
-                statistics={statistics}
-                cycleModel={cycleModel}
-              />
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <SettingsPage
-                settings={settings}
-                onUpdateSettings={saveSettings}
-                onExport={backup}
-                onImport={restore}
-              />
-            }
-          />
-        </Routes>
+        <div
+          key={location.pathname}
+          className={`route-swipe-shell ${getRouteSlideClass(routeSlideDirection)}`}
+          onAnimationEnd={() => setRouteSlideDirection(null)}
+          onTouchStart={handleMainTouchStart}
+          onTouchMove={handleMainTouchMove}
+          onTouchEnd={handleMainTouchEnd}
+        >
+          <Routes location={location}>
+            <Route
+              path="/"
+              element={
+                <Home
+                  settings={settings}
+                  cycleModel={cycleModel}
+                  cycles={cycles}
+                  dailyLogs={dailyLogs}
+                  onDaySelect={openLogging}
+                  onMoodSelect={handleMoodSelect}
+                  onBackupReminder={() => navigate('/settings#data-management')}
+                />
+              }
+            />
+            <Route
+              path="/calendar"
+              element={
+                <CalendarPage
+                  settings={settings}
+                  dailyLogs={dailyLogs}
+                  cycles={cycles}
+                  cycleModel={cycleModel}
+                  currentMonth={calendarMonth}
+                  onMonthChange={setCalendarMonth}
+                  onDaySelect={openLogging}
+                  onMoodSelect={handleMoodSelect}
+                />
+              }
+            />
+            <Route
+              path="/insights"
+              element={
+                <InsightsPage
+                  settings={settings}
+                  cycles={cycles}
+                  dailyLogs={dailyLogs}
+                  statistics={statistics}
+                  cycleModel={cycleModel}
+                />
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <SettingsPage
+                  settings={settings}
+                  onUpdateSettings={saveSettings}
+                  onExport={backup}
+                />
+              }
+            />
+            <Route
+              path="/settings/import"
+              element={<DataImportPage onImport={restore} />}
+            />
+          </Routes>
+        </div>
       )}
       <BottomNav onLogClick={handleLogToday} onNavigate={closeLogging} active={loggingDate ? 'log' : undefined} />
     </>
@@ -305,3 +348,16 @@ const App = () => (
 );
 
 export default App;
+
+function shouldIgnoreRouteSwipe(target: EventTarget) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest(
+    'button, a, input, textarea, select, [role="button"], [data-route-swipe-ignore], .calendar-grid-wrap'
+  ));
+}
+
+function getRouteSlideClass(direction: RouteSlideDirection) {
+  if (direction === 'left') return 'route-slide-left';
+  if (direction === 'right') return 'route-slide-right';
+  return '';
+}

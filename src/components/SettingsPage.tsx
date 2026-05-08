@@ -1,7 +1,7 @@
-import { ChangeEvent, ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ChevronRight,
   Database,
@@ -26,20 +26,17 @@ interface SettingsPageProps {
   settings: SettingsType | null;
   onUpdateSettings: (updates: Partial<SettingsType>) => Promise<SettingsType>;
   onExport: () => Promise<BackupData>;
-  onImport: (data: BackupData) => Promise<void>;
 }
 
 export function SettingsPage({
   settings,
   onUpdateSettings,
   onExport,
-  onImport,
 }: SettingsPageProps) {
   const [busy, setBusy] = useState<string | null>(null);
-  const [importHelpOpen, setImportHelpOpen] = useState(false);
   const [cycleSettingsOpen, setCycleSettingsOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (location.hash !== '#data-management') return;
@@ -63,22 +60,6 @@ export function SettingsPage({
     } catch {
       toast.error('导出失败，请稍后再试');
     } finally {
-      setBusy(null);
-    }
-  };
-
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setBusy('import');
-    try {
-      const text = await file.text();
-      await onImport(JSON.parse(text) as BackupData);
-      toast.success('数据已导入');
-    } catch {
-      toast.error('导入失败，请检查文件格式');
-    } finally {
-      event.target.value = '';
       setBusy(null);
     }
   };
@@ -110,19 +91,10 @@ export function SettingsPage({
         <SettingsRow
           icon={Upload}
           tone="orange"
-          title={busy === 'import' ? '导入中...' : '导入数据'}
-          desc="查看说明后选择 JSON 备份文件"
-          onClick={() => setImportHelpOpen(true)}
+          title="导入数据"
+          desc="选择 JSON 文件，或粘贴整理好的 JSON"
+          onClick={() => navigate('/settings/import')}
         />
-        <ImportHelpDialog
-          open={importHelpOpen}
-          onOpenChange={setImportHelpOpen}
-          onChooseFile={() => {
-            setImportHelpOpen(false);
-            window.setTimeout(() => fileInputRef.current?.click(), 120);
-          }}
-        />
-        <input ref={fileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleFileChange} />
       </SettingsGroup>
 
       <SettingsGroup title="周期设置">
@@ -146,8 +118,8 @@ export function SettingsPage({
 
       <footer className="settings-footer">
         <Leaf className="h-10 w-10" />
-        <p>愿你在每个阶段，都被温柔以待</p>
-        <span>v 1.2.1</span>
+        <p>愿你在每一个阶段，都被温柔以待</p>
+        <span>v {__APP_VERSION__}</span>
       </footer>
     </PageShell>
   );
@@ -198,40 +170,6 @@ function SettingsGroup({ id, title, children }: { id?: string; title: string; ch
       <h2>{title}</h2>
       <div>{children}</div>
     </section>
-  );
-}
-
-function ImportHelpDialog({
-  open,
-  onOpenChange,
-  onChooseFile,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onChooseFile: () => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="import-help-dialog">
-        <DialogHeader>
-          <DialogTitle>导入数据格式</DialogTitle>
-          <DialogDescription>请选择由知期导出的 JSON 备份文件。</DialogDescription>
-        </DialogHeader>
-        <div className="import-help-body">
-          <p>文件会包含设置、周期记录和每日记录。导入后会合并到本地数据库中，并保留当前设备的持久化存储授权状态。</p>
-          <pre>{`{
-  "version": 3,
-  "exportDate": "2026-05-01T00:00:00.000Z",
-  "settings": { ... },
-  "cycles": [{ "startDate": "2026-04-01", "endDate": "2026-04-06" }],
-  "dailyLogs": [{ "date": "2026-04-01", "mood": "很好" }]
-}`}</pre>
-          <button type="button" className="dialog-primary-action" onClick={onChooseFile}>
-            选择 JSON 文件
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 

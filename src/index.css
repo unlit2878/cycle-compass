@@ -282,6 +282,160 @@
   box-shadow: 0 0 60px rgba(80, 70, 55, 0.12);
 }
 
+.onboarding-screen {
+  max-width: 430px;
+  margin: 0 auto;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.88), transparent 32%),
+    linear-gradient(180deg, #fffdf9 0%, #fbf8f2 100%);
+  box-shadow: 0 0 60px rgba(80, 70, 55, 0.12);
+}
+
+.onboarding-app-icon {
+  margin: auto;
+}
+
+.onboarding-app-icon img {
+  display: block;
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  margin: auto;
+}
+
+.onboarding-calendar-panel {
+  padding: 8px 0 2px;
+}
+
+.onboarding-calendar {
+  width: 100%;
+  padding: 0;
+}
+
+.onboarding-calendar-months,
+.onboarding-calendar-month {
+  width: 100%;
+}
+
+.onboarding-calendar-caption {
+  position: relative;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.onboarding-calendar-caption-label {
+  color: #101418;
+  font-size: 18px;
+  font-weight: 620;
+}
+
+.onboarding-calendar-nav {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.onboarding-calendar-nav-button {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #6c737a;
+  pointer-events: auto;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.onboarding-calendar-nav-button:active {
+  transform: scale(0.94);
+  background: rgba(239, 235, 228, 0.7);
+}
+
+.onboarding-calendar-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.onboarding-calendar-head-row,
+.onboarding-calendar-row {
+  display: flex;
+  width: 100%;
+}
+
+.onboarding-calendar-head-cell,
+.onboarding-calendar-cell {
+  display: flex;
+  width: calc(100% / 7);
+  justify-content: center;
+}
+
+.onboarding-calendar-head-cell {
+  margin-bottom: 14px;
+  color: #9aa1a9;
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.onboarding-calendar-row {
+  margin-top: 14px;
+}
+
+.onboarding-calendar-day {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #272c31;
+  font-size: 16px;
+  font-weight: 520;
+  line-height: 1;
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.onboarding-calendar-day:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+}
+
+.onboarding-calendar-day:hover:not(.onboarding-calendar-day-disabled) {
+  background: rgba(239, 235, 228, 0.62);
+}
+
+.onboarding-calendar-day-selected,
+.onboarding-calendar-day-selected:hover {
+  color: #fff;
+  background: var(--paper-green);
+  box-shadow: 0 8px 18px rgba(93, 125, 73, 0.2);
+}
+
+.onboarding-calendar-day-today:not(.onboarding-calendar-day-selected) {
+  color: hsl(var(--phase-menstrual));
+  background: var(--paper-menstrual);
+}
+
+.onboarding-calendar-day-outside {
+  color: #c8c3be;
+  opacity: 0.46;
+}
+
+.onboarding-calendar-day-disabled {
+  color: #d6d1cb;
+  opacity: 0.48;
+}
+
 .page-enter .page-header,
 .page-enter .page-content > * {
   animation: soft-rise-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -297,6 +451,40 @@
 .page-enter .page-content > *:nth-child(4) { animation-delay: 210ms; }
 .page-enter .page-content > *:nth-child(5) { animation-delay: 250ms; }
 .page-enter .page-content > *:nth-child(n + 6) { animation-delay: 290ms; }
+
+.route-swipe-shell {
+  touch-action: pan-y;
+}
+
+.route-slide-left {
+  animation: route-slide-left 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.route-slide-right {
+  animation: route-slide-right 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes route-slide-left {
+  from {
+    opacity: 0.72;
+    transform: translateX(34px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes route-slide-right {
+  from {
+    opacity: 0.72;
+    transform: translateX(-34px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
 
 .page-content {
   position: relative;
@@ -2864,7 +3052,11 @@
 }
 
 .dialog-primary-action {
+  display: inline-flex;
   height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border: 0;
   border-radius: 999px;
   color: #fff;
@@ -2880,6 +3072,91 @@
 
 .dialog-primary-action:active {
   transform: scale(0.98);
+}
+
+.dialog-primary-action:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+  opacity: 0.68;
+}
+
+.data-import-screen .page-content {
+  padding-bottom: 118px;
+}
+
+.data-import-actions {
+  display: grid;
+  margin-top: 24px;
+}
+
+.data-import-section {
+  display: grid;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.data-import-textarea {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  border: 0;
+  border-radius: 18px;
+  padding: 16px;
+  color: #263039;
+  background: var(--paper-surface-strong);
+  box-shadow: inset 0 0 0 1px rgba(127, 113, 91, 0.08);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  outline: none;
+}
+
+.data-import-textarea:focus {
+  box-shadow:
+    inset 0 0 0 1px rgba(113, 155, 95, 0.32),
+    0 0 0 4px rgba(113, 155, 95, 0.1);
+}
+
+.copyable-pre {
+  position: relative;
+}
+
+.copyable-pre button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 10px;
+  color: #6d8f5c;
+  background: rgba(255, 253, 249, 0.92);
+  box-shadow: 0 8px 18px rgba(91, 83, 70, 0.1);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.copyable-pre button:active {
+  transform: scale(0.97);
+}
+
+.copyable-pre pre {
+  max-height: 340px;
+  overflow: auto;
+  margin: 0;
+  padding: 50px 16px 16px;
+  border-radius: 18px;
+  color: #46505a;
+  background: #f6f2eb;
+  box-shadow: inset 0 0 0 1px rgba(127, 113, 91, 0.08);
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-wrap;
 }
 
 .cycle-settings-form {

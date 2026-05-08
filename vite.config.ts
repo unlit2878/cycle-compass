@@ -1,14 +1,24 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
+import fs from "fs";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+
+function getAndroidVersionName() {
+  const gradlePath = path.resolve(__dirname, "android/app/build.gradle");
+  const gradle = fs.readFileSync(gradlePath, "utf8");
+  return gradle.match(/versionName\s+["']([^"']+)["']/)?.[1] || "0.0.0";
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(getAndroidVersionName()),
   },
   plugins: [
     react(),

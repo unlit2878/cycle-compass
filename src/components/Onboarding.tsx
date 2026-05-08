@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { Sparkles, ArrowRight, ArrowLeft, Upload } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Upload } from 'lucide-react';
 import { zh, formatDateChinese } from '@/lib/i18n';
 import { formatDate } from '@/lib/cycle-utils';
 import { zhCN } from 'date-fns/locale';
@@ -40,7 +39,7 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
   const canProceed = step === 0 || (step === 1 && selectedDate) || step === 2 || step === 3;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 gradient-soft">
+    <div className="onboarding-screen min-h-screen flex flex-col items-center justify-center p-6 gradient-soft">
       {/* 进度指示器 */}
       <div className="flex gap-2 mb-8">
         {[0, 1, 2, 3].map((i) => (
@@ -57,8 +56,8 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
       <div className="w-full max-w-md">
         {step === 0 && (
           <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-4">
-            <div className="w-24 h-24 mx-auto rounded-full gradient-primary flex items-center justify-center animate-float">
-              <Sparkles className="w-12 h-12 text-primary-foreground" />
+            <div className="onboarding-app-icon animate-float">
+              <img src="/decor/app_icon.png" alt="知期" />
             </div>
             <h1 className="text-3xl font-bold text-foreground">{zh.onboarding.welcome.title}</h1>
             <p className="text-muted-foreground text-lg">
@@ -91,18 +90,37 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
                 {zh.onboarding.lastPeriodStart.subtitle}
               </p>
             </div>
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-4">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  disabled={(date) => date > new Date()}
-                  locale={zhCN}
-                  className="rounded-xl"
-                />
-              </CardContent>
-            </Card>
+            <div className="onboarding-calendar-panel">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                disabled={(date) => date > new Date()}
+                locale={zhCN}
+                className="onboarding-calendar"
+                classNames={{
+                  months: 'onboarding-calendar-months',
+                  month: 'onboarding-calendar-month',
+                  caption: 'onboarding-calendar-caption',
+                  caption_label: 'onboarding-calendar-caption-label',
+                  nav: 'onboarding-calendar-nav',
+                  nav_button: 'onboarding-calendar-nav-button',
+                  nav_button_previous: 'onboarding-calendar-nav-previous',
+                  nav_button_next: 'onboarding-calendar-nav-next',
+                  table: 'onboarding-calendar-table',
+                  head_row: 'onboarding-calendar-head-row',
+                  head_cell: 'onboarding-calendar-head-cell',
+                  row: 'onboarding-calendar-row',
+                  cell: 'onboarding-calendar-cell',
+                  day: 'onboarding-calendar-day',
+                  day_selected: 'onboarding-calendar-day-selected',
+                  day_today: 'onboarding-calendar-day-today',
+                  day_outside: 'onboarding-calendar-day-outside',
+                  day_disabled: 'onboarding-calendar-day-disabled',
+                  day_hidden: 'invisible',
+                }}
+              />
+            </div>
             {selectedDate && (
               <p className="text-center text-primary font-medium">
                 已选择：{formatDateChinese(selectedDate)}

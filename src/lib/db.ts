@@ -145,6 +145,20 @@ function daysBetween(startDate: string, endDate: string): number {
   );
 }
 
+function addDays(date: string, days: number): string {
+  const next = new Date(`${date}T12:00:00`);
+  next.setDate(next.getDate() + days);
+  const year = next.getFullYear();
+  const month = String(next.getMonth() + 1).padStart(2, '0');
+  const day = String(next.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function clampPeriodLength(value: number): number {
+  if (!Number.isFinite(value)) return 5;
+  return Math.min(14, Math.max(1, Math.round(value)));
+}
+
 function isCycleStartConflict(firstDate: string, secondDate: string): boolean {
   return Math.abs(daysBetween(firstDate, secondDate)) < MIN_CYCLE_START_GAP_DAYS;
 }
@@ -316,6 +330,28 @@ export async function updateCycle(id: number, updates: Partial<CycleData>): Prom
     throw new Error('Period end date cannot be before the start date.');
   }
   await db.put('cycles', updated);
+}
+
+export async function syncLatestCycleToPeriodLength(
+  previousPeriodLength: number,
+  nextPeriodLength: number
+): Promise<void> {
+  const db = await getDB();
+  const cycles = await getAllCycles();
+  const latestCycle = cycles[cycles.length - 1];
+  if (!latestCycle?.id) return;
+
+  const previousLength = clampPeriodLength(previousPeriodLength);
+  const nextLength = clampPeriodLength(nextPeriodLength);
+  if (previousLength === nextLength) return;
+
+  const currentLength = latestCycle.endDate ? daysBetween(latestCycle.startDate, latestCycle.endDate) + 1 : 1;
+  if (latestCycle.endDate && currentLength !== previousLength) return;
+
+  await db.put('cycles', {
+    ...latestCycle,
+    endDate: addDays(latestCycle.startDate, nextLength - 1),
+  });
 }
 
 export async function getAllCycles(): Promise<CycleData[]> {
