@@ -57,8 +57,9 @@ export function SettingsPage({
 
       await onUpdateSettings({ lastBackupDate: new Date().toISOString() });
       toast.success(`数据已导出：${location}`);
-    } catch {
-      toast.error('导出失败，请稍后再试');
+    } catch (error) {
+      console.error('Export backup failed', error);
+      toast.error('导出失败，请检查存储权限后重试');
     } finally {
       setBusy(null);
     }
@@ -85,7 +86,7 @@ export function SettingsPage({
           icon={Download}
           tone="green"
           title={busy === 'export' ? '导出中...' : '导出数据'}
-          desc={Capacitor.isNativePlatform() ? '导出 JSON 备份到 Documents/Download' : '导出 JSON 备份文件'}
+          desc={Capacitor.isNativePlatform() ? '导出 JSON 备份到系统 Documents 文件夹' : '导出 JSON 备份文件'}
           onClick={handleExport}
         />
         <SettingsRow
@@ -139,14 +140,17 @@ function exportWebBackup(fileName: string, json: string) {
 }
 
 async function exportNativeBackup(fileName: string, json: string) {
-  const path = `Download/${fileName}`;
-  await Filesystem.requestPermissions();
+  const path = fileName;
+  const permission = await Filesystem.requestPermissions();
+  if (permission.publicStorage !== 'granted') {
+    throw new Error('Storage permission denied');
+  }
+
   const result = await Filesystem.writeFile({
     path,
     data: json,
     directory: Directory.Documents,
     encoding: Encoding.UTF8,
-    recursive: true,
   });
   return result.uri || `Documents/${path}`;
 }

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   Droplet,
@@ -73,6 +73,9 @@ interface LoggingScreenProps {
   onStartPeriod?: (date: string, autoFillDays: number, cycleId?: number) => void | Promise<void>;
   onEndPeriod?: (date: string, cycleId?: number) => void | Promise<void>;
   onBack: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+  closeRequestSignal?: number;
+  onKeepEditing?: () => void;
   onRefresh?: () => void | Promise<void>;
   onDeleteLog?: (date: string) => Promise<void>;
 }
@@ -111,6 +114,9 @@ export function LoggingScreen({
   onStartPeriod,
   onEndPeriod,
   onBack,
+  onDirtyChange,
+  closeRequestSignal,
+  onKeepEditing,
   onRefresh,
   onDeleteLog,
 }: LoggingScreenProps) {
@@ -128,6 +134,10 @@ export function LoggingScreen({
   const [mood, setMood] = useState<string | undefined>(existingLog?.mood);
   const [notes, setNotes] = useState(existingLog?.notes ?? '');
   const [deleting, setDeleting] = useState(false);
+  const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
+  const [savingFromPrompt, setSavingFromPrompt] = useState(false);
+  const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastCloseRequestSignal = useRef(closeRequestSignal);
 
   const displayDate = useMemo(() => new Date(`${selectedDate}T12:00:00`), [selectedDate]);
   const avgPeriodLength =
@@ -149,6 +159,38 @@ export function LoggingScreen({
       }`
     : null;
   const phaseLabel = getRecordPhaseLabel(selectedDate, visibleCycle, cycles, settings, cycleModel);
+  const hasUnsavedChanges = useMemo(() => {
+    const initialSymptoms = cleanVisibleSymptoms(existingLog?.symptoms);
+    return (
+      selectedDate !== date ||
+      periodActionDirty ||
+      periodMarker !== originalPeriodMarker ||
+      flowIntensity !== existingLog?.flowIntensity ||
+      flowColor !== (existingLog?.flowColor || 'deep_red') ||
+      painLevel !== existingLog?.painLevel ||
+      mood !== existingLog?.mood ||
+      notes !== (existingLog?.notes ?? '') ||
+      cleanVisibleSymptoms(symptoms).join('|') !== initialSymptoms.join('|')
+    );
+  }, [
+    date,
+    existingLog?.flowColor,
+    existingLog?.flowIntensity,
+    existingLog?.mood,
+    existingLog?.notes,
+    existingLog?.painLevel,
+    existingLog?.symptoms,
+    flowColor,
+    flowIntensity,
+    mood,
+    notes,
+    originalPeriodMarker,
+    painLevel,
+    periodActionDirty,
+    periodMarker,
+    selectedDate,
+    symptoms,
+  ]);
 
   useEffect(() => {
     setSelectedDate(date);
@@ -161,6 +203,27 @@ export function LoggingScreen({
     setNotes(existingLog?.notes ?? '');
     setPeriodActionDirty(false);
   }, [date, existingLog]);
+
+  useEffect(() => {
+    const textarea = notesTextareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.max(140, textarea.scrollHeight)}px`;
+  }, [notes]);
+
+  useEffect(() => {
+    onDirtyChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyChange]);
+
+  useEffect(() => {
+    if (closeRequestSignal === undefined || closeRequestSignal === lastCloseRequestSignal.current) return;
+    lastCloseRequestSignal.current = closeRequestSignal;
+    if (hasUnsavedChanges) {
+      setUnsavedDialogOpen(true);
+    } else {
+      onBack();
+    }
+  }, [closeRequestSignal, hasUnsavedChanges, onBack]);
 
   useEffect(() => {
     let mounted = true;
@@ -226,6 +289,23 @@ export function LoggingScreen({
     }, date);
   };
 
+  const requestBack = () => {
+    if (hasUnsavedChanges) {
+      setUnsavedDialogOpen(true);
+      return;
+    }
+    onBack();
+  };
+
+  const handleSaveFromPrompt = async () => {
+    setSavingFromPrompt(true);
+    try {
+      await handleSave();
+    } finally {
+      setSavingFromPrompt(false);
+    }
+  };
+
   const handleDeleteLog = async () => {
     if (!onDeleteLog) return;
     setDeleting(true);
@@ -251,7 +331,7 @@ export function LoggingScreen({
       decor="record"
       action={
         <div className="record-header-actions">
-          <button type="button" className="soft-pill cancel-pill" onClick={onBack}>
+          <button type="button" className="soft-pill cancel-pill" onClick={requestBack}>
             取消
           </button>
           <button type="button" className="soft-pill save-pill" onClick={handleSave}>
@@ -301,7 +381,7 @@ export function LoggingScreen({
               </AlertDialogHeader>
               <AlertDialogFooter className="record-confirm-actions">
                 <AlertDialogCancel>取消</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteLog} disabled={deleting}>
+                <AlertDialogAction className="record-danger-action" onClick={handleDeleteLog} disabled={deleting}>
                   {deleting ? '删除中...' : '删除'}
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -452,6 +532,7 @@ export function LoggingScreen({
       <label className="notes-field">
         <span>心情备注（可选）</span>
         <textarea
+          ref={notesTextareaRef}
           maxLength={200}
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
@@ -459,6 +540,33 @@ export function LoggingScreen({
         />
         <small>{notes.length}/200</small>
       </label>
+
+      <AlertDialog open={unsavedDialogOpen} onOpenChange={setUnsavedDialogOpen}>
+        <AlertDialogContent className="record-confirm-dialog record-unsaved-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>内容还没有保存</AlertDialogTitle>
+            <AlertDialogDescription>
+              你已经填写或选择了记录内容，直接返回会丢失这些更改。是否先保存？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="record-confirm-actions record-unsaved-actions">
+            <AlertDialogCancel onClick={onKeepEditing}>继续编辑</AlertDialogCancel>
+            <AlertDialogAction className="record-discard-action" onClick={onBack}>
+              不保存
+            </AlertDialogAction>
+            <AlertDialogAction
+              className="record-save-action"
+              disabled={savingFromPrompt}
+              onClick={(event) => {
+                event.preventDefault();
+                handleSaveFromPrompt();
+              }}
+            >
+              {savingFromPrompt ? '保存中...' : '保存'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageShell>
   );
 }

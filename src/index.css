@@ -1494,8 +1494,17 @@
   background: #fffdf9;
 }
 
-.record-confirm-dialog button:last-child {
+.record-confirm-dialog .record-danger-action {
   background: #e45f7c;
+}
+
+.record-confirm-dialog .record-save-action {
+  background: var(--paper-green);
+}
+
+.record-confirm-dialog .record-discard-action {
+  color: #6f7882;
+  background: rgba(239, 235, 228, 0.78);
 }
 
 .record-confirm-actions {
@@ -1507,6 +1516,14 @@
 .record-confirm-actions button {
   flex: 1;
   margin-top: 0;
+}
+
+.record-unsaved-dialog {
+  width: calc(100% - 36px);
+}
+
+.record-unsaved-actions {
+  grid-template-columns: 1fr;
 }
 
 .record-section {
@@ -1775,7 +1792,7 @@
 
 .notes-field textarea {
   width: 100%;
-  min-height: 96px;
+  min-height: 140px;
   resize: none;
   border: 0;
   border-radius: 24px;
@@ -1783,7 +1800,10 @@
   color: #3c4249;
   background: transparent;
   box-shadow: inset 0 0 0 1px rgba(230, 226, 219, 0.62);
+  line-height: 1.6;
   outline: none;
+  overflow: hidden;
+  transition: height 160ms ease, box-shadow 180ms ease;
 }
 
 .notes-field textarea::placeholder {
@@ -2136,11 +2156,15 @@
 
 .calendar-legend {
   display: flex;
-  width: 100%;
+  width: max-content;
+  max-width: 100%;
   flex-wrap: wrap;
   justify-content: center;
+  justify-self: center;
   gap: 14px;
   margin: 38px 0 18px;
+  margin-left: auto;
+  margin-right: auto;
   padding: 0;
   border: 0;
   color: #747b84;
@@ -2153,7 +2177,9 @@
 .calendar-legend span {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .calendar-legend i {
@@ -3086,7 +3112,38 @@
 
 .data-import-actions {
   display: grid;
+  gap: 14px;
   margin-top: 24px;
+}
+
+.data-import-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.data-import-format-button {
+  display: inline-flex;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 16px;
+  padding: 0 14px;
+  color: #6d8f5c;
+  background: var(--paper-surface-strong);
+  box-shadow:
+    inset 0 0 0 1px rgba(113, 155, 95, 0.18),
+    0 10px 20px rgba(91, 83, 70, 0.08);
+  font-size: 13px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.data-import-format-button:active {
+  transform: scale(0.98);
 }
 
 .data-import-section {
@@ -3115,6 +3172,64 @@
   box-shadow:
     inset 0 0 0 1px rgba(113, 155, 95, 0.32),
     0 0 0 4px rgba(113, 155, 95, 0.1);
+}
+
+.data-import-ai-steps {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: #5d6670;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.data-import-ai-steps li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.data-import-ai-steps span {
+  display: inline-flex;
+  min-width: 52px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #5f8d4d;
+  background: rgba(113, 155, 95, 0.12);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.data-import-ai-steps p {
+  margin: 1px 0 0;
+}
+
+.import-example-dialog {
+  width: calc(100% - 32px);
+  border: 0;
+  border-radius: 24px !important;
+  background: hsl(var(--background)) !important;
+  background-image: none !important;
+  box-shadow:
+    0 28px 80px rgba(78, 69, 56, 0.24),
+    inset 0 0 0 1px rgba(127, 113, 91, 0.1);
+  overflow: hidden;
+}
+
+.import-example-dialog button[aria-label="Close"],
+.import-example-dialog > button {
+  border-radius: 999px;
+  background: rgba(255, 253, 249, 0.86);
+}
+
+.import-example-dialog .copyable-pre pre {
+  max-height: min(58vh, 460px);
 }
 
 .copyable-pre {
@@ -3838,9 +3953,11 @@
   }
 
   .calendar-legend {
-    justify-content: flex-start;
+    justify-content: center;
     gap: 8px 9px;
     margin-top: 24px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .calendar-detail-head strong {
@@ -4089,9 +4206,11 @@
   }
 
   .calendar-legend {
-    justify-content: flex-start;
+    justify-content: center;
     gap: 8px 10px;
     margin: 26px 0 12px;
+    margin-left: auto;
+    margin-right: auto;
     font-size: 11.5px;
     line-height: 1.2;
   }

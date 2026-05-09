@@ -2,6 +2,13 @@ import { ChangeEvent, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, Clipboard, FileJson, Upload } from 'lucide-react';
 import { PageShell } from '@/components/AppScaffold';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { BackupData } from '@/lib/db';
 import { toast } from 'sonner';
 
@@ -74,6 +81,7 @@ export function DataImportPage({ onImport }: DataImportPageProps) {
   const [jsonText, setJsonText] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [exampleOpen, setExampleOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -133,10 +141,19 @@ export function DataImportPage({ onImport }: DataImportPageProps) {
       }
     >
       <section className="data-import-actions">
-        <button type="button" className="dialog-primary-action" onClick={() => fileInputRef.current?.click()}>
-          <Upload className="h-4 w-4" />
-          选择 JSON 文件
-        </button>
+        <div className="inline-section-title">
+          <h2>方式一：导入 JSON 文件</h2>
+        </div>
+        <div className="data-import-action-row">
+          <button type="button" className="dialog-primary-action" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4" />
+            选择 JSON 文件
+          </button>
+          <button type="button" className="data-import-format-button" onClick={() => setExampleOpen(true)}>
+            <FileJson className="h-4 w-4" />
+            JSON 格式
+          </button>
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -148,7 +165,7 @@ export function DataImportPage({ onImport }: DataImportPageProps) {
 
       <section className="data-import-section">
         <div className="inline-section-title">
-          <h2>粘贴 JSON</h2>
+          <h2>方式二：直接粘贴 JSON</h2>
         </div>
         <textarea
           className="data-import-textarea"
@@ -170,8 +187,22 @@ export function DataImportPage({ onImport }: DataImportPageProps) {
 
       <section className="data-import-section">
         <div className="inline-section-title">
-          <h2>AI 整理提示词</h2>
+          <h2>可利用 AI 整理数据</h2>
         </div>
+        <ol className="data-import-ai-steps">
+          <li>
+            <span>步骤一</span>
+            <p>保存在其他软件上的经期周期截图。</p>
+          </li>
+          <li>
+            <span>步骤二</span>
+            <p>复制以下提示词，并将截图一并发送给市面上的可识图 AI。</p>
+          </li>
+          <li>
+            <span>步骤三</span>
+            <p>将 AI 的回答粘贴到上方 JSON 输入框中。</p>
+          </li>
+        </ol>
         <CopyablePre
           label="复制提示词"
           copied={copied === 'prompt'}
@@ -181,18 +212,23 @@ export function DataImportPage({ onImport }: DataImportPageProps) {
         </CopyablePre>
       </section>
 
-      <section className="data-import-section">
-        <div className="inline-section-title">
-          <h2>JSON 示例</h2>
-        </div>
-        <CopyablePre
-          label="复制示例"
-          copied={copied === 'example'}
-          onCopy={() => copyText('example', JSON_EXAMPLE)}
-        >
-          {JSON_EXAMPLE}
-        </CopyablePre>
-      </section>
+      <Dialog open={exampleOpen} onOpenChange={setExampleOpen}>
+        <DialogContent className="import-example-dialog">
+          <DialogHeader>
+            <DialogTitle>JSON 格式示例</DialogTitle>
+            <DialogDescription>
+              文件导入或粘贴导入都需要使用这个结构。
+            </DialogDescription>
+          </DialogHeader>
+          <CopyablePre
+            label="复制示例"
+            copied={copied === 'example'}
+            onCopy={() => copyText('example', JSON_EXAMPLE)}
+          >
+            {JSON_EXAMPLE}
+          </CopyablePre>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }

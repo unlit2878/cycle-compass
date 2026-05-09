@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
+import { MouseEvent } from 'react';
 import { CalendarDays, ChartNoAxesColumn, Home, Plus, UserRound } from 'lucide-react';
 
 interface BottomNavProps {
   onLogClick: () => void;
-  onNavigate?: () => void;
+  onNavigate?: (to: string, event: MouseEvent<HTMLAnchorElement>) => void;
   active?: 'home' | 'calendar' | 'log' | 'insights' | 'settings';
 }
 
@@ -20,7 +21,7 @@ export function BottomNav({ onLogClick, onNavigate, active }: BottomNavProps) {
       <NavLink
         key={item.to}
         to={item.to}
-        onClick={onNavigate}
+        onClick={(event) => onNavigate?.(item.to, event)}
         className={({ isActive }) =>
           `bottom-nav-item ${
             active === item.id || (!active && isActive) ? 'bottom-nav-item-active' : ''

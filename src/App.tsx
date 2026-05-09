@@ -1,4 +1,4 @@
-import { TouchEvent, useEffect, useRef, useState } from 'react';
+import { MouseEvent, TouchEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Capacitor } from '@capacitor/core';
@@ -41,8 +41,11 @@ function AppContent() {
   const lastBackPressRef = useRef<number>(0);
   const swipeStartRef = useRef({ x: 0, y: 0 });
   const swipeLatestRef = useRef({ x: 0, y: 0 });
+  const pendingLoggingNavigationRef = useRef<string | null>(null);
   const [loggingDate, setLoggingDate] = useState<string | null>(null);
   const [loggingExistingLog, setLoggingExistingLog] = useState<DailyLog | undefined>(undefined);
+  const [loggingDirty, setLoggingDirty] = useState(false);
+  const [loggingCloseRequestId, setLoggingCloseRequestId] = useState(0);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [routeSlideDirection, setRouteSlideDirection] = useState<RouteSlideDirection>(null);
 
@@ -64,6 +67,32 @@ function AppContent() {
     refresh,
   } = useCycleData();
 
+  const closeLogging = useCallback(() => {
+    setLoggingDate(null);
+    setLoggingExistingLog(undefined);
+    setLoggingDirty(false);
+    const nextPath = pendingLoggingNavigationRef.current;
+    pendingLoggingNavigationRef.current = null;
+    if (nextPath) {
+      navigate(nextPath);
+    }
+  }, [navigate]);
+
+  const requestCloseLogging = useCallback((to?: string, event?: MouseEvent<HTMLAnchorElement>) => {
+    if (loggingDirty) {
+      event?.preventDefault();
+      pendingLoggingNavigationRef.current = to || null;
+      setLoggingCloseRequestId((current) => current + 1);
+      return;
+    }
+
+    closeLogging();
+  }, [closeLogging, loggingDirty]);
+
+  const clearPendingLoggingNavigation = useCallback(() => {
+    pendingLoggingNavigationRef.current = null;
+  }, []);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     let removeBackButtonListener: (() => void) | undefined;
@@ -71,8 +100,7 @@ function AppContent() {
 
     const handleBackButton = () => {
       if (loggingDate) {
-        setLoggingDate(null);
-        setLoggingExistingLog(undefined);
+        requestCloseLogging();
         return;
       }
 
@@ -99,7 +127,7 @@ function AppContent() {
       active = false;
       removeBackButtonListener?.();
     };
-  }, [location.pathname, loggingDate, navigate]);
+  }, [location.pathname, loggingDate, navigate, requestCloseLogging]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', Boolean(settings?.darkMode));
@@ -126,14 +154,11 @@ function AppContent() {
     requestPersistence,
   ]);
 
-  const closeLogging = () => {
-    setLoggingDate(null);
-    setLoggingExistingLog(undefined);
-  };
-
   const openLogging = async (date: string) => {
     const existing = await getLogForDate(date);
     setLoggingExistingLog(existing);
+    setLoggingDirty(false);
+    pendingLoggingNavigationRef.current = null;
     setLoggingDate(date);
   };
 
@@ -259,6 +284,9 @@ function AppContent() {
           onStartPeriod={handleStartPeriod}
           onEndPeriod={handleEndPeriod}
           onBack={closeLogging}
+          onDirtyChange={setLoggingDirty}
+          closeRequestSignal={loggingCloseRequestId}
+          onKeepEditing={clearPendingLoggingNavigation}
           onRefresh={handleLoggingRefresh}
           onDeleteLog={deleteLog}
         />
@@ -330,7 +358,7 @@ function AppContent() {
           </Routes>
         </div>
       )}
-      <BottomNav onLogClick={handleLogToday} onNavigate={closeLogging} active={loggingDate ? 'log' : undefined} />
+      <BottomNav onLogClick={handleLogToday} onNavigate={requestCloseLogging} active={loggingDate ? 'log' : undefined} />
     </>
   );
 }
