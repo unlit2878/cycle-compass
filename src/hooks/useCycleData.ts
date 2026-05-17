@@ -8,7 +8,6 @@ import {
   addOrUpdateDailyLog,
   getDailyLog,
   deleteDailyLog as deleteDailyLogFromDB,
-  syncLatestCycleToPeriodLength,
   exportData,
   importData,
   requestPersistentStorage,
@@ -18,6 +17,7 @@ import {
   DailyLog,
   BackupData,
 } from '@/lib/db';
+import { getBackupStatus } from '@/lib/backup-status';
 import { createCycleModel, CycleModel } from '@/lib/cycle-engine';
 
 export function useCycleData() {
@@ -56,24 +56,13 @@ export function useCycleData() {
 
   // 更新设置
   const saveSettings = useCallback(async (updates: Partial<Settings>) => {
-    const previousAveragePeriodLength = settings?.averagePeriodLength;
     const updated = await updateSettings(updates);
-
-    if (
-      previousAveragePeriodLength !== undefined &&
-      updates.averagePeriodLength !== undefined &&
-      updated.averagePeriodLength !== previousAveragePeriodLength
-    ) {
-      await syncLatestCycleToPeriodLength(previousAveragePeriodLength, updated.averagePeriodLength);
-      await loadData();
-      return updated;
-    }
 
     setSettings(updated);
     setCycleModel(createCycleModel(updated, cycles, dailyLogs));
     
     return updated;
-  }, [cycles, dailyLogs, loadData, settings?.averagePeriodLength]);
+  }, [cycles, dailyLogs]);
 
   // 完成引导设置
   const completeOnboarding = useCallback(async (lastPeriodStart: string, cycleLength: number, periodLength: number = 5, lastPeriodEnd?: string) => {
@@ -161,6 +150,9 @@ export function useCycleData() {
     regularity: null,
     predictionAccuracy: { predictions: [], avgError: 0, accuracyRate: 0, windowHitRate: 0 },
   };
+  const backupStatus = settings
+    ? getBackupStatus(settings.lastBackupDate, settings.backupReminderInterval)
+    : null;
 
   return {
     settings,
@@ -168,6 +160,7 @@ export function useCycleData() {
     dailyLogs,
     loading,
     cycleModel,
+    backupStatus,
     phaseInfo: cycleModel?.currentPhase || null,
     statistics,
     saveSettings,

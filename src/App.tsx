@@ -19,7 +19,6 @@ import { SettingsPage } from '@/components/SettingsPage';
 import { useCycleData } from '@/hooks/useCycleData';
 import { DailyLog, getAllCycles, savePeriodStart, updateCycle } from '@/lib/db';
 import { findPeriodCycleToEndOnDate, formatDate } from '@/lib/cycle-utils';
-import { initializeNotifications } from '@/lib/notifications';
 
 const queryClient = new QueryClient();
 type LogPayload = Omit<DailyLog, 'id' | 'date' | 'createdAt' | 'updatedAt'>;
@@ -56,6 +55,7 @@ function AppContent() {
     dailyLogs,
     loading,
     cycleModel,
+    backupStatus,
     statistics,
     saveSettings,
     completeOnboarding,
@@ -139,21 +139,7 @@ function AppContent() {
       requestPersistence();
     }
 
-    if (settings && Capacitor.isNativePlatform()) {
-      initializeNotifications({
-        reminderPeriodApproaching: settings.reminderPeriodApproaching,
-        reminderOvulation: settings.reminderOvulation,
-        reminderDailyLog: settings.reminderDailyLog,
-        reminderPeriodDays: settings.reminderPeriodDays,
-        lastPeriodStart: settings.lastPeriodStart,
-        averageCycleLength: cycleModel?.effectiveCycleLength || settings.averageCycleLength,
-      });
-    }
-  }, [
-    settings,
-    cycleModel?.effectiveCycleLength,
-    requestPersistence,
-  ]);
+  }, [settings, requestPersistence]);
 
   const openLogging = async (date: string) => {
     const existing = await getLogForDate(date);
@@ -306,6 +292,7 @@ function AppContent() {
               element={
                 <Home
                   settings={settings}
+                  backupStatus={backupStatus}
                   cycleModel={cycleModel}
                   cycles={cycles}
                   dailyLogs={dailyLogs}
@@ -347,6 +334,7 @@ function AppContent() {
               element={
                 <SettingsPage
                   settings={settings}
+                  backupStatus={backupStatus}
                   onUpdateSettings={saveSettings}
                   onExport={backup}
                 />

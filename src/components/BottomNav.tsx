@@ -15,8 +15,10 @@ const navItems = [
   { to: '/settings', id: 'settings', icon: UserRound, label: '我的' },
 ] as const;
 
+type NavItem = (typeof navItems)[number];
+
 export function BottomNav({ onLogClick, onNavigate, active }: BottomNavProps) {
-  const renderNav = (items: typeof navItems) =>
+  const renderNav = (items: readonly NavItem[]) =>
     items.map((item) => (
       <NavLink
         key={item.to}

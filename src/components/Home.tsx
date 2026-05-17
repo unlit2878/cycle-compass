@@ -1,7 +1,8 @@
-import { ComponentType, useEffect, useMemo, useState } from 'react';
+import { ComponentType, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Pencil,
+  Smile,
 } from 'lucide-react';
 import { PageShell } from '@/components/AppScaffold';
 import { emptyMoodLabel, getNextMoodSelection, moodOptionIcons } from '@/components/mood-options';
@@ -12,11 +13,10 @@ import {
   findPeriodCycleForDate,
   formatDate,
   getCyclePhaseInfoForDate,
-  getDaysSinceBackup,
   getPhaseName,
-  isBackupOverdue,
   parseLocalDate,
 } from '@/lib/cycle-utils';
+import { BackupStatus } from '@/lib/backup-status';
 import { CycleData, DailyLog, Settings } from '@/lib/db';
 import { dateFromISO, formatShortCN, getFlowLabel, getPainLevelLabel, moodOptions, weekdayCN } from '@/lib/ui-model';
 
@@ -24,6 +24,7 @@ type IconComponent = ComponentType<{ className?: string }>;
 
 interface HomeProps {
   settings: Settings | null;
+  backupStatus: BackupStatus | null;
   cycleModel: CycleModel | null;
   cycles: CycleData[];
   dailyLogs: DailyLog[];
@@ -34,7 +35,7 @@ interface HomeProps {
 
 const DAY_MS = 1000 * 60 * 60 * 24;
 
-export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onMoodSelect, onBackupReminder }: HomeProps) {
+export function Home({ settings, backupStatus, cycleModel, cycles, dailyLogs, onDaySelect, onMoodSelect, onBackupReminder }: HomeProps) {
   const navigate = useNavigate();
   const today = useCurrentTime();
   const greeting = getTimeGreeting(today);
@@ -43,17 +44,6 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
   const latestLog = [...dailyLogs]
     .reverse()
     .find((log) => log.flowIntensity || log.painLevel || log.mood || log.symptoms?.length);
-
-  const backupOverdue = useMemo(() => {
-    if (!settings) return false;
-    return isBackupOverdue(settings.lastBackupDate, settings.backupReminderInterval);
-  }, [settings]);
-
-  const daysSinceBackup = useMemo(() => {
-    if (!settings) return null;
-    const days = getDaysSinceBackup(settings.lastBackupDate);
-    return days === Infinity ? null : days;
-  }, [settings]);
 
   const nextStart = cycleModel?.nextPeriodRange?.startDate || null;
   const daysUntil = nextStart
@@ -111,11 +101,11 @@ export function Home({ settings, cycleModel, cycles, dailyLogs, onDaySelect, onM
       decor="home"
       className="home-screen"
     >
-      {backupOverdue && (
+      {backupStatus?.isOverdue && (
         <button type="button" className="backup-reminder" onClick={onBackupReminder}>
           <span>建议备份数据</span>
           <small>
-            {daysSinceBackup === null ? '你还没有备份过' : `上次备份 ${daysSinceBackup} 天前`}，去设置导出备份
+            {backupStatus.homeReminderText}，去设置导出备份
           </small>
         </button>
       )}

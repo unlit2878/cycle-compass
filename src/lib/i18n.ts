@@ -191,15 +191,6 @@ export const zh = {
   // Settings
   settings: {
     title: '设置',
-    notifications: '通知提醒',
-    periodReminder: '经期提醒',
-    periodReminderDesc: '在预测经期前提醒您',
-    ovulationReminder: '排卵期提醒',
-    ovulationReminderDesc: '在预测排卵期前提醒您',
-    reminderDays: '提前提醒天数',
-    daysBefore: '天',
-    dailyReminder: '每日记录提醒',
-    dailyReminderDesc: '每天提醒您记录',
     dataManagement: '数据管理',
     exportData: '导出数据',
     exporting: '导出中...',

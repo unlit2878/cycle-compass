@@ -514,24 +514,3 @@ export function getDaysInMonth(year: number, month: number): Date[] {
   return days;
 }
 
-// 检查备份是否过期
-export function isBackupOverdue(lastBackupDate: string | undefined, interval: 'weekly' | 'monthly'): boolean {
-  if (!lastBackupDate) return true;
-  
-  const lastBackup = new Date(lastBackupDate);
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - lastBackup.getTime()) / (1000 * 60 * 60 * 24));
-  
-  if (interval === 'weekly') {
-    return diffDays >= 7;
-  } else {
-    return diffDays >= 30;
-  }
-}
-
-export function getDaysSinceBackup(lastBackupDate: string | undefined): number {
-  if (!lastBackupDate) return Infinity;
-  const lastBackup = new Date(lastBackupDate);
-  const now = new Date();
-  return Math.floor((now.getTime() - lastBackup.getTime()) / (1000 * 60 * 60 * 24));
-}

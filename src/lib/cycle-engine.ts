@@ -167,12 +167,16 @@ function getPeriodLengthMetric(settings: Settings, cycles: CycleData[]): {
   lengths: number[];
 } {
   const { valid, ignoredCount } = getPeriodLengths(cycles);
+  const hasHistory = valid.length > 0;
+  const value = hasHistory
+    ? Math.round(valid.reduce((sum, length) => sum + length, 0) / valid.length)
+    : settings.averagePeriodLength;
 
   return {
     lengths: valid,
     metric: {
-      value: settings.averagePeriodLength,
-      source: 'settings',
+      value,
+      source: hasHistory ? 'history' : 'settings',
       sampleSize: valid.length,
       ignoredCount,
       outlierCount: 0,

@@ -2082,11 +2082,11 @@
   --phase-underline-fill:
     var(--paper-grain),
     var(--paper-fibers),
-    linear-gradient(90deg, hsl(var(--phase-follicular) / 0.9), hsl(var(--phase-follicular) / 0.72));
+    linear-gradient(90deg, rgba(90, 170, 203, 0.9), rgba(166, 216, 232, 0.82));
   --phase-underline-soft-fill:
     var(--paper-grain),
     var(--paper-fibers),
-    linear-gradient(90deg, hsl(var(--phase-follicular) / 0.36), hsl(var(--phase-follicular) / 0.24));
+    linear-gradient(90deg, rgba(90, 170, 203, 0.36), rgba(166, 216, 232, 0.26));
 }
 
 .phase-underline-ovulation {

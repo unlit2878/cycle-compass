@@ -20,17 +20,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { BackupStatus } from '@/lib/backup-status';
 import { BackupData, Settings as SettingsType } from '@/lib/db';
 import { toast } from 'sonner';
 
 interface SettingsPageProps {
   settings: SettingsType | null;
+  backupStatus: BackupStatus | null;
   onUpdateSettings: (updates: Partial<SettingsType>) => Promise<SettingsType>;
   onExport: () => Promise<BackupData>;
 }
 
 export function SettingsPage({
   settings,
+  backupStatus,
   onUpdateSettings,
   onExport,
 }: SettingsPageProps) {
@@ -81,7 +84,7 @@ export function SettingsPage({
           icon={Database}
           tone="green"
           title="备份状态"
-          desc={formatBackupStatus(settings.lastBackupDate)}
+          desc={backupStatus?.settingsText || '从未备份'}
         />
         <SettingsRow
           icon={Download}
@@ -161,19 +164,6 @@ async function exportNativeBackup(fileName: string, json: string) {
     encoding: Encoding.UTF8,
   });
   return result.uri || `Documents/${path}`;
-}
-
-function formatBackupStatus(lastBackupDate?: string) {
-  if (!lastBackupDate) return '从未备份';
-
-  const now = new Date();
-  const lastBackup = new Date(lastBackupDate);
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const backupDay = new Date(lastBackup.getFullYear(), lastBackup.getMonth(), lastBackup.getDate());
-  const diffDays = Math.max(0, Math.floor((today.getTime() - backupDay.getTime()) / (1000 * 60 * 60 * 24)));
-
-  if (diffDays === 0) return '今天已备份';
-  return `${diffDays} 天前已备份`;
 }
 
 function getCalendarStyleLabel(style?: SettingsType['calendarPhaseStyle']) {
