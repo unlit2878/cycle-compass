@@ -8,6 +8,7 @@ import {
   Download,
   Droplet,
   Leaf,
+  Palette,
   Upload,
   type LucideIcon,
 } from 'lucide-react';
@@ -98,13 +99,20 @@ export function SettingsPage({
         />
       </SettingsGroup>
 
-      <SettingsGroup title="周期设置">
+      <SettingsGroup title="偏好设置">
         <SettingsRow
           icon={Droplet}
           tone="pink"
           title="周期设置"
           desc={`周期 ${settings.averageCycleLength} 天，经期 ${settings.averagePeriodLength} 天`}
           onClick={() => setCycleSettingsOpen(true)}
+        />
+        <SettingsRow
+          icon={Palette}
+          tone="lavender"
+          title="界面配置"
+          desc={`日历样式：${getCalendarStyleLabel(settings.calendarPhaseStyle)}`}
+          onClick={() => navigate('/settings/interface')}
         />
         <CycleSettingsDialog
           open={cycleSettingsOpen}
@@ -166,6 +174,10 @@ function formatBackupStatus(lastBackupDate?: string) {
 
   if (diffDays === 0) return '今天已备份';
   return `${diffDays} 天前已备份`;
+}
+
+function getCalendarStyleLabel(style?: SettingsType['calendarPhaseStyle']) {
+  return style === 'underline' ? '样式二' : '样式一';
 }
 
 function SettingsGroup({ id, title, children }: { id?: string; title: string; children: ReactNode }) {

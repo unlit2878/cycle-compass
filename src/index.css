@@ -2047,6 +2047,70 @@
     var(--crayon-luteal);
 }
 
+.phase-underline {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 7px;
+  margin-top: 1px;
+  flex: 0 0 7px;
+  pointer-events: none;
+}
+
+.phase-underline::before,
+.phase-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 999px;
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+}
+
+.phase-underline::before {
+  top: 0;
+  background: var(--phase-underline-fill);
+}
+
+.phase-underline::after {
+  bottom: 0;
+  background: var(--phase-underline-soft-fill);
+}
+
+.phase-underline-follicular {
+  --phase-underline-fill:
+    var(--paper-grain),
+    var(--paper-fibers),
+    linear-gradient(90deg, hsl(var(--phase-follicular) / 0.9), hsl(var(--phase-follicular) / 0.72));
+  --phase-underline-soft-fill:
+    var(--paper-grain),
+    var(--paper-fibers),
+    linear-gradient(90deg, hsl(var(--phase-follicular) / 0.36), hsl(var(--phase-follicular) / 0.24));
+}
+
+.phase-underline-ovulation {
+  --phase-underline-fill:
+    var(--paper-grain),
+    var(--paper-fibers),
+    linear-gradient(90deg, hsl(var(--phase-ovulation) / 0.9), hsl(var(--phase-ovulation) / 0.72));
+  --phase-underline-soft-fill:
+    var(--paper-grain),
+    var(--paper-fibers),
+    linear-gradient(90deg, hsl(var(--phase-ovulation) / 0.36), hsl(var(--phase-ovulation) / 0.24));
+}
+
+.phase-underline-luteal {
+  --phase-underline-fill:
+    var(--paper-grain),
+    var(--paper-fibers),
+    linear-gradient(90deg, hsl(var(--phase-luteal) / 0.92), hsl(var(--phase-luteal) / 0.74));
+  --phase-underline-soft-fill:
+    var(--paper-grain),
+    var(--paper-fibers),
+    linear-gradient(90deg, hsl(var(--phase-luteal) / 0.42), hsl(var(--phase-luteal) / 0.28));
+}
+
 .calendar-day.selected {
   color: #fff;
   background: var(--paper-green);
@@ -2152,6 +2216,20 @@
 
 .log-dot {
   background: var(--paper-green);
+}
+
+.calendar-day .log-leaf {
+  top: 0px;
+  right: 1px;
+  bottom: auto;
+  left: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 0;
+  background: url('/decor/log_leaf.png') center / contain no-repeat;
+  filter: drop-shadow(0 1px 2px rgba(78, 122, 56, 0.12));
+  transform: rotate(30deg);
+  animation: none;
 }
 
 .calendar-legend {
@@ -3043,6 +3121,80 @@
 
 .settings-chevron {
   color: #a2a8af;
+}
+
+.interface-config-group {
+  margin-top: 18px;
+}
+
+.calendar-style-options {
+  display: grid;
+  gap: 14px;
+}
+
+.calendar-style-option {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 26px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 82px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.calendar-style-option:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.calendar-style-icon,
+.calendar-style-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-style-icon {
+  color: #89af7b;
+}
+
+.calendar-style-copy strong,
+.calendar-style-copy small {
+  display: block;
+}
+
+.calendar-style-copy strong {
+  color: #161b20;
+  font-size: 18px;
+  font-weight: 740;
+}
+
+.calendar-style-copy small {
+  margin-top: 6px;
+  color: #8b93a0;
+  font-size: 14px;
+  line-height: 1.38;
+}
+
+.calendar-style-check {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #fff;
+  background: transparent;
+}
+
+.calendar-style-option.selected .calendar-style-icon,
+.calendar-style-option.selected .calendar-style-copy strong {
+  color: #719b5f;
+}
+
+.calendar-style-option.selected .calendar-style-check {
+  background: var(--paper-green);
+  box-shadow: 0 8px 16px rgba(91, 130, 70, 0.18);
 }
 
 .import-help-dialog {
@@ -4482,6 +4634,26 @@
     height: 18px;
   }
 
+  .calendar-style-option {
+    grid-template-columns: 42px minmax(0, 1fr) 24px;
+    gap: 12px;
+    min-height: 72px;
+  }
+
+  .calendar-style-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .calendar-style-copy strong {
+    font-size: var(--compact-settings-title);
+  }
+
+  .calendar-style-copy small {
+    margin-top: 4px;
+    font-size: var(--compact-settings-desc);
+  }
+
   .settings-footer {
     margin-top: 30px;
   }
@@ -4553,6 +4725,11 @@
 
   .settings-row {
     grid-template-columns: 38px minmax(0, 1fr) 18px;
+    gap: 10px;
+  }
+
+  .calendar-style-option {
+    grid-template-columns: 38px minmax(0, 1fr) 23px;
     gap: 10px;
   }
 }

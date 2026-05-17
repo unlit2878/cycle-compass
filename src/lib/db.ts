@@ -10,6 +10,7 @@ export interface CycleData {
 export type FlowIntensity = 'very_light' | 'light' | 'medium' | 'heavy' | 'very_heavy';
 export type FlowColor = 'deep_red' | 'fresh_red' | 'dark_red' | 'brown' | 'other';
 export type PainLevel = 'none' | 'mild' | 'moderate' | 'severe';
+export type CalendarPhaseStyle = 'classic' | 'underline';
 
 export interface DailyLog {
   id?: number;
@@ -39,6 +40,7 @@ export interface Settings {
   backupReminderInterval: 'weekly' | 'monthly';
   lastBackupDate?: string;
   persistentStorageGranted: boolean;
+  calendarPhaseStyle?: CalendarPhaseStyle;
   customPhaseEmojis?: {
     menstrual?: string;
     follicular?: string;
@@ -240,12 +242,16 @@ export async function getSettings(): Promise<Settings> {
       darkMode: false,
       backupReminderInterval: 'weekly',
       persistentStorageGranted: false,
+      calendarPhaseStyle: 'classic',
     };
     await db.put('settings', defaultSettings);
     return defaultSettings;
   }
 
-  return settings;
+  return {
+    ...settings,
+    calendarPhaseStyle: settings.calendarPhaseStyle || 'classic',
+  };
 }
 
 export async function updateSettings(updates: Partial<Settings>): Promise<Settings> {

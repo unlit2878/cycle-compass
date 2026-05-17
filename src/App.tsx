@@ -12,6 +12,7 @@ import { CalendarPage } from '@/components/CalendarPage';
 import { DataImportPage } from '@/components/DataImportPage';
 import { Home } from '@/components/Home';
 import { InsightsPage } from '@/components/InsightsPage';
+import { InterfaceSettingsPage } from '@/components/InterfaceSettingsPage';
 import { LoggingScreen } from '@/components/LoggingScreen';
 import { Onboarding } from '@/components/Onboarding';
 import { SettingsPage } from '@/components/SettingsPage';
@@ -354,6 +355,15 @@ function AppContent() {
             <Route
               path="/settings/import"
               element={<DataImportPage onImport={restore} />}
+            />
+            <Route
+              path="/settings/interface"
+              element={
+                <InterfaceSettingsPage
+                  settings={settings}
+                  onUpdateSettings={saveSettings}
+                />
+              }
             />
           </Routes>
         </div>

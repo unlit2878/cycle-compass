@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ChevronUp,
   Pencil,
+  Smile,
 } from 'lucide-react';
 import { PageShell } from '@/components/AppScaffold';
 import { getNextMoodSelection, moodOptionIcons } from '@/components/mood-options';
@@ -49,6 +50,7 @@ interface CalendarPageProps {
 }
 
 export function CalendarPage({
+  settings,
   dailyLogs,
   cycles,
   cycleModel,
@@ -74,6 +76,7 @@ export function CalendarPage({
   const currentMonthIndex = currentMonth.getMonth();
   const currentMonthIsToday =
     new Date().getFullYear() === currentYear && new Date().getMonth() === currentMonthIndex;
+  const useUnderlinePhaseStyle = settings?.calendarPhaseStyle === 'underline';
   const yearOptions = useMemo(() => Array.from({ length: 101 }, (_, index) => 2000 + index), []);
   const monthOptions = Array.from({ length: 12 }, (_, index) => `${index + 1}月`);
 
@@ -99,6 +102,15 @@ export function CalendarPage({
 
   const selectedLog = logMap.get(selectedDate);
   const selected = new Date(`${selectedDate}T12:00:00`);
+  const follicularHelpText = useUnderlinePhaseStyle
+    ? '经期结束后到排卵期前的阶段，日历用纹理双横线提示。'
+    : '经期结束后到排卵期前的阶段，日历用蜡笔背景提示。';
+  const ovulationHelpText = useUnderlinePhaseStyle
+    ? '通常在下次经期前约 14 天，日历用纹理双横线提示。'
+    : '通常在下次经期前约 14 天，前后会有浮动。';
+  const lutealHelpText = useUnderlinePhaseStyle
+    ? '排卵期之后到下次经期前的阶段，日历用纹理双横线提示。'
+    : '排卵期之后到下次经期前的阶段，日历用蜡笔背景提示。';
   const statusItems: Array<{ label: string; icon: IconComponent; active: boolean }> = moodOptions.map((label, index) => ({
     label,
     icon: moodOptionIcons[index] || Smile,
@@ -268,8 +280,18 @@ export function CalendarPage({
               const selectedCell = dateStr === selectedDate;
               const isRecordedPeriod = periodDates.has(dateStr);
               const isPredictedPeriod = cycleModel?.predictedPeriodDateSet.has(dateStr) && !isRecordedPeriod;
-              const isOvulation = phase === 'ovulation' && !isRecordedPeriod && current;
-              const backgroundPhase = current && (phase === 'follicular' || phase === 'luteal') ? phase : null;
+              const isOvulation = !useUnderlinePhaseStyle && phase === 'ovulation' && !isRecordedPeriod && current;
+              const backgroundPhase =
+                !useUnderlinePhaseStyle && current && (phase === 'follicular' || phase === 'luteal') ? phase : null;
+              const underlinePhase =
+                useUnderlinePhaseStyle &&
+                current &&
+                !selectedCell &&
+                !isRecordedPeriod &&
+                !isPredictedPeriod &&
+                (phase === 'follicular' || phase === 'ovulation' || phase === 'luteal')
+                  ? phase
+                  : null;
               const periodDay = getPeriodDay(date);
 
               return (
@@ -291,8 +313,9 @@ export function CalendarPage({
                   }}
                 >
                   <span>{date.getDate()}</span>
+                  {underlinePhase && <i className={`phase-underline phase-underline-${underlinePhase}`} />}
                   {periodDay && <small>{getOrdinalSuffix(periodDay)}</small>}
-                  {log && <i className="log-dot" />}
+                  {log && <i className={useUnderlinePhaseStyle ? 'log-dot log-leaf' : 'log-dot'} />}
                 </button>
               );
             })}
@@ -316,9 +339,21 @@ export function CalendarPage({
           <div className="phase-help-content">
             <p>根据你的经期记录、平均周期长度和经期长度预测不同阶段。记录越完整，预测越稳定。</p>
             <PhaseHelpDot kind="menstrual" title="经期" text="已记录的经期日期会优先显示。" />
-            <PhaseHelpDot kind="follicular" title="卵泡期" text="经期结束后到排卵期前的阶段，日历用蜡笔浅蓝背景提示。" />
-            <PhaseHelpDot kind="ovulation" title="排卵期" text="通常在下次经期前约 14 天，前后会有浮动。" />
-            <PhaseHelpDot kind="luteal" title="黄体期" text="排卵期之后到下次经期前的阶段，日历用蜡笔浅紫背景提示。" />
+            <PhaseHelpDot
+              kind="follicular"
+              title="卵泡期"
+              text={follicularHelpText}
+            />
+            <PhaseHelpDot
+              kind="ovulation"
+              title="排卵期"
+              text={ovulationHelpText}
+            />
+            <PhaseHelpDot
+              kind="luteal"
+              title="黄体期"
+              text={lutealHelpText}
+            />
             <PhaseHelpDot kind="predicted" title="预测经期" text="未来经期使用淡色虚线标记。" />
           </div>
         </DialogContent>
@@ -414,7 +449,15 @@ function atNoon(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
 }
 
-function PhaseHelpDot({ kind, title, text }: { kind: CalendarLegendKind; title: string; text: string }) {
+function PhaseHelpDot({
+  kind,
+  title,
+  text,
+}: {
+  kind: CalendarLegendKind;
+  title: string;
+  text: string;
+}) {
   return (
     <div className="phase-help-row">
       <i className={getLegendClass(kind)} />
