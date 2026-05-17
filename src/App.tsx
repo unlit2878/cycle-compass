@@ -17,7 +17,7 @@ import { LoggingScreen } from '@/components/LoggingScreen';
 import { Onboarding } from '@/components/Onboarding';
 import { SettingsPage } from '@/components/SettingsPage';
 import { useCycleData } from '@/hooks/useCycleData';
-import { DailyLog, getAllCycles, savePeriodStart, updateCycle } from '@/lib/db';
+import { DailyLog, deleteCycle, getAllCycles, savePeriodStart, updateCycle } from '@/lib/db';
 import { findPeriodCycleToEndOnDate, formatDate } from '@/lib/cycle-utils';
 
 const queryClient = new QueryClient();
@@ -207,6 +207,12 @@ function AppContent() {
     }
   };
 
+  const handleDeletePeriod = async (cycleId: number) => {
+    await deleteCycle(cycleId);
+    await refresh();
+    toast.success('经期记录已删除');
+  };
+
   const handleImportFromOnboarding = () => {
     navigate('/settings/import');
   };
@@ -270,6 +276,7 @@ function AppContent() {
           onSave={handleLogSave}
           onStartPeriod={handleStartPeriod}
           onEndPeriod={handleEndPeriod}
+          onDeletePeriod={handleDeletePeriod}
           onBack={closeLogging}
           onDirtyChange={setLoggingDirty}
           closeRequestSignal={loggingCloseRequestId}

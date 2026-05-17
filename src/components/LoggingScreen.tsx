@@ -72,6 +72,7 @@ interface LoggingScreenProps {
   ) => void | Promise<void>;
   onStartPeriod?: (date: string, autoFillDays: number, cycleId?: number) => void | Promise<void>;
   onEndPeriod?: (date: string, cycleId?: number) => void | Promise<void>;
+  onDeletePeriod?: (cycleId: number) => void | Promise<void>;
   onBack: () => void;
   onDirtyChange?: (dirty: boolean) => void;
   closeRequestSignal?: number;
@@ -113,6 +114,7 @@ export function LoggingScreen({
   onSave,
   onStartPeriod,
   onEndPeriod,
+  onDeletePeriod,
   onBack,
   onDirtyChange,
   closeRequestSignal,
@@ -127,13 +129,15 @@ export function LoggingScreen({
   const [periodActionDirty, setPeriodActionDirty] = useState(false);
   const [selectedDate, setSelectedDate] = useState(date);
   const [flowIntensity, setFlowIntensity] = useState<FlowIntensity | undefined>(existingLog?.flowIntensity);
-  const [flowColor, setFlowColor] = useState<FlowColor | undefined>(existingLog?.flowColor || 'deep_red');
+  const [flowColor, setFlowColor] = useState<FlowColor | undefined>(existingLog?.flowColor);
   const [flowColorTouched, setFlowColorTouched] = useState(false);
   const [painLevel, setPainLevel] = useState<PainLevel | undefined>(existingLog?.painLevel);
   const [symptoms, setSymptoms] = useState<string[]>(cleanVisibleSymptoms(existingLog?.symptoms));
   const [mood, setMood] = useState<string | undefined>(existingLog?.mood);
   const [notes, setNotes] = useState(existingLog?.notes ?? '');
   const [deleting, setDeleting] = useState(false);
+  const [deletePeriodDialogOpen, setDeletePeriodDialogOpen] = useState(false);
+  const [deletingPeriod, setDeletingPeriod] = useState(false);
   const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const [savingFromPrompt, setSavingFromPrompt] = useState(false);
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -166,7 +170,7 @@ export function LoggingScreen({
       periodActionDirty ||
       periodMarker !== originalPeriodMarker ||
       flowIntensity !== existingLog?.flowIntensity ||
-      flowColor !== (existingLog?.flowColor || 'deep_red') ||
+      flowColor !== existingLog?.flowColor ||
       painLevel !== existingLog?.painLevel ||
       mood !== existingLog?.mood ||
       notes !== (existingLog?.notes ?? '') ||
@@ -195,7 +199,7 @@ export function LoggingScreen({
   useEffect(() => {
     setSelectedDate(date);
     setFlowIntensity(existingLog?.flowIntensity);
-    setFlowColor(existingLog?.flowColor || 'deep_red');
+    setFlowColor(existingLog?.flowColor);
     setFlowColorTouched(false);
     setPainLevel(existingLog?.painLevel);
     setSymptoms(cleanVisibleSymptoms(existingLog?.symptoms));
@@ -319,7 +323,34 @@ export function LoggingScreen({
     }
   };
 
+  const handleDeletePeriod = async () => {
+    if (!activeCycleId || !onDeletePeriod) return;
+    setDeletingPeriod(true);
+    try {
+      await onDeletePeriod(activeCycleId);
+      setDeletePeriodDialogOpen(false);
+      setRelatedCycle((cycle) => (cycle?.id === activeCycleId ? null : cycle));
+      setInitialCycle((cycle) => (cycle?.id === activeCycleId ? null : cycle));
+      setPeriodMarker(null);
+      setOriginalPeriodMarker((marker) => (initialCycle?.id === activeCycleId ? null : marker));
+      setPeriodActionDirty(false);
+    } finally {
+      setDeletingPeriod(false);
+    }
+  };
+
   const setMarkerFromUser = (marker: PeriodMarker) => {
+    if (
+      marker === 'start' &&
+      periodMarker === 'start' &&
+      visibleCycle?.id &&
+      visibleCycle.startDate === selectedDate &&
+      onDeletePeriod
+    ) {
+      setDeletePeriodDialogOpen(true);
+      return;
+    }
+
     setPeriodMarker((current) => (current === marker && !visibleCycle ? null : marker));
     setPeriodActionDirty(true);
   };
@@ -540,6 +571,31 @@ export function LoggingScreen({
         />
         <small>{notes.length}/200</small>
       </label>
+
+      <AlertDialog open={deletePeriodDialogOpen} onOpenChange={setDeletePeriodDialogOpen}>
+        <AlertDialogContent className="record-confirm-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>取消这段经期记录？</AlertDialogTitle>
+            <AlertDialogDescription>
+              将删除从 {visibleCycle ? formatDateCN(new Date(`${visibleCycle.startDate}T12:00:00`)) : '这一天'} 开始的经期记录。
+              当天的流量、疼痛、症状、心情和备注会保留。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="record-confirm-actions">
+            <AlertDialogCancel>保留</AlertDialogCancel>
+            <AlertDialogAction
+              className="record-danger-action"
+              disabled={deletingPeriod}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDeletePeriod();
+              }}
+            >
+              {deletingPeriod ? '删除中...' : '删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={unsavedDialogOpen} onOpenChange={setUnsavedDialogOpen}>
         <AlertDialogContent className="record-confirm-dialog record-unsaved-dialog">
