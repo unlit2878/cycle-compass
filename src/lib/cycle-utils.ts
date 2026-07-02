@@ -290,7 +290,24 @@ export function getCyclePhaseInfoForDate(
     anchorCycle?.endDate &&
     dateStr > anchorCycle.endDate
   ) {
-    phase = 'follicular';
+    // 检查是否在"预期经期"范围内（基于周期长度计算）
+    // 这处理了"经期延迟"的情况：预期经期没来，但实际经期推迟了
+    // 在这种情况下，预期经期的日子应该保持为 luteal（黄体期），等待经期到来
+    const daysSinceAnchor = dayDiff;
+    const expectedNextPeriodStart = safeCycleLength; // 从锚定周期开始，下一个预期经期开始的天数
+    const expectedNextPeriodEnd = safeCycleLength + periodLengthUsed - 1; // 预期经期结束
+
+    // 如果在预期经期范围内（允许3天的容差），保持为 luteal
+    const tolerance = 3;
+    const isInExpectedPeriodRange =
+      daysSinceAnchor >= expectedNextPeriodStart - tolerance &&
+      daysSinceAnchor <= expectedNextPeriodEnd + tolerance;
+
+    if (isInExpectedPeriodRange) {
+      phase = 'luteal'; // 经期延迟，保持在黄体期等待
+    } else {
+      phase = 'follicular';
+    }
   }
   const progress = getPhaseProgressFromCycleDay(dayInCurrentCycle, phase, safeCycleLength, periodLengthUsed);
 

@@ -81,4 +81,10 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // 排除测试文件，确保不会被打包进生产环境
+    rollupOptions: {
+      external: [/\.test\./, /\.spec\./],
+    },
+  },
 }));
