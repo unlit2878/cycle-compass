@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  4x2, comfortable height. The supporting line sits under the number and the
+  ring is larger. Keep every id in sync with widget_cycle_large_compact.xml —
+  CycleWidgetProvider binds both layouts through the same code path.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="@drawable/widget_cycle_background">
+
+    <ImageView
+        android:layout_width="100dp"
+        android:layout_height="80dp"
+        android:layout_gravity="end|bottom"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="-10dp"
+        android:alpha="0.13"
+        android:contentDescription="@null"
+        android:rotation="13"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_leaf_branch" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:baselineAligned="false"
+        android:orientation="horizontal">
+
+        <!-- Weight, not a fixed width, so the ring beside it gives width back to
+             the comparison bars on a cramped widget. 57/43 reproduces the old
+             124dp ring at the width this layout was designed against. -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="57"
+            android:layout_marginEnd="10dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical">
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_widget_sprout" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:text="&#x77E5;&#x671F;"
+                    android:textColor="#4F7042"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/widget_phase_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:background="@drawable/widget_badge_neutral"
+                    android:paddingStart="7dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="7dp"
+                    android:paddingBottom="2dp"
+                    android:text="&#x9EC4;&#x4F53;&#x671F;"
+                    android:textColor="#4F7042"
+                    android:textSize="8sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- RemoteViews does not support android.widget.Space on every launcher. -->
+            <TextView
+                android:layout_width="1dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/widget_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:textColor="#85857F"
+                android:textSize="10sp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="bottom">
+                <TextView
+                    android:id="@+id/widget_number"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:textColor="#292C28"
+                    android:textSize="36sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/widget_unit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="3dp"
+                    android:layout_marginBottom="3dp"
+                    android:textColor="#292C28"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/widget_date"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#757872"
+                android:textSize="10sp" />
+
+            <!-- Separated from the block above by spacing alone; a divider rule
+                 would be louder than this paper-textured style. -->
+            <LinearLayout
+                android:id="@+id/widget_compare"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="11dp"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:id="@+id/widget_compare_prev"
+                    android:layout_width="match_parent"
+                    android:layout_height="13dp"
+                    android:baselineAligned="false"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:id="@+id/widget_prev_key"
+                        android:layout_width="24dp"
+                        android:layout_height="wrap_content"
+                        android:maxLines="1"
+                        android:text="&#x4E0A;&#x6B21;"
+                        android:textColor="#8D8F89"
+                        android:textSize="9sp" />
+                    <ImageView
+                        android:id="@+id/widget_prev_bar"
+                        android:layout_width="0dp"
+                        android:layout_height="10dp"
+                        android:layout_marginStart="7dp"
+                        android:layout_marginEnd="7dp"
+                        android:layout_weight="1"
+                        android:contentDescription="@null"
+                        android:scaleType="fitXY" />
+                    <TextView
+                        android:id="@+id/widget_prev_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:maxLines="1"
+                        android:textColor="#6F726C"
+                        android:textSize="9sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/widget_compare_now"
+                    android:layout_width="match_parent"
+                    android:layout_height="13dp"
+                    android:layout_marginTop="5dp"
+                    android:baselineAligned="false"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:id="@+id/widget_now_key"
+                        android:layout_width="24dp"
+                        android:layout_height="wrap_content"
+                        android:maxLines="1"
+                        android:text="&#x6700;&#x8FD1;"
+                        android:textColor="#5F625C"
+                        android:textSize="9sp"
+                        android:textStyle="bold" />
+                    <ImageView
+                        android:id="@+id/widget_now_bar"
+                        android:layout_width="0dp"
+                        android:layout_height="10dp"
+                        android:layout_marginStart="7dp"
+                        android:layout_marginEnd="7dp"
+                        android:layout_weight="1"
+                        android:contentDescription="@null"
+                        android:scaleType="fitXY" />
+                    <TextView
+                        android:id="@+id/widget_now_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:maxLines="1"
+                        android:textColor="#6F726C"
+                        android:textSize="9sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Proportional width, full height, fitCenter artwork: the drawn circle
+             is min(box width, box height), so it shrinks with a narrow widget but
+             the height caps it once there is room to spare rather than letting it
+             grow unbounded. CycleWidgetProvider mirrors the 43% in ringDiameterDp. -->
+        <FrameLayout
+            android:id="@+id/widget_orbit_box"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="43">
+            <ImageView
+                android:id="@+id/widget_orbit"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:scaleType="fitCenter" />
+            <!-- wrap_content so this never props open a ring that has shrunk;
+                 CycleWidgetProvider scales the two text sizes to match. -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/widget_today_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:text="26"
+                    android:textColor="#292C28"
+                    android:textSize="29sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/widget_today_weekday"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:maxLines="1"
+                    android:text="&#x5468;&#x65E5;"
+                    android:textColor="#81837E"
+                    android:textSize="9sp" />
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

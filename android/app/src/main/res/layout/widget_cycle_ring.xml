@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="@drawable/widget_cycle_background">
+
+    <ImageView
+        android:layout_width="112dp"
+        android:layout_height="88dp"
+        android:layout_gravity="end|bottom"
+        android:layout_marginEnd="22dp"
+        android:layout_marginBottom="-8dp"
+        android:alpha="0.14"
+        android:contentDescription="@null"
+        android:rotation="13"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_leaf_branch" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical">
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_widget_sprout"
+                    android:contentDescription="@null" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:text="&#x77E5;&#x671F;"
+                    android:textColor="#4F7042"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+            <TextView
+                android:id="@+id/widget_phase_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/widget_badge_neutral"
+                android:paddingStart="7dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="7dp"
+                android:paddingBottom="2dp"
+                android:text="&#x9EC4;&#x4F53;&#x671F;"
+                android:textColor="#4F7042"
+                android:textSize="8sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+        <!-- RemoteViews does not support android.widget.Space on every launcher. -->
+        <TextView
+            android:layout_width="1dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+        <TextView
+            android:id="@+id/widget_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:textColor="#85857F"
+            android:textSize="10sp" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="bottom">
+            <TextView
+                android:id="@+id/widget_number"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:textColor="#292C28"
+                android:textSize="44sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/widget_unit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:layout_marginBottom="5dp"
+                android:textColor="#292C28"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+        <TextView
+            android:id="@+id/widget_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="#757872"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <!-- Stays a fixed 154dp box bleeding off the right edge: this overlay is the
+         layout's whole look, so it cannot become a weighted row like the large
+         layouts. CycleWidgetProvider shrinks the ring inside it with asymmetric
+         padding instead, which keeps the bleed constant and pulls the circle's
+         left edge away from the text. -->
+    <FrameLayout
+        android:id="@+id/widget_orbit_box"
+        android:layout_width="154dp"
+        android:layout_height="154dp"
+        android:layout_gravity="center_vertical|end"
+        android:layout_marginEnd="-44dp">
+        <ImageView
+            android:id="@+id/widget_orbit"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter" />
+        <!-- wrap_content so it never props open a ring that has shrunk; both text
+             sizes are scaled to match in CycleWidgetProvider. -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/widget_today_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:includeFontPadding="false"
+                android:text="26"
+                android:textColor="#292C28"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/widget_today_weekday"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="周日"
+                android:textColor="#81837E"
+                android:textSize="9sp" />
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

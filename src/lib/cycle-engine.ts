@@ -78,8 +78,6 @@ export interface CycleModel {
   analytics: CycleAnalytics;
 }
 
-const MIN_CYCLE_LENGTH = 18;
-const MAX_CYCLE_LENGTH = 45;
 const MIN_PERIOD_LENGTH = 1;
 const MAX_PERIOD_LENGTH = 14;
 

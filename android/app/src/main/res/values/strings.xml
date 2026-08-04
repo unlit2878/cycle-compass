@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">知期</string>
+    <string name="title_activity_main">知期</string>
+    <string name="package_name">com.zhio.app</string>
+    <string name="custom_url_scheme">com.zhio.app</string>
+    <string name="cycle_widget_description">查看当前周期阶段和下次经期倒计时</string>
+    <string name="cycle_widget_medium_name">&#x77E5;&#x671F; &#x00B7; &#x4E2D;&#x5C3A;&#x5BF8;</string>
+    <string name="cycle_widget_large_name">&#x77E5;&#x671F; &#x00B7; &#x5927;&#x5C3A;&#x5BF8;</string>
+</resources>

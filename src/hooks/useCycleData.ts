@@ -19,6 +19,8 @@ import {
 } from '@/lib/db';
 import { getBackupStatus } from '@/lib/backup-status';
 import { createCycleModel, CycleModel } from '@/lib/cycle-engine';
+import { buildWidgetSnapshot } from '@/lib/widget-snapshot';
+import { syncWidgetSnapshot } from '@/lib/widget-sync';
 
 export function useCycleData() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -53,6 +55,13 @@ export function useCycleData() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Keep the native widget in step with every model refresh. On web/PWA this
+  // resolves immediately without touching storage or requiring a plugin.
+  useEffect(() => {
+    if (loading) return;
+    void syncWidgetSnapshot(buildWidgetSnapshot(cycleModel, cycles));
+  }, [cycleModel, cycles, loading]);
 
   // 更新设置
   const saveSettings = useCallback(async (updates: Partial<Settings>) => {

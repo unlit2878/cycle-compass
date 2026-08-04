@@ -22,5 +22,34 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-# 忽略整个 android 文件夹
-/android/
+
+# 设计稿与临时素材
+/designs/
+
+/.claude/
+
+# android/ 由 npx cap add android 生成。只跟踪小组件的原生实现，以及重建平台时
+# 无法还原的应用身份文件：应用图标、应用名、品牌色、主题、版本号、以及
+# AndroidManifest 里的 widget receiver 注册。其余脚手架和构建产物一律忽略。
+/android/**
+!/android/**/
+!/android/app/build.gradle
+!/android/app/src/main/AndroidManifest.xml
+!/android/app/src/main/java/com/zhio/app/*.java
+!/android/app/src/main/res/drawable/ic_widget_*.xml
+!/android/app/src/main/res/drawable/widget_*
+!/android/app/src/main/res/drawable-nodpi/widget_preview_*.png
+!/android/app/src/main/res/layout/widget_cycle_*.xml
+!/android/app/src/main/res/mipmap-*/ic_launcher*
+!/android/app/src/main/res/values/colors.xml
+!/android/app/src/main/res/values/ic_launcher_background.xml
+!/android/app/src/main/res/values/strings.xml
+!/android/app/src/main/res/values/styles.xml
+!/android/app/src/main/res/xml/cycle_widget_*.xml
+
+# 上一行的 !/android/**/ 会让 git 递归进构建目录，这里重新排除掉
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/app/release/
+/android/capacitor-cordova-android-plugins/
