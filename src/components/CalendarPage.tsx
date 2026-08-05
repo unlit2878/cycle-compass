@@ -81,6 +81,7 @@ export function CalendarPage({
   const currentMonthIndex = currentMonth.getMonth();
   const currentMonthIsToday =
     new Date().getFullYear() === currentYear && new Date().getMonth() === currentMonthIndex;
+  const isViewingToday = currentMonthIsToday && selectedDate === todayStr;
   const useUnderlinePhaseStyle = settings?.calendarPhaseStyle === 'underline';
   const showCycleStatistics = settings?.showCycleStatistics ?? false;
   const yearOptions = useMemo(() => Array.from({ length: 101 }, (_, index) => 2000 + index), []);
@@ -489,9 +490,9 @@ export function CalendarPage({
       <button
         type="button"
         className="calendar-today-fab pressable"
-        data-visible={!currentMonthIsToday}
-        tabIndex={currentMonthIsToday ? -1 : 0}
-        aria-hidden={currentMonthIsToday}
+        data-visible={!isViewingToday}
+        tabIndex={isViewingToday ? -1 : 0}
+        aria-hidden={isViewingToday}
         onClick={goToday}
       >
         <CalendarDays className="h-4 w-4" />
