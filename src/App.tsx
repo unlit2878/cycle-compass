@@ -418,7 +418,7 @@ function AppContent() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Sonner position="bottom-center" />
+      <Sonner />
       <BrowserRouter>
         <AppContent />
       </BrowserRouter>

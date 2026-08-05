@@ -4043,8 +4043,108 @@
   font-weight: 600;
 }
 
-[data-sonner-toaster] {
-  bottom: 104px !important;
+[data-sonner-toaster].app-toaster {
+  font-family: var(--font-app);
+}
+
+.app-toaster [data-sonner-toast] {
+  min-height: 54px;
+  padding: 13px 14px;
+  gap: 10px;
+  border-radius: 8px;
+  touch-action: pan-y;
+  transition:
+    transform var(--motion-duration-standard) var(--motion-ease-move),
+    opacity var(--motion-duration-exit) var(--motion-ease-out),
+    height var(--motion-duration-standard) var(--motion-ease-move),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.app-toaster [data-sonner-toast] > * {
+  transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.app-toaster [data-sonner-toast][data-swiping="true"] {
+  cursor: grabbing;
+  transition: none;
+  will-change: transform;
+}
+
+.app-toaster [data-sonner-toast][data-swipe-out="true"] {
+  animation-duration: var(--motion-duration-exit);
+  animation-timing-function: var(--motion-ease-out);
+  will-change: transform, opacity;
+}
+
+.app-toaster [data-sonner-toast][data-removed="true"][data-swipe-out="false"] {
+  transition:
+    transform var(--motion-duration-exit) var(--motion-ease-out),
+    opacity var(--motion-duration-exit) var(--motion-ease-out),
+    height var(--motion-duration-standard) var(--motion-ease-move);
+  will-change: transform, opacity;
+}
+
+.app-toast-content {
+  min-width: 0;
+}
+
+.app-toast-icon,
+.app-toast-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.app-toast-icon svg {
+  animation: app-toast-icon-in var(--motion-duration-fast) var(--motion-ease-out) both;
+}
+
+.app-toast[data-type="success"] .app-toast-icon {
+  color: hsl(var(--success));
+}
+
+.app-toast[data-type="info"] .app-toast-icon {
+  color: #508cad;
+}
+
+.app-toast[data-type="warning"] .app-toast-icon {
+  color: hsl(var(--warning));
+}
+
+.app-toast[data-type="error"] .app-toast-icon {
+  color: hsl(var(--destructive));
+}
+
+.app-toast[data-type="loading"] .app-toast-icon svg {
+  color: hsl(var(--primary));
+  animation: app-toast-icon-spin 900ms linear infinite;
+}
+
+@keyframes app-toast-icon-in {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes app-toast-icon-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toaster].app-toaster,
+  .app-toaster [data-sonner-toast],
+  .app-toaster [data-sonner-toast] > *,
+  .app-toaster .app-toast-icon svg {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 @media (max-width: 430px) {
