@@ -90,7 +90,7 @@ public class CycleWidgetProvider extends AppWidgetProvider {
     @Override
     public void onDisabled(Context context) {
         super.onDisabled(context);
-        cancelMidnightRefresh(context);
+        cancelMidnightRefreshIfUnused(context);
     }
 
     @Override
@@ -147,6 +147,22 @@ public class CycleWidgetProvider extends AppWidgetProvider {
         ComponentName largeProvider = new ComponentName(context, CycleWidgetLargeProvider.class);
         int[] largeIds = manager.getAppWidgetIds(largeProvider);
         for (int id : largeIds) manager.updateAppWidget(id, buildLargeViews(context, manager, id));
+        // Every path that repaints also re-arms the one-shot alarm. Without this,
+        // a home screen holding only the large widget never scheduled it at all —
+        // only this provider's lifecycle did — and the daily rollover depended on
+        // the app being opened.
+        scheduleMidnightRefresh(context);
+    }
+
+    /**
+     * The midnight alarm serves both providers (updateAll repaints both), so it
+     * must survive until the *last* widget of either kind is removed.
+     */
+    static void cancelMidnightRefreshIfUnused(Context context) {
+        AppWidgetManager manager = AppWidgetManager.getInstance(context);
+        boolean anyLeft = manager.getAppWidgetIds(new ComponentName(context, CycleWidgetProvider.class)).length > 0
+                || manager.getAppWidgetIds(new ComponentName(context, CycleWidgetLargeProvider.class)).length > 0;
+        if (!anyLeft) cancelMidnightRefresh(context);
     }
 
     /**
@@ -355,8 +371,14 @@ public class CycleWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), layoutId);
         boolean hasData = p.getBoolean("hasData", false);
         String phase = p.getString("phase", "");
-        boolean isPeriod = "menstrual".equals(phase);
         LocalDate today = LocalDate.now();
+        // The stored phase/phaseDay/countdown froze when the app last synced, so
+        // on any later day they are stale. The precomputed day table is what lets
+        // the midnight refresh show the right numbers without the app running;
+        // its phase also drives the badge and ring so they roll over with it.
+        DayEntry todayEntry = hasData ? findDayEntry(p.getString("dayTable", ""), today) : null;
+        if (todayEntry != null) phase = todayEntry.phase;
+        boolean isPeriod = "menstrual".equals(phase);
 
         views.setTextViewText(R.id.widget_today_date, String.valueOf(today.getDayOfMonth()));
         views.setTextViewText(R.id.widget_today_weekday, weekdayLabel(today));
@@ -441,6 +463,8 @@ public class CycleWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(R.id.widget_number, "\u2014");
             views.setTextViewText(R.id.widget_unit, "");
             views.setTextViewText(R.id.widget_date, "\u8f7b\u89e6\u6253\u5f00\u5e94\u7528");
+        } else if (todayEntry != null) {
+            bindFromDayEntry(views, todayEntry, today, medium);
         } else if (isPeriod) {
             int periodDay = Math.max(1, p.getInt("phaseDay", 1));
             if (medium) {
@@ -488,6 +512,100 @@ public class CycleWidgetProvider extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.widget_root, click);
         return views;
+    }
+
+    /**
+     * One precomputed day from the app's snapshot: what the hero line should
+     * say on that date. state is "period" (number = day within the period),
+     * "countdown" (number = days until the predicted start) or "late"
+     * (number = days past it, 0 being the predicted day itself).
+     */
+    private static final class DayEntry {
+        final String state;
+        final String phase;
+        final int number;
+
+        DayEntry(String state, String phase, int number) {
+            this.state = state;
+            this.phase = phase;
+            this.number = number;
+        }
+    }
+
+    /**
+     * Finds today's row in "date:state:phase:number,..." without materialising
+     * the whole 90-day table. Any malformed entry is skipped, and a date miss
+     * (table exhausted, or a pre-table snapshot) returns null so the caller
+     * falls back to the frozen snapshot fields.
+     */
+    private static DayEntry findDayEntry(String raw, LocalDate today) {
+        if (raw == null || raw.isEmpty()) return null;
+        String todayStr = today.toString(); // ISO-8601, matching the app's formatDate.
+        for (String entry : raw.split(",")) {
+            String[] parts = entry.split(":");
+            if (parts.length != 4 || !todayStr.equals(parts[0].trim())) continue;
+            try {
+                int number = Integer.parseInt(parts[3].trim());
+                if (number < 0) return null;
+                return new DayEntry(parts[1].trim(), parts[2].trim(), number);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Renders the hero line from today's precomputed row. Copy mirrors the
+     * frozen-snapshot branches below plus Home's "late" hero, which the widget
+     * previously could not show at all: the countdown used to clamp at day
+     * zero forever once the predicted day passed.
+     */
+    private static void bindFromDayEntry(RemoteViews views, DayEntry entry, LocalDate today, boolean medium) {
+        if ("period".equals(entry.state)) {
+            int periodDay = Math.max(1, entry.number);
+            if (medium) {
+                views.setTextViewText(R.id.widget_label, "\u7ecf\u671f");
+                views.setTextViewText(R.id.widget_number, numberWithSmallPrefix("\u7b2c", String.valueOf(periodDay)));
+                views.setTextViewText(R.id.widget_unit, "\u5929");
+            } else {
+                views.setTextViewText(R.id.widget_label, "\u4eca\u5929\u662f\u7ecf\u671f");
+                views.setTextViewText(R.id.widget_number, String.valueOf(periodDay));
+                views.setTextViewText(R.id.widget_unit, "\u5929");
+            }
+            views.setTextViewText(R.id.widget_date, "\u8bb0\u5f97\u7167\u987e\u597d\u81ea\u5df1");
+            return;
+        }
+
+        if ("late".equals(entry.state)) {
+            if (entry.number == 0) {
+                // The predicted day itself: same copy as the countdown's day-zero.
+                views.setTextViewText(R.id.widget_label, medium ? "\u7ecf\u671f" : "\u8ddd\u79bb\u4e0b\u6b21\u7ecf\u671f");
+                views.setTextViewText(R.id.widget_number, "\u4eca\u5929");
+                views.setTextViewText(R.id.widget_unit, "");
+            } else {
+                // Late hero, matching Home: medium leads with the short label,
+                // large with the fuller phrase; both count days past the estimate.
+                views.setTextViewText(R.id.widget_label, medium
+                        ? "\u7ecf\u671f\u665a\u4e86"
+                        : "\u6bd4\u9884\u8ba1\u665a\u4e86");
+                views.setTextViewText(R.id.widget_number, String.valueOf(entry.number));
+                views.setTextViewText(R.id.widget_unit, "\u5929");
+            }
+            views.setTextViewText(R.id.widget_date, "\u8fd8\u6ca1\u6709\u6807\u8bb0\u7ecf\u671f\u5f00\u59cb");
+            return;
+        }
+
+        // countdown
+        int days = Math.max(1, entry.number);
+        views.setTextViewText(R.id.widget_label, medium ? "\u7ecf\u671f" : "\u8ddd\u79bb\u4e0b\u6b21\u7ecf\u671f");
+        views.setTextViewText(R.id.widget_number, String.valueOf(days));
+        views.setTextViewText(R.id.widget_unit, medium ? unitWithSmallTail("\u5929", "\u540e") : "\u5929");
+        // Predicted start derived from today + countdown, so the subtitle date
+        // also rolls over daily instead of freezing at the last app sync.
+        LocalDate predicted = today.plusDays(days);
+        views.setTextViewText(R.id.widget_date, "\u9884\u8ba1 " + predicted.getMonthValue()
+                + "\u6708" + predicted.getDayOfMonth() + "\u65e5 \u5f00\u59cb");
     }
 
     /** One completed cycle: the period segment overlaps the start of the cycle. */

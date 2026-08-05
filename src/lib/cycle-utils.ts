@@ -324,6 +324,33 @@ export function getCyclePhaseInfoForDate(
   };
 }
 
+export function atNoon(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
+}
+
+/**
+ * The most recent predicted period start on or before `today`, or null while
+ * the first prediction is still ahead. Home's "late N days" banner and the
+ * widget day table both measure lateness from this date, so it lives here
+ * rather than forking per caller.
+ */
+export function getMostRecentExpectedStart(lastPeriodStart: string, cycleLength: number, today: Date): Date | null {
+  if (cycleLength < 1) return null;
+
+  const todayAtNoon = atNoon(today);
+  const expected = parseLocalDate(lastPeriodStart);
+  expected.setDate(expected.getDate() + cycleLength);
+
+  if (expected > todayAtNoon) return null;
+
+  while (true) {
+    const next = new Date(expected);
+    next.setDate(next.getDate() + cycleLength);
+    if (next > todayAtNoon) return expected;
+    expected.setDate(expected.getDate() + cycleLength);
+  }
+}
+
 export function getPhaseInfo(
   currentDate: Date,
   lastPeriodStart: Date,

@@ -1,7 +1,13 @@
 import type { CycleData } from './db';
 import type { CycleModel } from './cycle-engine';
 import type { CyclePhase } from './cycle-utils';
-import { parseLocalDate } from './cycle-utils';
+import {
+  atNoon,
+  formatDate,
+  getCyclePhaseInfoForDate,
+  getMostRecentExpectedStart,
+  parseLocalDate,
+} from './cycle-utils';
 
 /** Widget rows show at most the last two completed cycles. */
 const MAX_ROWS = 2;
@@ -31,6 +37,36 @@ export interface WidgetCycleRow {
 }
 
 /**
+ * What the widget's hero line shows on a given day, mirroring Home's three
+ * hero branches: a recorded/ongoing period day, a countdown to the next
+ * predicted start, or an overdue prediction ("late").
+ */
+export type WidgetDayState = 'period' | 'countdown' | 'late';
+
+/** One precomputed day of widget copy. */
+export interface WidgetDayEntry {
+  /** Local calendar date, YYYY-MM-DD. */
+  date: string;
+  state: WidgetDayState;
+  /** Phase driving the badge and ring colours on this day. */
+  phase: CyclePhase;
+  /**
+   * period: day within the period (1-based). countdown: days until the next
+   * predicted start (>= 1). late: days past the predicted start (0 = the
+   * predicted day itself).
+   */
+  number: number;
+}
+
+/**
+ * How far ahead the day table reaches. The app rewrites the whole table on
+ * every sync, so this is only the offline buffer for a phone whose owner does
+ * not open the app at all; past it the widget falls back to the frozen
+ * snapshot fields, which is the pre-table behaviour.
+ */
+const DAY_TABLE_LENGTH = 90;
+
+/**
  * The deliberately small, non-sensitive payload persisted by the Android
  * widget. Daily logs, symptoms and notes must never cross this boundary.
  *
@@ -38,7 +74,7 @@ export interface WidgetCycleRow {
  * so the snapshot cannot be used to reconstruct when a period occurred.
  */
 export interface WidgetSnapshot {
-  schemaVersion: 2;
+  schemaVersion: 3;
   hasData: boolean;
   updatedAt: string;
   phase?: CyclePhase;
@@ -54,12 +90,100 @@ export interface WidgetSnapshot {
    * long cycle is never drawn clipped at full width.
    */
   barScale?: number;
+  /**
+   * Today plus the next {@link DAY_TABLE_LENGTH} days, precomputed so the
+   * widget's midnight refresh can show the right numbers without the app
+   * running. Each entry equals what the app itself would compute live on that
+   * date, because predictions depend only on recorded data — and recording
+   * anything rewrites this table.
+   */
+  dayTable?: WidgetDayEntry[];
 }
 
 function daysBetween(startDateStr: string, endDateStr: string): number {
   const start = parseLocalDate(startDateStr);
   const end = parseLocalDate(endDateStr);
   return Math.round((end.getTime() - start.getTime()) / DAY_MS);
+}
+
+/**
+ * Precomputes one hero line per day, so the widget's own midnight refresh can
+ * show the right numbers without the app process ever running.
+ *
+ * Each entry mirrors what the app would say live on that date, in Home's
+ * branch order: a menstrual-phase day (recorded, or the continuation of a
+ * period that has a start but no end yet) shows the period day count; then an
+ * overdue prediction shows lateness; otherwise the countdown to the next
+ * predicted start. Predictions depend only on recorded data, so these rows
+ * cannot drift from a live computation — any recording rewrites the table.
+ *
+ * The phase is computed exactly like CycleModel.currentPhase (in particular,
+ * without predictedPeriodDateSet): an unrecorded predicted period day must
+ * not claim the period started, so it reads as late + luteal, not menstrual.
+ */
+export function buildDayTable(
+  cycleModel: CycleModel,
+  cycles: CycleData[],
+  today: Date
+): WidgetDayEntry[] {
+  const lastPeriodStart = cycleModel.lastPeriodStartDateStr;
+  if (!lastPeriodStart) return [];
+
+  const cycleLength = Math.max(1, Math.round(cycleModel.effectiveCycleLength));
+  const periodLength = Math.max(1, Math.round(cycleModel.effectivePeriodLength));
+  const entries: WidgetDayEntry[] = [];
+
+  for (let offset = 0; offset < DAY_TABLE_LENGTH; offset += 1) {
+    const date = atNoon(today);
+    date.setDate(date.getDate() + offset);
+
+    const phaseInfo = getCyclePhaseInfoForDate(date, {
+      cycles,
+      lastPeriodStart,
+      cycleLength,
+      periodLength,
+    });
+    if (!phaseInfo) continue;
+
+    const dateStr = formatDate(date);
+    // Home enters its period hero only for a date the user actually marked.
+    // In particular, an open record marks its start day only; later days must
+    // not silently become recorded period days in the widget.
+    if (phaseInfo.isRecordedPeriod) {
+      entries.push({
+        date: dateStr,
+        state: 'period',
+        phase: 'menstrual',
+        number: Math.max(1, phaseInfo.phaseDay),
+      });
+      continue;
+    }
+
+    const expectedStart = getMostRecentExpectedStart(lastPeriodStart, cycleLength, date);
+    if (expectedStart) {
+      // Noon-to-noon, so round is exact; Home's floor agrees outside DST edges.
+      const lateDays = Math.round((date.getTime() - expectedStart.getTime()) / DAY_MS);
+      entries.push({
+        date: dateStr,
+        state: 'late',
+        phase: phaseInfo.phase,
+        number: Math.max(0, lateDays),
+      });
+      continue;
+    }
+
+    // First predicted start strictly after this date, as getNextPeriodRange walks it.
+    const nextStart = parseLocalDate(lastPeriodStart);
+    while (nextStart <= date) nextStart.setDate(nextStart.getDate() + cycleLength);
+    entries.push({
+      date: dateStr,
+      state: 'countdown',
+      phase: phaseInfo.phase,
+      number: Math.max(1, Math.round((nextStart.getTime() - date.getTime()) / DAY_MS)),
+    });
+  }
+
+  return entries;
 }
 
 /**
@@ -106,7 +230,7 @@ export function buildWidgetSnapshot(
   now: Date = new Date()
 ): WidgetSnapshot {
   const base: WidgetSnapshot = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     hasData: false,
     updatedAt: now.toISOString(),
   };
@@ -134,5 +258,6 @@ export function buildWidgetSnapshot(
     recentCycles: allRows.slice(-MAX_ROWS),
     averageCycleLength,
     barScale,
+    dayTable: buildDayTable(cycleModel, cycles, now),
   };
 }

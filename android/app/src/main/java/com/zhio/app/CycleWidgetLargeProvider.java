@@ -11,6 +11,19 @@ public class CycleWidgetLargeProvider extends AppWidgetProvider {
         for (int id : ids) {
             manager.updateAppWidget(id, CycleWidgetProvider.buildLargeViews(context, manager, id));
         }
+        CycleWidgetProvider.scheduleMidnightRefresh(context);
+    }
+
+    @Override
+    public void onEnabled(Context context) {
+        super.onEnabled(context);
+        CycleWidgetProvider.scheduleMidnightRefresh(context);
+    }
+
+    @Override
+    public void onDisabled(Context context) {
+        super.onDisabled(context);
+        CycleWidgetProvider.cancelMidnightRefreshIfUnused(context);
     }
 
     /**
@@ -22,5 +35,6 @@ public class CycleWidgetLargeProvider extends AppWidgetProvider {
                                           int widgetId, Bundle newOptions) {
         super.onAppWidgetOptionsChanged(context, manager, widgetId, newOptions);
         manager.updateAppWidget(widgetId, CycleWidgetProvider.buildLargeViews(context, manager, widgetId));
+        CycleWidgetProvider.scheduleMidnightRefresh(context);
     }
 }

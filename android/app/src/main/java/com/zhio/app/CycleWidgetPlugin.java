@@ -37,6 +37,8 @@ public class CycleWidgetPlugin extends Plugin {
         editor.putString("recentCycles", flattenCycleRows(data.optJSONArray("recentCycles")));
         editor.putInt("averageCycleLength", data.optInt("averageCycleLength", 0));
         editor.putInt("barScale", data.optInt("barScale", 0));
+        // Same flattening for the precomputed day table: "date:state:phase:number".
+        editor.putString("dayTable", flattenDayTable(data.optJSONArray("dayTable")));
         editor.apply();
         CycleWidgetProvider.updateAll(getContext());
         call.resolve();
@@ -54,6 +56,29 @@ public class CycleWidgetPlugin extends Plugin {
             if (cycleLength <= 0 || periodLength <= 0) continue;
             if (builder.length() > 0) builder.append(',');
             builder.append(cycleLength).append(':').append(periodLength);
+        }
+        return builder.toString();
+    }
+
+    /**
+     * "date:state:phase:number,..." — dates are YYYY-MM-DD so neither delimiter
+     * can appear inside a field. Malformed rows are dropped, not thrown; a
+     * missing table just means the widget renders from the frozen fields.
+     */
+    private static String flattenDayTable(JSONArray rows) {
+        if (rows == null) return "";
+        StringBuilder builder = new StringBuilder();
+        for (int index = 0; index < rows.length(); index += 1) {
+            JSONObject row = rows.optJSONObject(index);
+            if (row == null) continue;
+            String date = row.optString("date", "");
+            String state = row.optString("state", "");
+            String phase = row.optString("phase", "");
+            // -1 sentinel: "late" legitimately carries 0 (predicted-start day).
+            int number = row.optInt("number", -1);
+            if (date.isEmpty() || state.isEmpty() || phase.isEmpty() || number < 0) continue;
+            if (builder.length() > 0) builder.append(',');
+            builder.append(date).append(':').append(state).append(':').append(phase).append(':').append(number);
         }
         return builder.toString();
     }

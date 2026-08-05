@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CycleData } from '../db';
 import type { CycleModel } from '../cycle-engine';
-import { buildCycleRows, buildWidgetSnapshot } from '../widget-snapshot';
+import { buildCycleRows, buildDayTable, buildWidgetSnapshot } from '../widget-snapshot';
 
 const now = new Date('2026-07-26T08:00:00.000Z');
 
@@ -22,6 +22,7 @@ function model(overrides: Partial<CycleModel> = {}): CycleModel {
       startDateStr: '2026-08-15',
       endDateStr: '2026-08-19',
     },
+    lastPeriodStartDateStr: '2026-07-18',
     ...overrides,
   } as CycleModel;
 }
@@ -121,7 +122,7 @@ describe('buildCycleRows', () => {
 describe('buildWidgetSnapshot', () => {
   it('returns an explicit empty snapshot before onboarding/data is available', () => {
     expect(buildWidgetSnapshot(null, [], now)).toEqual({
-      schemaVersion: 2,
+      schemaVersion: 3,
       hasData: false,
       updatedAt: '2026-07-26T08:00:00.000Z',
     });
@@ -129,7 +130,7 @@ describe('buildWidgetSnapshot', () => {
 
   it('contains only the fields needed by the cycle-ring widget', () => {
     expect(buildWidgetSnapshot(model(), [], now)).toEqual({
-      schemaVersion: 2,
+      schemaVersion: 3,
       hasData: true,
       updatedAt: '2026-07-26T08:00:00.000Z',
       phase: 'follicular',
@@ -139,6 +140,7 @@ describe('buildWidgetSnapshot', () => {
       recentCycles: [],
       averageCycleLength: undefined,
       barScale: undefined,
+      dayTable: expect.any(Array),
     });
   });
 
@@ -261,5 +263,42 @@ describe('buildWidgetSnapshot', () => {
       daysUntilNextPeriod: 0,
       phaseDay: 1,
     });
+  });
+});
+
+describe('buildDayTable', () => {
+  it('precomputes exactly 90 local calendar days', () => {
+    const table = buildDayTable(model(), [cycle('2026-07-18', '2026-07-22')], new Date('2026-07-18T12:00:00'));
+    expect(table).toHaveLength(90);
+    expect(table[0].date).toBe('2026-07-18');
+    expect(table[89].date).toBe('2026-10-15');
+  });
+
+  it('uses recorded period days before countdown or lateness', () => {
+    const table = buildDayTable(model(), [cycle('2026-07-18', '2026-07-22')], new Date('2026-07-20T12:00:00'));
+    expect(table[0]).toEqual({ date: '2026-07-20', state: 'period', phase: 'menstrual', number: 3 });
+  });
+
+  it('counts down before the first expected start', () => {
+    const table = buildDayTable(model(), [cycle('2026-07-18', '2026-07-22')], new Date('2026-08-13T12:00:00'));
+    expect(table[0]).toEqual({ date: '2026-08-13', state: 'countdown', phase: 'luteal', number: 2 });
+  });
+
+  it('distinguishes the expected day from later overdue days', () => {
+    const table = buildDayTable(model(), [cycle('2026-07-18', '2026-07-22')], new Date('2026-08-15T12:00:00'));
+    expect(table[0]).toMatchObject({ state: 'late', number: 0 });
+    expect(table[2]).toMatchObject({ date: '2026-08-17', state: 'late', number: 2 });
+  });
+
+  it('rewinds lateness at each predicted cycle boundary', () => {
+    const table = buildDayTable(model(), [cycle('2026-07-18', '2026-07-22')], new Date('2026-09-12T12:00:00'));
+    expect(table[0]).toMatchObject({ state: 'late', number: 0 });
+    expect(table[1]).toMatchObject({ state: 'late', number: 1 });
+  });
+
+  it('does not invent extra recorded days for an unclosed period', () => {
+    const table = buildDayTable(model(), [cycle('2026-07-18')], new Date('2026-07-18T12:00:00'));
+    expect(table[0]).toMatchObject({ state: 'period', number: 1 });
+    expect(table[1].state).toBe('countdown');
   });
 });

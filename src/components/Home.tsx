@@ -10,9 +10,11 @@ import { getFlowSummaryIcon, getMoodSummaryIcon, getPainSummaryIcon, type Record
 import { CycleModel } from '@/lib/cycle-engine';
 import {
   CyclePhase,
+  atNoon,
   findPeriodCycleForDate,
   formatDate,
   getCyclePhaseInfoForDate,
+  getMostRecentExpectedStart,
   getPhaseName,
   parseLocalDate,
 } from '@/lib/cycle-utils';
@@ -46,8 +48,11 @@ export function Home({ settings, backupStatus, cycleModel, cycles, dailyLogs, on
     .find((log) => log.flowIntensity || log.painLevel || log.mood || log.symptoms?.length);
 
   const nextStart = cycleModel?.nextPeriodRange?.startDate || null;
+  // nextStart 由 parseLocalDate 锚在中午，today 却是真实时钟：直接相减会让上午
+  // 打开时多出小半天、被 ceil 抬成 +1 天。两端都取中午后差值恰好是整日数，
+  // round 只用来吸收夏令时的 ±1 小时。小组件的 dayTable 用的正是同一口径。
   const daysUntil = nextStart
-    ? Math.max(0, Math.ceil((nextStart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(0, Math.round((nextStart.getTime() - atNoon(today).getTime()) / DAY_MS))
     : cycleModel?.currentPhase?.daysUntilNextPeriod || settings?.averageCycleLength || 28;
   const cycleLength = Math.max(1, Math.round(cycleModel?.effectiveCycleLength || settings?.averageCycleLength || 28));
   const currentCycleDay = cycleModel?.currentPhase
@@ -363,25 +368,6 @@ function getPhaseForDate(date: Date, cycleModel: CycleModel, cycles: CycleData[]
     periodLength: cycleModel.effectivePeriodLength,
     predictedPeriodDateSet: cycleModel.predictedPeriodDateSet,
   })?.phase || 'follicular';
-}
-
-function getMostRecentExpectedStart(lastPeriodStart: string, cycleLength: number, today: Date): Date | null {
-  const todayAtNoon = atNoon(today);
-  const expected = parseLocalDate(lastPeriodStart);
-  expected.setDate(expected.getDate() + cycleLength);
-
-  if (expected > todayAtNoon) return null;
-
-  while (true) {
-    const next = new Date(expected);
-    next.setDate(next.getDate() + cycleLength);
-    if (next > todayAtNoon) return expected;
-    expected.setDate(expected.getDate() + cycleLength);
-  }
-}
-
-function atNoon(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
 }
 
 function Metric({ icon: Icon, label, value }: { icon: RecordSummaryIcon; label: string; value: string }) {
