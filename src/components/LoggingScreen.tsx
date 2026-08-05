@@ -1,10 +1,13 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
+  Check,
   Droplet,
   Heart,
+  LoaderCircle,
   Smile,
   Trash2,
+  TriangleAlert,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageShell } from '@/components/AppScaffold';
@@ -46,6 +49,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { CycleModel } from '@/lib/cycle-engine';
+import { useReducedMotionPreference } from '@/hooks/useReducedMotionPreference';
+import { MOTION } from '@/lib/animation';
 import { CyclePhase, getCyclePhaseInfoForDate, parseLocalDate } from '@/lib/cycle-utils';
 import { CycleData, DailyLog, FlowColor, FlowIntensity, PainLevel, Settings, getCycleByDate } from '@/lib/db';
 import {
@@ -82,6 +87,7 @@ interface LoggingScreenProps {
 }
 
 type PeriodMarker = 'start' | 'end' | null;
+type SaveState = 'idle' | 'loading' | 'success' | 'error';
 
 const symptomIcons = [
   WaistSorenessIcon,
@@ -104,6 +110,13 @@ function cleanVisibleSymptoms(items: string[] = []) {
   return items.filter((item) => visibleSymptomSet.has(item));
 }
 
+function getSaveLabel(state: SaveState) {
+  if (state === 'loading') return '保存中';
+  if (state === 'success') return '已保存';
+  if (state === 'error') return '重试';
+  return '保存';
+}
+
 export function LoggingScreen({
   date,
   existingLog,
@@ -122,6 +135,7 @@ export function LoggingScreen({
   onRefresh,
   onDeleteLog,
 }: LoggingScreenProps) {
+  const reducedMotion = useReducedMotionPreference();
   const [relatedCycle, setRelatedCycle] = useState<CycleData | null>(null);
   const [initialCycle, setInitialCycle] = useState<CycleData | null>(null);
   const [periodMarker, setPeriodMarker] = useState<PeriodMarker>(null);
@@ -140,6 +154,7 @@ export function LoggingScreen({
   const [deletingPeriod, setDeletingPeriod] = useState(false);
   const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const [savingFromPrompt, setSavingFromPrompt] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>('idle');
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
   const lastCloseRequestSignal = useRef(closeRequestSignal);
 
@@ -266,31 +281,47 @@ export function LoggingScreen({
   };
 
   const handleSave = async () => {
-    const movingExistingPeriodDate = Boolean(
-      initialCycle?.id && dateChanged && originalPeriodMarker && periodMarker === originalPeriodMarker
-    );
-    const shouldUpdatePeriodStart =
-      periodMarker === 'start' && (!relatedCycle || periodActionDirty || movingExistingPeriodDate);
-    const shouldUpdatePeriodEnd = periodMarker === 'end' && (periodActionDirty || movingExistingPeriodDate);
+    if (saveState === 'loading' || saveState === 'success') return false;
+    setSaveState('loading');
 
-    if (shouldUpdatePeriodStart) {
-      await onStartPeriod?.(selectedDate, avgPeriodLength, activeCycleId);
+    try {
+      const movingExistingPeriodDate = Boolean(
+        initialCycle?.id && dateChanged && originalPeriodMarker && periodMarker === originalPeriodMarker
+      );
+      const shouldUpdatePeriodStart =
+        periodMarker === 'start' && (!relatedCycle || periodActionDirty || movingExistingPeriodDate);
+      const shouldUpdatePeriodEnd = periodMarker === 'end' && (periodActionDirty || movingExistingPeriodDate);
+
+      if (shouldUpdatePeriodStart) {
+        await onStartPeriod?.(selectedDate, avgPeriodLength, activeCycleId);
+      }
+
+      if (shouldUpdatePeriodEnd) {
+        await onEndPeriod?.(selectedDate, activeCycleId);
+      }
+
+      await onSave(selectedDate, {
+        flowIntensity: periodMarker || relatedCycle ? flowIntensity : undefined,
+        flowColor: (periodMarker || relatedCycle) && (flowIntensity || flowColorTouched || existingLog?.flowColor)
+          ? flowColor
+          : undefined,
+        painLevel,
+        symptoms: cleanVisibleSymptoms(symptoms),
+        mood: moodOptions.includes(mood || '') ? mood : undefined,
+        notes: notes.trim() || undefined,
+      }, date);
+      onDirtyChange?.(false);
+      setSaveState('success');
+      if (!reducedMotion) {
+        await new Promise((resolve) => window.setTimeout(resolve, MOTION.standardMs));
+      }
+      onBack();
+      return true;
+    } catch {
+      setSaveState('error');
+      toast.error('保存失败，请重试');
+      return false;
     }
-
-    if (shouldUpdatePeriodEnd) {
-      await onEndPeriod?.(selectedDate, activeCycleId);
-    }
-
-    await onSave(selectedDate, {
-      flowIntensity: periodMarker || relatedCycle ? flowIntensity : undefined,
-      flowColor: (periodMarker || relatedCycle) && (flowIntensity || flowColorTouched || existingLog?.flowColor)
-        ? flowColor
-        : undefined,
-      painLevel,
-      symptoms: cleanVisibleSymptoms(symptoms),
-      mood: moodOptions.includes(mood || '') ? mood : undefined,
-      notes: notes.trim() || undefined,
-    }, date);
   };
 
   const requestBack = () => {
@@ -362,11 +393,22 @@ export function LoggingScreen({
       decor="record"
       action={
         <div className="record-header-actions">
-          <button type="button" className="soft-pill cancel-pill" onClick={requestBack}>
+          <button type="button" className="soft-pill cancel-pill pressable" onClick={requestBack}>
             取消
           </button>
-          <button type="button" className="soft-pill save-pill" onClick={handleSave}>
-            保存
+          <button
+            type="button"
+            className="soft-pill save-pill pressable"
+            data-save-state={saveState}
+            disabled={saveState === 'loading' || saveState === 'success'}
+            onClick={handleSave}
+          >
+            {saveState === 'loading' && <LoaderCircle className="save-state-icon is-loading" aria-hidden="true" />}
+            {saveState === 'success' && <Check className="save-state-icon" aria-hidden="true" />}
+            {saveState === 'error' && <TriangleAlert className="save-state-icon" aria-hidden="true" />}
+            <span key={saveState} className="save-pill-label" aria-live="polite">
+              {getSaveLabel(saveState)}
+            </span>
           </button>
         </div>
       }
@@ -399,7 +441,7 @@ export function LoggingScreen({
           </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button type="button" className="day-log-icon-button danger" aria-label="删除此日记录">
+              <button type="button" className="day-log-icon-button danger icon-pressable" aria-label="删除此日记录">
                 <Trash2 className="h-4 w-4" />
               </button>
             </AlertDialogTrigger>
@@ -437,7 +479,7 @@ export function LoggingScreen({
         <div className="period-toggle">
           <button
             type="button"
-            className={periodMarker === 'start' ? 'selected' : ''}
+            className={`pressable ${periodMarker === 'start' ? 'selected' : ''}`}
             onClick={() => setMarkerFromUser('start')}
           >
             <PeriodStartIcon className="h-8 w-8" />
@@ -446,7 +488,7 @@ export function LoggingScreen({
           </button>
           <button
             type="button"
-            className={periodMarker === 'end' ? 'selected muted' : ''}
+            className={`pressable ${periodMarker === 'end' ? 'selected muted' : ''}`}
             onClick={() => setMarkerFromUser('end')}
           >
             <PeriodEndIcon className="h-8 w-8" />
@@ -460,7 +502,7 @@ export function LoggingScreen({
             <button
               type="button"
               key={option.value}
-              className={`circle-option ${flowIntensity === option.value ? 'selected red' : ''}`}
+              className={`circle-option pressable ${flowIntensity === option.value ? 'selected red' : ''}`}
               onClick={() => setFlowIntensity(option.value)}
             >
               <span className="option-icon">
@@ -476,7 +518,7 @@ export function LoggingScreen({
             <button
               type="button"
               key={option.value}
-              className={`circle-option color-option ${flowColor === option.value ? 'selected red' : ''}`}
+              className={`circle-option color-option pressable ${flowColor === option.value ? 'selected red' : ''}`}
               onClick={() => {
                 setFlowColor(option.value);
                 setFlowColorTouched(true);
@@ -495,7 +537,7 @@ export function LoggingScreen({
             <button
               type="button"
               key={option.value}
-              className={`circle-option ${painLevel === option.value ? 'selected lavender' : ''}`}
+              className={`circle-option pressable ${painLevel === option.value ? 'selected lavender' : ''}`}
               onClick={() => setPainLevel(option.value)}
             >
               <span className="option-icon">
@@ -520,7 +562,7 @@ export function LoggingScreen({
               <button
                 type="button"
                 key={symptom}
-                className={`circle-option ${selected ? 'selected lavender' : ''}`}
+                className={`circle-option pressable ${selected ? 'selected lavender' : ''}`}
                 onClick={() => toggleSymptom(symptom)}
               >
                 <span className="option-icon">
@@ -546,7 +588,7 @@ export function LoggingScreen({
               <button
                 type="button"
                 key={item}
-                className={`circle-option ${mood === item ? 'selected green' : ''}`}
+                className={`circle-option pressable ${mood === item ? 'selected green' : ''}`}
                 aria-pressed={mood === item}
                 onClick={() => setMood((current) => getNextMoodSelection(current, item))}
               >

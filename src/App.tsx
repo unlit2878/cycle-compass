@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { toast } from 'sonner';
-import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BottomNav } from '@/components/BottomNav';
@@ -17,6 +16,7 @@ import { LoggingScreen } from '@/components/LoggingScreen';
 import { Onboarding } from '@/components/Onboarding';
 import { SettingsPage } from '@/components/SettingsPage';
 import { useCycleData } from '@/hooks/useCycleData';
+import { useReducedMotionPreference } from '@/hooks/useReducedMotionPreference';
 import { DailyLog, deleteCycle, getAllCycles, savePeriodStart, updateCycle } from '@/lib/db';
 import { findPeriodCycleToEndOnDate, formatDate } from '@/lib/cycle-utils';
 
@@ -24,6 +24,7 @@ const queryClient = new QueryClient();
 type LogPayload = Omit<DailyLog, 'id' | 'date' | 'createdAt' | 'updatedAt'>;
 type MainRouteId = 'home' | 'calendar' | 'insights' | 'settings';
 type RouteSlideDirection = 'left' | 'right' | null;
+type LoggingAnimationState = 'closed' | 'opening' | 'open' | 'closing';
 
 const MAIN_ROUTES: Array<{ id: MainRouteId; path: string }> = [
   { id: 'home', path: '/' },
@@ -38,6 +39,7 @@ const SWIPE_MAX_VERTICAL_DRIFT = 70;
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
+  const reducedMotion = useReducedMotionPreference();
   const lastBackPressRef = useRef<number>(0);
   const swipeStartRef = useRef({ x: 0, y: 0 });
   const swipeLatestRef = useRef({ x: 0, y: 0 });
@@ -48,6 +50,7 @@ function AppContent() {
   const [loggingCloseRequestId, setLoggingCloseRequestId] = useState(0);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [routeSlideDirection, setRouteSlideDirection] = useState<RouteSlideDirection>(null);
+  const [loggingAnimationState, setLoggingAnimationState] = useState<LoggingAnimationState>('closed');
 
   const {
     settings,
@@ -68,16 +71,26 @@ function AppContent() {
     refresh,
   } = useCycleData();
 
-  const closeLogging = useCallback(() => {
+  const finishCloseLogging = useCallback(() => {
     setLoggingDate(null);
     setLoggingExistingLog(undefined);
     setLoggingDirty(false);
+    setLoggingAnimationState('closed');
     const nextPath = pendingLoggingNavigationRef.current;
     pendingLoggingNavigationRef.current = null;
     if (nextPath) {
       navigate(nextPath);
     }
   }, [navigate]);
+
+  const closeLogging = useCallback(() => {
+    if (!loggingDate || loggingAnimationState === 'closing') return;
+    if (reducedMotion) {
+      finishCloseLogging();
+      return;
+    }
+    setLoggingAnimationState('closing');
+  }, [finishCloseLogging, loggingAnimationState, loggingDate, reducedMotion]);
 
   const requestCloseLogging = useCallback((to?: string, event?: MouseEvent<HTMLAnchorElement>) => {
     if (loggingDirty) {
@@ -87,8 +100,14 @@ function AppContent() {
       return;
     }
 
-    closeLogging();
-  }, [closeLogging, loggingDirty]);
+    if (loggingDate) {
+      event?.preventDefault();
+      pendingLoggingNavigationRef.current = to || null;
+      closeLogging();
+      return;
+    }
+
+  }, [closeLogging, loggingDate, loggingDirty]);
 
   const clearPendingLoggingNavigation = useCallback(() => {
     pendingLoggingNavigationRef.current = null;
@@ -135,6 +154,18 @@ function AppContent() {
   }, [settings?.darkMode]);
 
   useEffect(() => {
+    const updateMotionPlayback = () => {
+      document.documentElement.classList.toggle('motion-paused', document.hidden);
+    };
+    updateMotionPlayback();
+    document.addEventListener('visibilitychange', updateMotionPlayback);
+    return () => {
+      document.removeEventListener('visibilitychange', updateMotionPlayback);
+      document.documentElement.classList.remove('motion-paused');
+    };
+  }, []);
+
+  useEffect(() => {
     if (settings && !settings.persistentStorageGranted) {
       requestPersistence();
     }
@@ -147,6 +178,7 @@ function AppContent() {
     setLoggingDirty(false);
     pendingLoggingNavigationRef.current = null;
     setLoggingDate(date);
+    setLoggingAnimationState(reducedMotion ? 'open' : 'opening');
   };
 
   const handleLogToday = () => openLogging(formatDate(new Date()));
@@ -165,7 +197,6 @@ function AppContent() {
     }
     await logDay(targetDate, data);
     toast.success('记录已保存');
-    closeLogging();
   };
 
   const handleMoodSelect = async (date: string, mood: string | undefined) => {
@@ -265,34 +296,17 @@ function AppContent() {
 
   return (
     <>
-      {loggingDate ? (
-        <LoggingScreen
-          date={loggingDate}
-          existingLog={loggingExistingLog}
-          cycles={cycles}
-          settings={settings}
-          cycleModel={cycleModel}
-          statistics={statistics}
-          onSave={handleLogSave}
-          onStartPeriod={handleStartPeriod}
-          onEndPeriod={handleEndPeriod}
-          onDeletePeriod={handleDeletePeriod}
-          onBack={closeLogging}
-          onDirtyChange={setLoggingDirty}
-          closeRequestSignal={loggingCloseRequestId}
-          onKeepEditing={clearPendingLoggingNavigation}
-          onRefresh={handleLoggingRefresh}
-          onDeleteLog={deleteLog}
-        />
-      ) : (
-        <div
-          key={location.pathname}
-          className={`route-swipe-shell ${getRouteSlideClass(routeSlideDirection)}`}
-          onAnimationEnd={() => setRouteSlideDirection(null)}
-          onTouchStart={handleMainTouchStart}
-          onTouchMove={handleMainTouchMove}
-          onTouchEnd={handleMainTouchEnd}
-        >
+      <div
+        key={location.pathname}
+        className={`route-swipe-shell ${getRouteSlideClass(routeSlideDirection)}`}
+        data-logging-covered={Boolean(loggingDate)}
+        onAnimationEnd={(event) => {
+          if (event.target === event.currentTarget) setRouteSlideDirection(null);
+        }}
+        onTouchStart={handleMainTouchStart}
+        onTouchMove={handleMainTouchMove}
+        onTouchEnd={handleMainTouchEnd}
+      >
           <Routes location={location}>
             <Route
               path="/"
@@ -361,9 +375,42 @@ function AppContent() {
               }
             />
           </Routes>
+      </div>
+      {loggingDate && (
+        <div
+          className="logging-layer"
+          data-animation-state={loggingAnimationState}
+          onAnimationEnd={(event) => {
+            if (event.target !== event.currentTarget) return;
+            if (loggingAnimationState === 'opening') setLoggingAnimationState('open');
+            if (loggingAnimationState === 'closing') finishCloseLogging();
+          }}
+        >
+          <LoggingScreen
+            date={loggingDate}
+            existingLog={loggingExistingLog}
+            cycles={cycles}
+            settings={settings}
+            cycleModel={cycleModel}
+            statistics={statistics}
+            onSave={handleLogSave}
+            onStartPeriod={handleStartPeriod}
+            onEndPeriod={handleEndPeriod}
+            onDeletePeriod={handleDeletePeriod}
+            onBack={closeLogging}
+            onDirtyChange={setLoggingDirty}
+            closeRequestSignal={loggingCloseRequestId}
+            onKeepEditing={clearPendingLoggingNavigation}
+            onRefresh={handleLoggingRefresh}
+            onDeleteLog={deleteLog}
+          />
         </div>
       )}
-      <BottomNav onLogClick={handleLogToday} onNavigate={requestCloseLogging} active={loggingDate ? 'log' : undefined} />
+      <BottomNav
+        onLogClick={loggingDate ? () => requestCloseLogging() : handleLogToday}
+        onNavigate={requestCloseLogging}
+        active={loggingDate ? 'log' : undefined}
+      />
     </>
   );
 }
@@ -371,7 +418,6 @@ function AppContent() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
       <Sonner position="bottom-center" />
       <BrowserRouter>
         <AppContent />

@@ -135,7 +135,7 @@ export function DataImportPage({ onImport }: DataImportPageProps) {
       decor="settings"
       className="data-import-screen"
       action={
-        <button type="button" className="round-action" onClick={() => navigate('/settings')} aria-label="返回设置">
+        <button type="button" className="round-action icon-pressable" onClick={() => navigate('/settings')} aria-label="返回设置">
           <ArrowLeft className="h-5 w-5" />
         </button>
       }
@@ -145,11 +145,11 @@ export function DataImportPage({ onImport }: DataImportPageProps) {
           <h2>方式一：导入 JSON 文件</h2>
         </div>
         <div className="data-import-action-row">
-          <button type="button" className="dialog-primary-action" onClick={() => fileInputRef.current?.click()}>
+          <button type="button" className="dialog-primary-action pressable" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4" />
             选择 JSON 文件
           </button>
-          <button type="button" className="data-import-format-button" onClick={() => setExampleOpen(true)}>
+          <button type="button" className="data-import-format-button pressable" onClick={() => setExampleOpen(true)}>
             <FileJson className="h-4 w-4" />
             JSON 格式
           </button>

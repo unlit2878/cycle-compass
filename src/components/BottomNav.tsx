@@ -25,7 +25,7 @@ export function BottomNav({ onLogClick, onNavigate, active }: BottomNavProps) {
         to={item.to}
         onClick={(event) => onNavigate?.(item.to, event)}
         className={({ isActive }) =>
-          `bottom-nav-item ${
+          `bottom-nav-item pressable ${
             active === item.id || (!active && isActive) ? 'bottom-nav-item-active' : ''
           }`
         }
@@ -43,7 +43,7 @@ export function BottomNav({ onLogClick, onNavigate, active }: BottomNavProps) {
         <button
           type="button"
           onClick={onLogClick}
-          className={`bottom-log-button ${active === 'log' ? 'bottom-log-button-active' : ''}`}
+          className={`bottom-log-button icon-pressable ${active === 'log' ? 'bottom-log-button-active' : ''}`}
           aria-label="记录"
         >
           <span className="bottom-log-circle">

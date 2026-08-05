@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { CSSProperties, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Slider } from '@/components/ui/slider';
@@ -6,6 +6,10 @@ import { ArrowRight, ArrowLeft, Upload } from 'lucide-react';
 import { zh, formatDateChinese } from '@/lib/i18n';
 import { formatDate } from '@/lib/cycle-utils';
 import { zhCN } from 'date-fns/locale';
+import { useReducedMotionPreference } from '@/hooks/useReducedMotionPreference';
+
+type StepMotionPhase = 'idle' | 'exiting' | 'entering';
+type StepDirection = 'forward' | 'backward';
 
 interface OnboardingProps {
   onComplete: (lastPeriodStart: string, cycleLength: number, periodLength: number, lastPeriodEnd?: string) => void;
@@ -13,14 +17,31 @@ interface OnboardingProps {
 }
 
 export function Onboarding({ onComplete, onImport }: OnboardingProps) {
+  const reducedMotion = useReducedMotionPreference();
+  const pendingStepRef = useRef<number | null>(null);
   const [step, setStep] = useState(0);
+  const [stepMotionPhase, setStepMotionPhase] = useState<StepMotionPhase>('idle');
+  const [stepDirection, setStepDirection] = useState<StepDirection>('forward');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [cycleLength, setCycleLength] = useState(28);
   const [periodLength, setPeriodLength] = useState(5);
 
+  const changeStep = (nextStep: number) => {
+    if (stepMotionPhase !== 'idle' || nextStep === step) return;
+    setStepDirection(nextStep > step ? 'forward' : 'backward');
+
+    if (reducedMotion) {
+      setStep(nextStep);
+      return;
+    }
+
+    pendingStepRef.current = nextStep;
+    setStepMotionPhase('exiting');
+  };
+
   const handleNext = () => {
     if (step < 3) {
-      setStep(step + 1);
+      changeStep(step + 1);
     } else if (selectedDate) {
       const startDate = new Date(selectedDate);
       startDate.setHours(12, 0, 0, 0);
@@ -32,7 +53,7 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
 
   const handleBack = () => {
     if (step > 0) {
-      setStep(step - 1);
+      changeStep(step - 1);
     }
   };
 
@@ -40,22 +61,28 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
 
   return (
     <div className="onboarding-screen min-h-screen flex flex-col items-center justify-center p-6 gradient-soft">
-      {/* 进度指示器 */}
-      <div className="flex gap-2 mb-8">
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className={`w-2 h-2 rounded-full transition-all ${
-              i <= step ? 'bg-primary w-6' : 'bg-primary/30'
-            }`}
-          />
-        ))}
+      <div className="onboarding-progress" style={{ '--onboarding-step': step } as CSSProperties} aria-label={`第 ${step + 1} 步，共 4 步`}>
+        <span className="onboarding-progress-indicator" aria-hidden="true" />
+        {[0, 1, 2, 3].map((item) => <i key={item} aria-hidden="true" />)}
       </div>
 
-      {/* 步骤内容 */}
-      <div className="w-full max-w-md">
+      <div
+        className="onboarding-step-shell w-full max-w-md"
+        data-motion-phase={stepMotionPhase}
+        data-direction={stepDirection}
+        onAnimationEnd={(event) => {
+          if (event.target !== event.currentTarget) return;
+          if (stepMotionPhase === 'exiting' && pendingStepRef.current !== null) {
+            setStep(pendingStepRef.current);
+            pendingStepRef.current = null;
+            setStepMotionPhase('entering');
+            return;
+          }
+          if (stepMotionPhase === 'entering') setStepMotionPhase('idle');
+        }}
+      >
         {step === 0 && (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-4">
+          <div className="text-center space-y-6">
             <div className="onboarding-app-icon animate-float">
               <img src="/decor/app_icon.png" alt="知期" />
             </div>
@@ -83,7 +110,7 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
         )}
 
         {step === 1 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+          <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-foreground">{zh.onboarding.lastPeriodStart.title}</h2>
               <p className="text-muted-foreground mt-2">
@@ -130,7 +157,7 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
         )}
 
         {step === 2 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
+          <div className="space-y-8">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-foreground">{zh.onboarding.cycleLength.title}</h2>
               <p className="text-muted-foreground mt-2">
@@ -159,7 +186,7 @@ export function Onboarding({ onComplete, onImport }: OnboardingProps) {
         )}
 
         {step === 3 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
+          <div className="space-y-8">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-foreground">{zh.onboarding.periodLength.title}</h2>
               <p className="text-muted-foreground mt-2">

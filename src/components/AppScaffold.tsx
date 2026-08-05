@@ -39,7 +39,7 @@ export function PageHeader({ title, subtitle, action }: Pick<PageShellProps, 'ti
 
 export function PageShell({ title, subtitle, action, children, className = '', decor = 'home' }: PageShellProps) {
   return (
-    <main className={`app-screen page-enter ${className}`}>
+    <main className={`app-screen ${className}`}>
       <DecorativeBackground variant={decor} />
       <div className="page-content">
         <PageHeader title={title} subtitle={subtitle} action={action} />

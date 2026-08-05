@@ -1,10 +1,9 @@
-import { ComponentType, TouchEvent, useCallback, useMemo, useRef, useState } from 'react';
+import { ComponentType, TouchEvent, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Pencil,
   Smile,
 } from 'lucide-react';
@@ -35,6 +34,7 @@ import {
   getOrdinalSuffix,
 } from '@/lib/cycle-utils';
 import { getFlowLabel, getPainLevelLabel, moodOptions, weekdayCN, weekdayShortCN } from '@/lib/ui-model';
+import { useReducedMotionPreference } from '@/hooks/useReducedMotionPreference';
 
 type IconComponent = ComponentType<{ className?: string }>;
 type CalendarLegendKind = CyclePhase | 'predicted';
@@ -60,10 +60,14 @@ export function CalendarPage({
   onDaySelect,
   onMoodSelect,
 }: CalendarPageProps) {
+  const reducedMotion = useReducedMotionPreference();
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const touchEndX = useRef(0);
   const touchEndY = useRef(0);
+  const calendarGridRef = useRef<HTMLDivElement>(null);
+  const selectionIndicatorRef = useRef<HTMLSpanElement>(null);
+  const positionedSelectionIndicatorRef = useRef<HTMLSpanElement | null>(null);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
   const [isSwiping, setIsSwiping] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -118,6 +122,48 @@ export function CalendarPage({
     icon: moodOptionIcons[index] || Smile,
     active: selectedLog?.mood === label,
   }));
+
+  useLayoutEffect(() => {
+    const grid = calendarGridRef.current;
+    const indicator = selectionIndicatorRef.current;
+    if (!grid || !indicator) return;
+
+    const initializing = positionedSelectionIndicatorRef.current !== indicator
+      || indicator.dataset.initializing === 'true';
+    positionedSelectionIndicatorRef.current = indicator;
+    if (initializing) indicator.dataset.initializing = 'true';
+
+    const positionSelection = () => {
+      const selectedCell = grid.querySelector<HTMLElement>(`[data-calendar-date="${selectedDate}"]`);
+      if (!selectedCell) return;
+      indicator.style.setProperty('--calendar-selected-x', `${selectedCell.offsetLeft}px`);
+      indicator.style.setProperty('--calendar-selected-y', `${selectedCell.offsetTop}px`);
+      indicator.style.setProperty('--calendar-selected-size', `${selectedCell.offsetWidth}px`);
+      indicator.dataset.muted = String(selectedCell.classList.contains('muted'));
+      indicator.dataset.ready = 'true';
+    };
+
+    positionSelection();
+    let firstFrame = 0;
+    let secondFrame = 0;
+    if (initializing && typeof requestAnimationFrame === 'function') {
+      firstFrame = requestAnimationFrame(() => {
+        secondFrame = requestAnimationFrame(() => {
+          delete indicator.dataset.initializing;
+        });
+      });
+    } else {
+      delete indicator.dataset.initializing;
+    }
+
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(positionSelection) : null;
+    resizeObserver?.observe(grid);
+    return () => {
+      if (firstFrame) cancelAnimationFrame(firstFrame);
+      if (secondFrame) cancelAnimationFrame(secondFrame);
+      resizeObserver?.disconnect();
+    };
+  }, [calendarDays, selectedDate]);
 
   const goMonth = useCallback((delta: number) => {
     setSlideDirection(delta > 0 ? 'left' : 'right');
@@ -188,6 +234,7 @@ export function CalendarPage({
 
     if (Math.abs(diffX) > diffY) {
       event.preventDefault();
+      if (reducedMotion) return;
       const maxOffset = 120;
       setSwipeOffset(Math.sign(diffX) * Math.min(Math.abs(diffX) * 0.5, maxOffset));
     }
@@ -222,7 +269,7 @@ export function CalendarPage({
       className="calendar-screen"
     >
       <div className="calendar-month-control">
-        <button type="button" onClick={() => goMonth(-1)} aria-label="上个月">
+        <button type="button" className="icon-pressable" onClick={() => goMonth(-1)} aria-label="上个月">
           <ChevronLeft />
         </button>
         <div className="calendar-selectors">
@@ -251,14 +298,14 @@ export function CalendarPage({
             </SelectContent>
           </Select>
         </div>
-        <button type="button" onClick={() => goMonth(1)} aria-label="下个月">
+        <button type="button" className="icon-pressable" onClick={() => goMonth(1)} aria-label="下个月">
           <ChevronRight />
         </button>
       </div>
 
       <div
         key={animationKey}
-        className={`calendar-grid-wrap ${getAnimationClass()}`}
+        className={`calendar-grid-wrap ${isSwiping ? 'is-swiping' : ''} ${getAnimationClass()}`}
         style={{
           transform: `translateX(${swipeOffset}px)`,
           transition: isSwiping ? 'none' : undefined,
@@ -274,7 +321,8 @@ export function CalendarPage({
               return <span key={index}>{weekdayShortCN(d)}</span>;
             })}
           </div>
-          <div className="calendar-grid">
+          <div className="calendar-grid" ref={calendarGridRef}>
+            <span ref={selectionIndicatorRef} className="calendar-selection-indicator" aria-hidden="true" />
             {calendarDays.map(({ date, current }) => {
               const dateStr = formatDate(date);
               const phase = getPhaseForDate(date);
@@ -309,6 +357,7 @@ export function CalendarPage({
                   key={dateStr}
                   className={[
                     'calendar-day',
+                    'pressable',
                     current ? '' : 'muted',
                     selectedCell ? 'selected' : '',
                     isRecordedPeriod ? 'period' : '',
@@ -316,6 +365,7 @@ export function CalendarPage({
                     isOvulation ? 'ovulation' : '',
                     backgroundPhase ? backgroundPhase : '',
                   ].join(' ')}
+                  data-calendar-date={dateStr}
                   onClick={() => {
                     setSelectedDate(dateStr);
                     onDaySelect(dateStr);
@@ -372,21 +422,23 @@ export function CalendarPage({
 
       <button
         type="button"
-        className={`detail-caret ${detailExpanded ? 'expanded' : ''}`}
+        className={`detail-caret icon-pressable ${detailExpanded ? 'expanded' : ''}`}
         aria-expanded={detailExpanded}
         aria-label={detailExpanded ? '收起当日详情' : '展开当日详情'}
         onClick={() => setDetailExpanded((expanded) => !expanded)}
       >
-        {detailExpanded ? <ChevronUp /> : <ChevronDown />}
+        <ChevronDown />
       </button>
 
-      {detailExpanded && <section className="calendar-detail">
+      <div className="calendar-detail-collapse" data-expanded={detailExpanded} aria-hidden={!detailExpanded}>
+        <div className="calendar-detail-collapse-inner">
+      <section className="calendar-detail">
         <div className="calendar-detail-head">
           <div>
             <strong>{selected.getMonth() + 1}月{selected.getDate()}日</strong>
             <span>{weekdayCN(selected)}</span>
           </div>
-          <button type="button" onClick={() => onDaySelect(selectedDate)} aria-label="编辑记录">
+          <button type="button" className="icon-pressable" onClick={() => onDaySelect(selectedDate)} aria-label="编辑记录">
             <Pencil className="h-5 w-5" />
           </button>
         </div>
@@ -418,7 +470,7 @@ export function CalendarPage({
               <button
                 type="button"
                 key={label}
-                className={`status-chip ${active ? 'active' : ''}`}
+                className={`status-chip pressable ${active ? 'active' : ''}`}
                 aria-pressed={active}
                 onClick={() => onMoodSelect(selectedDate, getNextMoodSelection(selectedLog?.mood, label))}
               >
@@ -430,14 +482,21 @@ export function CalendarPage({
             ))}
           </div>
         </div>
-      </section>}
+      </section>
+        </div>
+      </div>
 
-      {!currentMonthIsToday && (
-        <button type="button" className="calendar-today-fab" onClick={goToday}>
-          <CalendarDays className="h-4 w-4" />
-          今天
-        </button>
-      )}
+      <button
+        type="button"
+        className="calendar-today-fab pressable"
+        data-visible={!currentMonthIsToday}
+        tabIndex={currentMonthIsToday ? -1 : 0}
+        aria-hidden={currentMonthIsToday}
+        onClick={goToday}
+      >
+        <CalendarDays className="h-4 w-4" />
+        今天
+      </button>
     </PageShell>
   );
 }

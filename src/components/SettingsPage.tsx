@@ -237,7 +237,7 @@ function CycleSettingsDialog({
             />
             <small>1-14 天</small>
           </label>
-          <button type="button" className="dialog-primary-action" onClick={handleSave}>
+          <button type="button" className="dialog-primary-action pressable" onClick={handleSave}>
             保存设置
           </button>
         </div>
@@ -279,7 +279,7 @@ function SettingsRow({
 
   if (onClick) {
     return (
-      <button type="button" className="settings-row" onClick={onClick}>
+      <button type="button" className="settings-row pressable" onClick={onClick}>
         {content}
       </button>
     );

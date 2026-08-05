@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   CalendarDays,
@@ -69,6 +69,10 @@ const FIGO_MAX_VARIATION = 9;
 const FIGO_MAX_PERIOD = 8;
 
 export function InsightsPage({ cycles }: InsightsPageProps) {
+  const rangeTabsRef = useRef<HTMLDivElement>(null);
+  const rangeIndicatorRef = useRef<HTMLSpanElement>(null);
+  const yearRailRef = useRef<HTMLDivElement>(null);
+  const yearIndicatorRef = useRef<HTMLSpanElement>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('recent6');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const years = useMemo(() => getAvailableYears(cycles), [cycles]);
@@ -90,6 +94,16 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
   const recentPredictions = predictionAccuracy.predictions.slice(-6).reverse();
   const healthMessages = getHealthMessages(allStats);
   const hasCycles = cycles.length > 0;
+
+  useLayoutEffect(
+    () => positionIndicator(rangeTabsRef.current, rangeIndicatorRef.current, `[data-range="${timeRange}"]`),
+    [filtersOpen, timeRange],
+  );
+
+  useLayoutEffect(
+    () => positionIndicator(yearRailRef.current, yearIndicatorRef.current, `[data-year="${activeYear}"]`),
+    [activeYear, filtersOpen, timeRange, years],
+  );
 
   return (
     <PageShell
@@ -148,7 +162,7 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
               </h2>
               <button
                 type="button"
-                className={`analysis-filter-button ${filtersOpen ? 'active' : ''}`}
+                className={`analysis-filter-button icon-pressable ${filtersOpen ? 'active' : ''}`}
                 aria-label="筛选周期与经期时长分析"
                 aria-expanded={filtersOpen}
                 onClick={() => setFiltersOpen((open) => !open)}
@@ -157,46 +171,52 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
               </button>
             </div>
 
-            {filtersOpen && (
-              <section className="insights-range-panel" aria-label="周期与经期时长分析筛选">
-                <div className="insights-range-tabs">
-                  {[
-                    { value: 'recent6', label: '最近 6' },
-                    { value: 'recent12', label: '最近 12' },
-                    { value: 'year', label: '按年份' },
-                    { value: 'all', label: '全部' },
-                  ].map((item) => (
-                    <button
-                      type="button"
-                      key={item.value}
-                      className={timeRange === item.value ? 'active' : undefined}
-                      onClick={() => setTimeRange(item.value as TimeRange)}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-
-                {timeRange === 'year' && (
-                  <div className="insights-year-rail" aria-label="年份筛选">
-                    {years.length > 0 ? (
-                      years.map((year) => (
-                        <button
-                          type="button"
-                          key={year}
-                          className={activeYear === year ? 'active' : undefined}
-                          onClick={() => setSelectedYear(year)}
-                        >
-                          {year}
-                        </button>
-                      ))
-                    ) : (
-                      <span>暂无年份</span>
-                    )}
+            <div className="insights-filter-collapse" data-expanded={filtersOpen} aria-hidden={!filtersOpen}>
+              <div className="insights-filter-collapse-inner">
+                <section className="insights-range-panel" aria-label="周期与经期时长分析筛选">
+                  <div className="insights-range-tabs" ref={rangeTabsRef}>
+                    <span ref={rangeIndicatorRef} className="insights-tab-indicator" aria-hidden="true" />
+                    {[
+                      { value: 'recent6', label: '最近 6' },
+                      { value: 'recent12', label: '最近 12' },
+                      { value: 'year', label: '按年份' },
+                      { value: 'all', label: '全部' },
+                    ].map((item) => (
+                      <button
+                        type="button"
+                        key={item.value}
+                        className={`pressable ${timeRange === item.value ? 'active' : ''}`}
+                        data-range={item.value}
+                        onClick={() => setTimeRange(item.value as TimeRange)}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
                   </div>
-                )}
-              </section>
-            )}
+
+                  <div className="insights-year-collapse" data-visible={timeRange === 'year'}>
+                    <div className="insights-year-rail" ref={yearRailRef} aria-label="年份筛选">
+                      <span ref={yearIndicatorRef} className="insights-year-indicator" aria-hidden="true" />
+                      {years.length > 0 ? (
+                        years.map((year) => (
+                          <button
+                            type="button"
+                            key={year}
+                            className={`pressable ${activeYear === year ? 'active' : ''}`}
+                            data-year={year}
+                            onClick={() => setSelectedYear(year)}
+                          >
+                            {year}
+                          </button>
+                        ))
+                      ) : (
+                        <span>暂无年份</span>
+                      )}
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
             <div className="chart-legend">
               <span><i className="pink" />经期天数</span>
               <span><i className="green-line" />周期长度</span>
@@ -319,6 +339,34 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
       )}
     </PageShell>
   );
+}
+
+function positionIndicator(container: HTMLElement | null, indicator: HTMLElement | null, selector: string) {
+  const activeItem = container?.querySelector<HTMLElement>(selector);
+  if (!container || !indicator || !activeItem) return;
+
+  const initializing = indicator.dataset.ready !== 'true' || indicator.dataset.initializing === 'true';
+  if (initializing) indicator.dataset.initializing = 'true';
+  indicator.style.setProperty('--indicator-x', `${activeItem.offsetLeft}px`);
+  indicator.style.setProperty('--indicator-width', `${activeItem.offsetWidth}px`);
+  indicator.dataset.ready = 'true';
+
+  let firstFrame = 0;
+  let secondFrame = 0;
+  if (initializing && typeof requestAnimationFrame === 'function') {
+    firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
+        delete indicator.dataset.initializing;
+      });
+    });
+  } else {
+    delete indicator.dataset.initializing;
+  }
+
+  return () => {
+    if (firstFrame) cancelAnimationFrame(firstFrame);
+    if (secondFrame) cancelAnimationFrame(secondFrame);
+  };
 }
 
 function PredictionMethodCard({ prediction }: { prediction: PredictionResult }) {

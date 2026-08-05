@@ -107,7 +107,7 @@ export function Home({ settings, backupStatus, cycleModel, cycles, dailyLogs, on
       className="home-screen"
     >
       {backupStatus?.isOverdue && (
-        <button type="button" className="backup-reminder" onClick={onBackupReminder}>
+        <button type="button" className="backup-reminder pressable" onClick={onBackupReminder}>
           <span>建议备份数据</span>
           <small>
             {backupStatus.homeReminderText}，去设置导出备份
@@ -124,7 +124,7 @@ export function Home({ settings, backupStatus, cycleModel, cycles, dailyLogs, on
             {heroCopy.unit && <small>{heroCopy.unit}</small>}
           </strong>
           {heroCopy.detail && <em>{heroCopy.detail}</em>}
-          <button type="button" onClick={() => onDaySelect(todayStr)}>
+          <button type="button" className="pressable" onClick={() => onDaySelect(todayStr)}>
             记录今天
           </button>
           <div className="hero-phase-summary">
@@ -136,7 +136,7 @@ export function Home({ settings, backupStatus, cycleModel, cycles, dailyLogs, on
       <section className="today-status">
         <div className="inline-section-title">
           <h2>今日心情</h2>
-          <button type="button" className="icon-action" onClick={() => onDaySelect(todayStr)} aria-label="编辑今日记录">
+          <button type="button" className="icon-action icon-pressable" onClick={() => onDaySelect(todayStr)} aria-label="编辑今日记录">
             <Pencil className="h-5 w-5" />
           </button>
         </div>
@@ -145,7 +145,7 @@ export function Home({ settings, backupStatus, cycleModel, cycles, dailyLogs, on
             <button
               type="button"
               key={item.label}
-              className={`status-chip ${item.active ? 'active' : ''}`}
+              className={`status-chip pressable ${item.active ? 'active' : ''}`}
               aria-pressed={item.active}
               onClick={() => onMoodSelect(todayStr, getNextMoodSelection(todayLog?.mood, item.label))}
             >
@@ -167,13 +167,13 @@ export function Home({ settings, backupStatus, cycleModel, cycles, dailyLogs, on
       <section className="recent-record">
         <div className="inline-section-title">
           <h2>最近记录</h2>
-          <button type="button" onClick={() => navigate('/calendar')}>
+          <button type="button" className="pressable" onClick={() => navigate('/calendar')}>
             查看日历
             <span>›</span>
           </button>
         </div>
         {latestLog ? (
-          <button type="button" className="recent-card" onClick={() => onDaySelect(latestLog.date)}>
+          <button type="button" className="recent-card pressable" onClick={() => onDaySelect(latestLog.date)}>
             <div className="recent-date">
               <span>
                 {formatShortCN(dateFromISO(latestLog.date))} {weekdayCN(dateFromISO(latestLog.date))}
@@ -187,7 +187,7 @@ export function Home({ settings, backupStatus, cycleModel, cycles, dailyLogs, on
             </div>
           </button>
         ) : (
-          <button type="button" className="recent-card empty" onClick={() => onDaySelect(todayStr)}>
+          <button type="button" className="recent-card empty pressable" onClick={() => onDaySelect(todayStr)}>
             还没有最近记录，今天从一个小状态开始吧。
           </button>
         )}
