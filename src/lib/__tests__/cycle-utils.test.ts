@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   getCyclePhase,
   getCyclePhaseInfoForDate,
+  getCycleDayNumberForDate,
   getOvulationDay,
   formatDate,
   parseLocalDate,
@@ -86,6 +87,32 @@ describe('getCyclePhase', () => {
     expect(getCyclePhase(14, 30, 5)).toBe('ovulation');
     expect(getCyclePhase(18, 30, 5)).toBe('ovulation'); // 第18天仍在排卵期内
     expect(getCyclePhase(19, 30, 5)).toBe('luteal');    // 第19天开始黄体期
+  });
+});
+
+describe('getCycleDayNumberForDate', () => {
+  const cycles = [
+    createCycle('2026-01-01', '2026-01-05'),
+    createCycle('2026-02-05', '2026-02-09'),
+  ];
+
+  it('历史周期按相邻两次经期首日统计实际天数', () => {
+    expect(getCycleDayNumberForDate(createDate(2026, 1, 1), { cycles, cycleLength: 28 })).toBe(1);
+    expect(getCycleDayNumberForDate(createDate(2026, 2, 4), { cycles, cycleLength: 28 })).toBe(35);
+    expect(getCycleDayNumberForDate(createDate(2026, 2, 5), { cycles, cycleLength: 28 })).toBe(1);
+  });
+
+  it('最近一次经期之后按趋势预测的有效周期长度重置', () => {
+    expect(getCycleDayNumberForDate(createDate(2026, 3, 4), { cycles, cycleLength: 28 })).toBe(28);
+    expect(getCycleDayNumberForDate(createDate(2026, 3, 5), { cycles, cycleLength: 28 })).toBe(1);
+    expect(getCycleDayNumberForDate(createDate(2026, 3, 6), { cycles, cycleLength: 28 })).toBe(2);
+  });
+
+  it('只有设置中的最近经期首日时也能统计，之前的日期不显示', () => {
+    const options = { cycles: [], lastPeriodStart: '2026-05-18', cycleLength: 30 };
+    expect(getCycleDayNumberForDate(createDate(2026, 5, 17), options)).toBeNull();
+    expect(getCycleDayNumberForDate(createDate(2026, 5, 18), options)).toBe(1);
+    expect(getCycleDayNumberForDate(createDate(2026, 6, 17), options)).toBe(1);
   });
 });
 

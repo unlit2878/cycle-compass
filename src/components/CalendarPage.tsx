@@ -29,6 +29,7 @@ import { CycleData, DailyLog, Settings } from '@/lib/db';
 import {
   CyclePhase,
   formatDate,
+  getCycleDayNumberForDate,
   getCyclePhaseInfoForDate,
   getDaysInMonth,
   getOrdinalSuffix,
@@ -77,6 +78,7 @@ export function CalendarPage({
   const currentMonthIsToday =
     new Date().getFullYear() === currentYear && new Date().getMonth() === currentMonthIndex;
   const useUnderlinePhaseStyle = settings?.calendarPhaseStyle === 'underline';
+  const showCycleStatistics = settings?.showCycleStatistics ?? false;
   const yearOptions = useMemo(() => Array.from({ length: 101 }, (_, index) => 2000 + index), []);
   const monthOptions = Array.from({ length: 12 }, (_, index) => `${index + 1}月`);
 
@@ -293,6 +295,13 @@ export function CalendarPage({
                   ? phase
                   : null;
               const periodDay = getPeriodDay(date);
+              const cycleDay = showCycleStatistics && cycleModel
+                ? getCycleDayNumberForDate(date, {
+                    cycles,
+                    lastPeriodStart: cycleModel.lastPeriodStartDateStr,
+                    cycleLength: cycleModel.effectiveCycleLength,
+                  })
+                : null;
 
               return (
                 <button
@@ -314,7 +323,9 @@ export function CalendarPage({
                 >
                   <span>{date.getDate()}</span>
                   {underlinePhase && <i className={`phase-underline phase-underline-${underlinePhase}`} />}
-                  {periodDay && <small>{getOrdinalSuffix(periodDay)}</small>}
+                  {showCycleStatistics
+                    ? cycleDay !== null && <small className="cycle-day-number">{String(cycleDay).padStart(2, '0')}</small>
+                    : periodDay && <small>{getOrdinalSuffix(periodDay)}</small>}
                   {log && <i className={useUnderlinePhaseStyle ? 'log-dot log-leaf' : 'log-dot'} />}
                 </button>
               );

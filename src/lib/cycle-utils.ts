@@ -191,6 +191,36 @@ function getDaysBetweenDates(startDate: string, endDate: string): number {
   return Math.floor((parseLocalDate(endDate).getTime() - parseLocalDate(startDate).getTime()) / DAY_MS);
 }
 
+export function getCycleDayNumberForDate(
+  date: Date,
+  options: {
+    cycles: CycleData[];
+    lastPeriodStart?: string | null;
+    cycleLength: number;
+  }
+): number | null {
+  const dateStr = formatDate(date);
+  const recordedCycles = [...options.cycles].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const anchorCycle = getLatestCycleStartOnOrBeforeDate(dateStr, recordedCycles);
+  const anchorStartDateStr = anchorCycle?.startDate || options.lastPeriodStart;
+
+  if (!anchorStartDateStr || dateStr < anchorStartDateStr) return null;
+
+  const dayFromAnchor = getDaysBetweenDates(anchorStartDateStr, dateStr) + 1;
+  const latestRecordedStart = recordedCycles.at(-1)?.startDate;
+
+  // Completed historical cycles keep their actual length, exactly as the trend
+  // chart measures the interval between two recorded period starts.
+  if (anchorCycle && anchorCycle.startDate !== latestRecordedStart) {
+    return dayFromAnchor;
+  }
+
+  // The current and future calendar follow the effective length produced by
+  // the prediction engine, so each predicted period start resets to day 01.
+  const safeCycleLength = Math.max(1, Math.round(options.cycleLength));
+  return ((dayFromAnchor - 1) % safeCycleLength + safeCycleLength) % safeCycleLength + 1;
+}
+
 function getRecordedPeriodLength(cycle: CycleData, fallbackPeriodLength: number): number {
   if (!cycle.endDate) return fallbackPeriodLength;
   return Math.max(1, getDaysBetweenDates(cycle.startDate, cycle.endDate) + 1);

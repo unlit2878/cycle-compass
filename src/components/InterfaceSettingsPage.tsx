@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, CalendarDays, Check, Plus, type LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageShell } from '@/components/AppScaffold';
+import { Switch } from '@/components/ui/switch';
 import { CalendarPhaseStyle, Settings as SettingsType } from '@/lib/db';
 import { canRequestWidgetPin, openWidgetPermissionSettings, requestWidgetPin, waitForWidgetPinOutcome, type WidgetSize } from '@/lib/widget-sync';
 import { toast } from 'sonner';
@@ -158,6 +159,17 @@ export function InterfaceSettingsPage({ settings, onUpdateSettings }: InterfaceS
               </button>
             );
           })}
+        </div>
+        <div className="cycle-statistics-setting">
+          <span>
+            <strong>显示周期统计</strong>
+            <small>在日历日期下方显示周期天数，经期首日为 01</small>
+          </span>
+          <Switch
+            checked={settings.showCycleStatistics ?? false}
+            onCheckedChange={(checked) => void onUpdateSettings({ showCycleStatistics: checked })}
+            aria-label="显示周期统计"
+          />
         </div>
       </section>
 

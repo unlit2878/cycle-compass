@@ -2132,6 +2132,21 @@
   color: currentColor;
 }
 
+.calendar-day small.cycle-day-number {
+  margin-top: -1px;
+  color: rgba(76, 83, 89, 0.5);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: 0;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.calendar-day.selected .cycle-day-number {
+  color: rgba(255, 255, 255, 0.76);
+}
+
 .calendar-day .log-dot {
   position: absolute;
   left: 50%;
@@ -3195,6 +3210,34 @@
 .calendar-style-option.selected .calendar-style-check {
   background: var(--paper-green);
   box-shadow: 0 8px 16px rgba(91, 130, 70, 0.18);
+}
+
+.cycle-statistics-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  margin-top: 18px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(126, 135, 144, 0.14);
+}
+
+.cycle-statistics-setting strong,
+.cycle-statistics-setting small {
+  display: block;
+}
+
+.cycle-statistics-setting strong {
+  color: #161b20;
+  font-size: 18px;
+  font-weight: 740;
+}
+
+.cycle-statistics-setting small {
+  margin-top: 6px;
+  color: #8b93a0;
+  font-size: 14px;
+  line-height: 1.38;
 }
 
 .widget-install-group {

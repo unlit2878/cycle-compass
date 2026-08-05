@@ -41,6 +41,7 @@ export interface Settings {
   lastBackupDate?: string;
   persistentStorageGranted: boolean;
   calendarPhaseStyle?: CalendarPhaseStyle;
+  showCycleStatistics?: boolean;
   customPhaseEmojis?: {
     menstrual?: string;
     follicular?: string;
@@ -229,6 +230,7 @@ export async function getSettings(): Promise<Settings> {
       backupReminderInterval: 'weekly',
       persistentStorageGranted: false,
       calendarPhaseStyle: 'classic',
+      showCycleStatistics: false,
     };
     await db.put('settings', defaultSettings);
     return defaultSettings;
@@ -237,6 +239,7 @@ export async function getSettings(): Promise<Settings> {
   return {
     ...settings,
     calendarPhaseStyle: settings.calendarPhaseStyle || 'classic',
+    showCycleStatistics: settings.showCycleStatistics ?? false,
   };
 }
 
