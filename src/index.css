@@ -3197,6 +3197,109 @@
   box-shadow: 0 8px 16px rgba(91, 130, 70, 0.18);
 }
 
+.widget-install-group {
+  margin-top: 34px;
+}
+
+.widget-install-options {
+  display: grid;
+  gap: 28px;
+}
+
+.widget-install-option {
+  display: grid;
+  grid-template-columns: minmax(144px, 0.82fr) minmax(0, 1.18fr);
+  align-items: center;
+  gap: 22px;
+}
+
+.widget-preview-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 154px;
+  padding: 16px;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    var(--paper-grain),
+    var(--paper-fibers),
+    linear-gradient(135deg, rgba(249, 250, 247, 0.94) 0%, rgba(235, 241, 231, 0.76) 100%);
+}
+
+.widget-preview-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 10px rgba(46, 55, 43, 0.12));
+}
+
+.widget-install-option-medium .widget-preview-stage img {
+  aspect-ratio: 1;
+}
+
+.widget-install-option-large .widget-preview-stage img {
+  aspect-ratio: 2 / 1;
+}
+
+.widget-install-details {
+  min-width: 0;
+}
+
+.widget-install-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.widget-install-heading strong {
+  color: #161b20;
+  font-size: 17px;
+  font-weight: 740;
+}
+
+.widget-install-heading span {
+  flex: none;
+  color: #719b5f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.widget-install-details p {
+  margin: 7px 0 14px;
+  color: #8b93a0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.widget-install-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 7px;
+  color: #fff;
+  background: var(--paper-green);
+  font-size: 13px;
+  font-weight: 700;
+  transition: transform 180ms ease, background 180ms ease, opacity 180ms ease;
+}
+
+.widget-install-button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+}
+
+.widget-install-button:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
 .import-help-dialog {
   max-width: 370px;
   border: 0;
@@ -4652,6 +4755,36 @@
   .calendar-style-copy small {
     margin-top: 4px;
     font-size: var(--compact-settings-desc);
+  }
+
+  .widget-install-group {
+    margin-top: 28px;
+  }
+
+  .widget-install-option {
+    grid-template-columns: minmax(108px, 0.78fr) minmax(0, 1.22fr);
+    gap: 15px;
+  }
+
+  .widget-preview-stage {
+    height: 126px;
+    padding: 12px;
+  }
+
+  .widget-install-heading strong {
+    font-size: var(--compact-settings-title);
+  }
+
+  .widget-install-details p {
+    margin: 5px 0 11px;
+    font-size: 12px;
+    line-height: 1.38;
+  }
+
+  .widget-install-button {
+    min-height: 34px;
+    padding: 0 11px;
+    font-size: 12px;
   }
 
   .settings-footer {
