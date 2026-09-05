@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaceSmile } from 'reicon-react';
 import { Pen } from 'reicon-react';
 import { PageShell } from '@/components/AppScaffold';
-import { emptyMoodLabel, getNextMoodSelection, moodOptionIcons } from '@/components/mood-options';
+import { getNextMoodSelection, moodOptionIcons, noMoodSummaryLabel } from '@/components/mood-options';
 import { getFlowSummaryIcon, getMoodSummaryIcon, getPainSummaryIcon, type RecordSummaryIcon } from '@/components/record-icon-maps';
 import { CycleModel } from '@/lib/cycle-engine';
 import {
@@ -18,7 +18,7 @@ import {
 } from '@/lib/cycle-utils';
 import { BackupStatus } from '@/lib/backup-status';
 import { CycleData, DailyLog, Settings } from '@/lib/db';
-import { dateFromISO, formatShortCN, getFlowLabel, getPainLevelLabel, moodOptions, weekdayCN } from '@/lib/ui-model';
+import { dateFromISO, formatShortCN, getFlowLabel, getRelativeDaysLabel, getPainLevelLabel, moodOptions, weekdayCN } from '@/lib/ui-model';
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -175,13 +175,14 @@ export function Home({ settings, backupStatus, cycleModel, cycles, dailyLogs, on
             <div className="recent-date">
               <span>
                 {formatShortCN(dateFromISO(latestLog.date))} {weekdayCN(dateFromISO(latestLog.date))}
+                <em className="recent-ago">· {getRelativeDaysLabel(dateFromISO(latestLog.date), today)}</em>
               </span>
               <small>{latestCycleLabel}</small>
             </div>
             <div className="recent-metrics">
               <Metric icon={getFlowSummaryIcon(latestLog.flowIntensity)} label="流量" value={getFlowLabel(latestLog.flowIntensity)} />
               <Metric icon={getPainSummaryIcon(latestLog.painLevel)} label="疼痛" value={getPainLevelLabel(latestLog.painLevel)} />
-              <Metric icon={getMoodSummaryIcon(latestLog.mood)} label="情绪" value={latestLog.mood || emptyMoodLabel} />
+              <Metric icon={getMoodSummaryIcon(latestLog.mood)} label="情绪" value={latestLog.mood || noMoodSummaryLabel} />
             </div>
           </button>
         ) : (

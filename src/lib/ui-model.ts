@@ -77,3 +77,17 @@ export function weekdayShortCN(date: Date) {
 export function dateFromISO(date: string) {
   return new Date(`${date}T12:00:00`);
 }
+
+const RELATIVE_DAY_MS = 1000 * 60 * 60 * 24;
+
+// "最近记录"卡片的历史标注：今天/昨天/N天前，跨月后粗算为 N个月前。
+// 天数粒度到 30 为止，避免"N周前"丢失精度；月份按 30 天近似即可，用途只是提示"这是历史"。
+export function getRelativeDaysLabel(date: Date, today: Date): string {
+  const dayDiff = Math.floor(
+    (new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12).getTime() - date.getTime()) / RELATIVE_DAY_MS
+  );
+  if (dayDiff <= 0) return '今天';
+  if (dayDiff === 1) return '昨天';
+  if (dayDiff <= 30) return `${dayDiff}天前`;
+  return `${Math.floor(dayDiff / 30)}个月前`;
+}

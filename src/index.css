@@ -1576,6 +1576,14 @@
   font-weight: 400;
 }
 
+/* "这是历史"标注：紧跟日期的小字，与下方指标标签同色系，提示快照数据不是今天 */
+.recent-date .recent-ago {
+  margin-left: 6px;
+  color: #9299a1;
+  font-size: 12px;
+  font-style: normal;
+}
+
 .recent-date small {
   font-size: 13px;
 }

@@ -1,13 +1,13 @@
 import { CycleData, DailyLog, Settings } from './db';
 import {
   buildPeriodDateSet,
+  CyclePhaseInfoForDate,
   FertilityWindowInfo,
   formatDate,
   getFertilityWindowForNextPeriodStart,
   getCyclePhaseInfoForDate,
   getMostRecentExpectedStart,
   parseLocalDate,
-  PhaseInfo,
 } from './cycle-utils';
 import {
   calculateStdDev,
@@ -70,7 +70,7 @@ export interface CycleModel {
   prediction: PredictionResult;
   lastPeriodStartDate: Date | null;
   lastPeriodStartDateStr: string | null;
-  currentPhase: PhaseInfo | null;
+  currentPhase: CyclePhaseInfoForDate | null;
   nextPeriodRange: DateRangeModel | null;
   nextPeriodStartWindow: DateRangeModel | null;
   nextFertilityWindow: FertilityWindowInfo | null;

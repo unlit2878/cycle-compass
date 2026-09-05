@@ -117,3 +117,10 @@ export const FlowVeryHeavyIcon = createIcon('FlowVeryHeavy', {
   F: '<path fill="currentColor" stroke="none" d="M12 2.9c-3.1 3.6-4.65 6.2-4.65 8.5a4.65 4.65 0 0 0 9.3 0c0-2.3-1.55-4.9-4.65-8.5Z"/>' +
     '<g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4.55 18.35c1.8-1.2 3.5-1.2 5.3 0s3.5 1.2 5.3 0 3.5-1.2 5.3 0"/><path d="M6.1 21.1c1.8-1.2 3.5-1.2 5.3 0s3.5 1.2 5.3 0 3.5-1.2 5.3 0"/></g>',
 });
+
+/** 未记录：虚线空圆，与心情圆脸族同几何（cx12 cy12），无表情。
+ *  仅定义 O 数据——createIcon 在缺失当前 weight 数据时回退到第一项，
+ *  因此无论调用方传什么 weight 都渲染同一虚线圆（"未记录"没有实心语义）。 */
+export const NotRecordedIcon = createIcon('NotRecorded', {
+  O: strokeWrap('<circle cx="12" cy="12" r="9.25" stroke-dasharray="3.4 2.7"/>'),
+});
