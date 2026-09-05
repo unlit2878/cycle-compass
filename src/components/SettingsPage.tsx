@@ -3,7 +3,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronRight, Database, Download, Droplet, Leaf, Palette, Upload } from 'reicon-react';
+import { ChevronRight, Database, Download, Droplet, Palette, Upload } from 'reicon-react';
 import { PageShell } from '@/components/AppScaffold';
 import {
   Dialog,
@@ -121,7 +121,7 @@ export function SettingsPage({
       </SettingsGroup>
 
       <footer className="settings-footer">
-        <Leaf className="h-10 w-10" />
+        <img src="/decor/app_icon.png" alt="" className="h-10 w-auto" />
         <p>愿你在每一个阶段，都被温柔以待</p>
         <span>v {__APP_VERSION__}</span>
       </footer>
