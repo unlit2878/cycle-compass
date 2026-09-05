@@ -1,6 +1,6 @@
 import { ChangeEvent, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Clipboard, FileJson, Upload } from 'lucide-react';
+import { ArrowLeft, Check, Clipboard, DocumentCode, Upload } from 'reicon-react';
 import { PageShell } from '@/components/AppScaffold';
 import {
   Dialog,
@@ -150,7 +150,7 @@ export function DataImportPage({ onImport }: DataImportPageProps) {
             选择 JSON 文件
           </button>
           <button type="button" className="data-import-format-button pressable" onClick={() => setExampleOpen(true)}>
-            <FileJson className="h-4 w-4" />
+            <DocumentCode className="h-4 w-4" />
             JSON 格式
           </button>
         </div>
@@ -180,7 +180,7 @@ export function DataImportPage({ onImport }: DataImportPageProps) {
           disabled={busy}
           onClick={() => importJson(jsonText)}
         >
-          <FileJson className="h-4 w-4" />
+          <DocumentCode className="h-4 w-4" />
           {busy ? '导入中...' : '导入粘贴内容'}
         </button>
       </section>

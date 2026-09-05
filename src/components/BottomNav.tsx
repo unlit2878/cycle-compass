@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { MouseEvent } from 'react';
-import { CalendarDays, ChartNoAxesColumn, Home, Plus, UserRound } from 'lucide-react';
+import { Calendar, Chart, Home, Plus, User } from 'reicon-react';
 
 interface BottomNavProps {
   onLogClick: () => void;
@@ -10,9 +10,9 @@ interface BottomNavProps {
 
 const navItems = [
   { to: '/', id: 'home', icon: Home, label: '首页' },
-  { to: '/calendar', id: 'calendar', icon: CalendarDays, label: '日历' },
-  { to: '/insights', id: 'insights', icon: ChartNoAxesColumn, label: '趋势' },
-  { to: '/settings', id: 'settings', icon: UserRound, label: '我的' },
+  { to: '/calendar', id: 'calendar', icon: Calendar, label: '日历' },
+  { to: '/insights', id: 'insights', icon: Chart, label: '趋势' },
+  { to: '/settings', id: 'settings', icon: User, label: '我的' },
 ] as const;
 
 type NavItem = (typeof navItems)[number];

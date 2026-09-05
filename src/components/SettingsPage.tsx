@@ -1,17 +1,9 @@
+import type { IconComponent } from 'reicon-react/createIcon';
 import { ReactNode, useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  ChevronRight,
-  Database,
-  Download,
-  Droplet,
-  Leaf,
-  Palette,
-  Upload,
-  type LucideIcon,
-} from 'lucide-react';
+import { ChevronRight, Database, Download, Droplet, Leaf, Palette, Upload } from 'reicon-react';
 import { PageShell } from '@/components/AppScaffold';
 import {
   Dialog,
@@ -258,7 +250,7 @@ function SettingsRow({
   desc,
   onClick,
 }: {
-  icon: LucideIcon;
+  icon: IconComponent;
   tone: string;
   title: string;
   desc: string;

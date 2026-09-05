@@ -3105,14 +3105,6 @@
   background: rgba(236, 244, 230, 0.92);
 }
 
-.analysis-filter-button svg {
-  transition: transform var(--motion-duration-standard) var(--motion-ease-move);
-}
-
-.analysis-filter-button.active svg {
-  transform: rotate(90deg);
-}
-
 .analysis-filter-button:active {
   transform: scale(0.94);
   background: rgba(239, 235, 228, 0.7);

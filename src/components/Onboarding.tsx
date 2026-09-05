@@ -2,7 +2,7 @@ import { CSSProperties, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Slider } from '@/components/ui/slider';
-import { ArrowRight, ArrowLeft, Upload } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Upload } from 'reicon-react';
 import { zh, formatDateChinese } from '@/lib/i18n';
 import { formatDate } from '@/lib/cycle-utils';
 import { zhCN } from 'date-fns/locale';

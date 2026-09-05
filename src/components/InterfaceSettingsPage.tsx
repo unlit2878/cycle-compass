@@ -1,5 +1,6 @@
+import type { IconComponent } from 'reicon-react/createIcon';
 import { useState } from 'react';
-import { ArrowLeft, CalendarDays, Check, LoaderCircle, Plus, TriangleAlert, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Calendar, Check, Loader, Plus, AlertTriangle } from 'reicon-react';
 import { useNavigate } from 'react-router-dom';
 import { PageShell } from '@/components/AppScaffold';
 import { Switch } from '@/components/ui/switch';
@@ -18,19 +19,19 @@ const calendarStyleOptions: Array<{
   value: CalendarPhaseStyle;
   title: string;
   desc: string;
-  icon: LucideIcon;
+  icon: IconComponent;
 }> = [
   {
     value: 'classic',
     title: '样式一',
     desc: '阶段以柔和背景呈现，记录使用底部圆点标记',
-    icon: CalendarDays,
+    icon: Calendar,
   },
   {
     value: 'underline',
     title: '样式二',
     desc: '阶段以日期下方纹理线呈现，记录使用叶子标记',
-    icon: CalendarDays,
+    icon: Calendar,
   },
 ];
 
@@ -201,11 +202,11 @@ export function InterfaceSettingsPage({ settings, onUpdateSettings }: InterfaceS
             const installing = installingWidget === size;
             const outcome = widgetOutcome?.size === size ? widgetOutcome.status : null;
             const StateIcon = installing
-              ? LoaderCircle
+              ? Loader
               : outcome === 'success'
                 ? Check
                 : outcome === 'error'
-                  ? TriangleAlert
+                  ? AlertTriangle
                   : Plus;
 
             return (

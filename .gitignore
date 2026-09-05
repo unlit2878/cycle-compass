@@ -54,3 +54,6 @@ dist-ssr
 /android/app/build/
 /android/app/release/
 /android/capacitor-cordova-android-plugins/
+
+# 数据备份文件不入库
+/zhiqi-backup-*.json

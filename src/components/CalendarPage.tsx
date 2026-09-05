@@ -1,12 +1,6 @@
 import { ComponentType, TouchEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import {
-  CalendarDays,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Pencil,
-  Smile,
-} from 'lucide-react';
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight, FaceSmile } from 'reicon-react';
+import { Pen } from 'reicon-react';
 import { PageShell } from '@/components/AppScaffold';
 import { getNextMoodSelection, moodOptionIcons } from '@/components/mood-options';
 import { getFlowSummaryIcon, getMoodSummaryIcon, getPainSummaryIcon, type RecordSummaryIcon } from '@/components/record-icon-maps';
@@ -121,7 +115,7 @@ export function CalendarPage({
     : '排卵期之后到下次经期前的阶段，日历用蜡笔背景提示。';
   const statusItems: Array<{ label: string; icon: IconComponent; active: boolean }> = moodOptions.map((label, index) => ({
     label,
-    icon: moodOptionIcons[index] || Smile,
+    icon: moodOptionIcons[index] || FaceSmile,
     active: selectedLog?.mood === label,
   }));
 
@@ -446,7 +440,7 @@ export function CalendarPage({
             <span>{weekdayCN(selected)}</span>
           </div>
           <button type="button" className="icon-pressable" onClick={() => onDaySelect(selectedDate)} aria-label="编辑记录">
-            <Pencil className="h-5 w-5" />
+            <Pen className="h-5 w-5" />
           </button>
         </div>
 
@@ -501,7 +495,7 @@ export function CalendarPage({
         aria-hidden={isViewingToday}
         onClick={goToday}
       >
-        <CalendarDays className="h-4 w-4" />
+        <Calendar className="h-4 w-4" />
         今天
       </button>
     </PageShell>

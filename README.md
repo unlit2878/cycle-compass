@@ -29,7 +29,7 @@
 - 构建工具：Vite 5
 - 前端框架：React 18、TypeScript
 - 路由与状态：React Router、TanStack Query
-- UI 与样式：Tailwind CSS、shadcn/ui、Radix UI、lucide-react、Sonner
+- UI 与样式：Tailwind CSS、shadcn/ui、Radix UI、reicon-react（图标库）、lucide-react（个别组件图标）、Sonner
 - 本地数据：IndexedDB，封装库为 `idb`
 - 日期与统计：date-fns、自定义周期模型和预测工具
 - 移动端：Capacitor 8、Android Gradle 工程

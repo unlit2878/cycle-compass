@@ -1,42 +1,38 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
+  Ban,
+  Bolt,
+  CalendarMark as PeriodStartIcon,
+  CalendarX as PeriodEndIcon,
   Check,
+  Drop,
   Droplet,
+  Drops,
+  Hiking3 as WaistSorenessIcon,
   Heart,
-  LoaderCircle,
-  Smile,
+  HeartPulse as BreastPainIcon,
+  Loader,
+  FaceSmile,
   Trash2,
-  TriangleAlert,
-} from 'lucide-react';
+  UserX3 as HeadacheIcon,
+  AlertTriangle,
+} from 'reicon-react';
 import { toast } from 'sonner';
 import { PageShell } from '@/components/AppScaffold';
 import { emptyMoodLabel, getNextMoodSelection, moodOptionIcons } from '@/components/mood-options';
 import {
   AcneIcon,
-  AppetiteIcon,
   BloatingIcon,
-  BreastPainIcon,
   ConstipationIcon,
   DiarrheaIcon,
-  EdemaIcon,
-  FatigueIcon,
-  FlowHeavyIcon,
-  FlowLightIcon,
   FlowMediumIcon,
   FlowVeryHeavyIcon,
-  FlowVeryLightIcon,
-  HeadacheIcon,
-  InsomniaIcon,
   NauseaIcon,
-  PainMildIcon,
   PainModerateIcon,
-  PainNoneIcon,
   PainSevereIcon,
-  PeriodEndIcon,
-  PeriodStartIcon,
-  WaistSorenessIcon,
-} from '@/components/record-icons';
+} from '@/components/reicon-custom-icons';
+import { AppetiteIcon, EdemaIcon, FatigueIcon, InsomniaIcon } from '@/components/record-icons';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -403,9 +399,9 @@ export function LoggingScreen({
             disabled={saveState === 'loading' || saveState === 'success'}
             onClick={handleSave}
           >
-            {saveState === 'loading' && <LoaderCircle className="save-state-icon is-loading" aria-hidden="true" />}
+            {saveState === 'loading' && <Loader className="save-state-icon is-loading" aria-hidden="true" />}
             {saveState === 'success' && <Check className="save-state-icon" aria-hidden="true" />}
-            {saveState === 'error' && <TriangleAlert className="save-state-icon" aria-hidden="true" />}
+            {saveState === 'error' && <AlertTriangle className="save-state-icon" aria-hidden="true" />}
             <span key={saveState} className="save-pill-label" aria-live="polite">
               {getSaveLabel(saveState)}
             </span>
@@ -577,13 +573,13 @@ export function LoggingScreen({
 
       <section className="record-section bordered">
         <div className="section-title mood-title">
-          <Smile className="h-5 w-5" />
+          <FaceSmile className="h-5 w-5" />
           <span>心情记录</span>
           <small>{mood || emptyMoodLabel}</small>
         </div>
         <div className="icon-grid icon-grid-5 mood-grid">
           {moodOptions.map((item, index) => {
-            const Icon = moodOptionIcons[index] || Smile;
+            const Icon = moodOptionIcons[index] || FaceSmile;
             return (
               <button
                 type="button"
@@ -681,37 +677,29 @@ function OptionGrid({ label, columns, children }: { label: string; columns: numb
 function FlowIntensityIcon({ intensity, selected }: { intensity: FlowIntensity; selected: boolean }) {
   const Icon =
     intensity === 'very_light'
-      ? FlowVeryLightIcon
+      ? Drop
       : intensity === 'light'
-        ? FlowLightIcon
+        ? Droplet
         : intensity === 'medium'
           ? FlowMediumIcon
           : intensity === 'heavy'
-            ? FlowHeavyIcon
+            ? Drops
             : FlowVeryHeavyIcon;
 
-  return <Icon className={`flow-intensity-icon flow-${intensity}`} strokeWidth={selected ? 2.15 : 1.9} />;
+  return <Icon className={`flow-intensity-icon flow-${intensity}`} />;
 }
 
 function PainLevelIcon({ level, selected }: { level: PainLevel; selected: boolean }) {
-  const strokeWidth = selected ? 2.15 : 1.9;
   const commonProps = {
     className: `pain-level-icon pain-${level}`,
-    viewBox: '0 0 32 32',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true,
   };
 
   if (level === 'none') {
-    return <PainNoneIcon {...commonProps} />;
+    return <Ban {...commonProps} />;
   }
 
   if (level === 'mild') {
-    return <PainMildIcon {...commonProps} />;
+    return <Bolt {...commonProps} />;
   }
 
   if (level === 'moderate') {

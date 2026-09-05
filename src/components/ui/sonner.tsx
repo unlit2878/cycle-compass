@@ -1,11 +1,6 @@
 import { useTheme } from "next-themes";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Info,
-  LoaderCircle,
-  XCircle,
-} from "lucide-react";
+import { AlertTriangle, Loader, XCircle } from 'reicon-react';
+import { CheckCircle, CircleInfo } from 'reicon-react';
 import { Toaster as Sonner, toast } from "sonner";
 import "sonner/dist/styles.css";
 import { cn } from "@/lib/utils";
@@ -13,11 +8,11 @@ import { cn } from "@/lib/utils";
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const toastIcons = {
-  success: <CheckCircle2 aria-hidden="true" />,
-  info: <Info aria-hidden="true" />,
+  success: <CheckCircle aria-hidden="true" />,
+  info: <CircleInfo aria-hidden="true" />,
   warning: <AlertTriangle aria-hidden="true" />,
   error: <XCircle aria-hidden="true" />,
-  loading: <LoaderCircle aria-hidden="true" />,
+  loading: <Loader aria-hidden="true" />,
 };
 
 const Toaster = ({ className, icons, toastOptions, ...props }: ToasterProps) => {

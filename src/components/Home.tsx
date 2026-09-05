@@ -1,9 +1,7 @@
 import { ComponentType, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Pencil,
-  Smile,
-} from 'lucide-react';
+import { FaceSmile } from 'reicon-react';
+import { Pen } from 'reicon-react';
 import { PageShell } from '@/components/AppScaffold';
 import { emptyMoodLabel, getNextMoodSelection, moodOptionIcons } from '@/components/mood-options';
 import { getFlowSummaryIcon, getMoodSummaryIcon, getPainSummaryIcon, type RecordSummaryIcon } from '@/components/record-icon-maps';
@@ -83,7 +81,7 @@ export function Home({ settings, backupStatus, cycleModel, cycles, dailyLogs, on
 
   const statusItems: Array<{ label: string; icon: IconComponent; active: boolean }> = moodOptions.map((label, index) => ({
     label,
-    icon: moodOptionIcons[index] || Smile,
+    icon: moodOptionIcons[index] || FaceSmile,
     active: todayLog?.mood === label,
   }));
   const latestCycleLabel =
@@ -137,7 +135,7 @@ export function Home({ settings, backupStatus, cycleModel, cycles, dailyLogs, on
         <div className="inline-section-title">
           <h2>今日心情</h2>
           <button type="button" className="icon-action icon-pressable" onClick={() => onDaySelect(todayStr)} aria-label="编辑今日记录">
-            <Pencil className="h-5 w-5" />
+            <Pen className="h-5 w-5" />
           </button>
         </div>
         <div className="status-scroll">

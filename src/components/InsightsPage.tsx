@@ -1,15 +1,7 @@
+import type { IconComponent } from 'reicon-react/createIcon';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import {
-  Activity,
-  CalendarDays,
-  Heart,
-  Info,
-  Leaf,
-  ListFilter,
-  Target,
-  TrendingUp,
-  type LucideIcon,
-} from 'lucide-react';
+import { Activity, Bullseye, Calendar, ListHeart2, Heart, Leaf, Target } from 'reicon-react';
+import { CircleInfo, Filter, GraphUp } from 'reicon-react';
 import { PageShell } from '@/components/AppScaffold';
 import {
   Dialog,
@@ -120,7 +112,7 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
         <>
           <section className="insight-stat-row">
             <StatItem
-              icon={CalendarDays}
+              icon={Calendar}
               label="平均周期"
               value={formatStatValue(allStats.averageCycleLength)}
               unit={allStats.averageCycleLength === null ? '' : '天'}
@@ -136,7 +128,7 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
               tone="red"
             />
             <StatItem
-              icon={TrendingUp}
+              icon={GraphUp}
               label="记录周期"
               value={allStats.totalCyclesTracked}
               unit="个"
@@ -157,7 +149,7 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
           <section className="analysis-section">
             <div className="analysis-heading-row">
               <h2>
-                <Target className="h-5 w-5 text-[#f06c86]" />
+                <ListHeart2 className="h-5 w-5 text-[#f06c86]" />
                 周期与经期时长分析
               </h2>
               <button
@@ -167,7 +159,7 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
                 aria-expanded={filtersOpen}
                 onClick={() => setFiltersOpen((open) => !open)}
               >
-                <ListFilter className="h-4 w-4" />
+                <Filter className="h-4 w-4" />
               </button>
             </div>
 
@@ -309,7 +301,7 @@ export function InsightsPage({ cycles }: InsightsPageProps) {
               <>
                 <div className="prediction-metrics">
                   <PredictionMetric icon={Leaf} label="准确率" value={`${predictionAccuracy.accuracyRate}%`} desc="±2天内" />
-                  <PredictionMetric icon={TrendingUp} label="平均误差" value={predictionAccuracy.avgError.toFixed(1)} unit="天" desc="绝对值" />
+                  <PredictionMetric icon={Bullseye} label="平均误差" value={predictionAccuracy.avgError.toFixed(1)} unit="天" desc="绝对值" />
                   <PredictionMetric
                     icon={Heart}
                     label="置信度"
@@ -372,7 +364,7 @@ function positionIndicator(container: HTMLElement | null, indicator: HTMLElement
 function PredictionMethodCard({ prediction }: { prediction: PredictionResult }) {
   return (
     <div className="method-card">
-      <Info className="h-5 w-5" />
+      <CircleInfo className="h-5 w-5" />
       <div>
         <strong>当前使用：{getMethodName(prediction.method)}</strong>
         <span>
@@ -393,7 +385,7 @@ function FigoDialog() {
     <Dialog>
       <DialogTrigger asChild>
         <button type="button" className="figo-info-button" aria-label="查看 FIGO 标准说明">
-          <Info className="h-4 w-4" />
+          <CircleInfo className="h-4 w-4" />
         </button>
       </DialogTrigger>
       <DialogContent className="figo-dialog">
@@ -421,7 +413,7 @@ function StatItem({
   tone,
   score = null,
 }: {
-  icon: LucideIcon;
+  icon: IconComponent;
   label: string;
   value: number | string;
   unit: string;
@@ -448,7 +440,7 @@ function PredictionMetric({
   unit = '',
   desc,
 }: {
-  icon: LucideIcon;
+  icon: IconComponent;
   label: string;
   value: string;
   unit?: string;
