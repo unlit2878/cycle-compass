@@ -810,3 +810,91 @@ describe('不规律经期场景：预计5月3日但实际5月17日', () => {
     });
   });
 });
+
+describe('经期延迟 bug（真实场景：预计 8/31 未到，今天 9/4）', () => {
+  // 锚定周期 7/23–7/29（7 天经期），有效周期 39 天。
+  // 今天 9/4 距锚点 43 天：预计经期 8/31 已过 4 天仍未记录 → 延迟中。
+  const anchorCycles: CycleData[] = [createCycle('2026-07-23', '2026-07-29')];
+
+  function delayedSettings(): Settings {
+    return {
+      id: 1,
+      onboardingComplete: true,
+      averageCycleLength: 39,
+      averagePeriodLength: 7,
+      reminderPeriodApproaching: false,
+      reminderPeriodDays: 2,
+      reminderOvulation: false,
+      reminderDailyLog: false,
+      darkMode: false,
+      backupReminderInterval: 'monthly',
+      persistentStorageGranted: false,
+      lastPeriodStart: '2026-07-23',
+    };
+  }
+
+  describe('黄体期天数：延迟中应继续累加，而不是重置为第 1 天', () => {
+    it('9/4（晚 4 天）应为黄体期，且 phaseDay 从真实 dayInCycle 继续（=17），不是 1', () => {
+      const result = getCyclePhaseInfoForDate(createDate(2026, 9, 4), {
+        cycles: anchorCycles,
+        lastPeriodStart: '2026-07-23',
+        cycleLength: 39,
+        periodLength: 7,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.phase).toBe('luteal');
+      // dayInCycle = 43 + 1 = 44；排卵日 = round(39-14) = 25；黄体期天数 = 44 - (25 + 2) = 17
+      expect(result!.phaseDay).toBe(17);
+      expect(result!.phaseDay).not.toBe(1);
+    });
+
+    it('未延迟的正常黄体期仍用取模后的当前周期天数（回归保护）', () => {
+      // 8/22 距锚点 30 天，仍在第一个周期内（未延迟）：dayInCurrentCycle = 31 → 黄体期第 4 天
+      const result = getCyclePhaseInfoForDate(createDate(2026, 8, 22), {
+        cycles: anchorCycles,
+        lastPeriodStart: '2026-07-23',
+        cycleLength: 39,
+        periodLength: 7,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.phase).toBe('luteal');
+      expect(result!.phaseDay).toBe(4);
+    });
+  });
+
+  describe('日历：逾期的预期经期窗口应保留，且不被未来预测吞掉', () => {
+    it('overduePeriodDateSet 覆盖 8/31–9/06；predictedPeriodDateSet 从 10/09 开始且不含 8/31', () => {
+      const model = createCycleModel(delayedSettings(), anchorCycles, [], createDate(2026, 9, 4));
+
+      expect(model.effectiveCycleLength).toBe(39);
+      expect(model.effectivePeriodLength).toBe(7);
+
+      // 逾期窗口保留 → 日历据此画出"逾期未到"标记
+      expect(model.overduePeriodDateSet.has('2026-08-31')).toBe(true);
+      expect(model.overduePeriodDateSet.has('2026-09-06')).toBe(true);
+      expect(model.overduePeriodDateSet.size).toBe(7);
+
+      // 未来预测集合不再吞掉 8/31
+      expect(model.predictedPeriodDateSet.has('2026-08-31')).toBe(false);
+      expect(model.predictedPeriodDateSet.has('2026-10-09')).toBe(true);
+
+      // 首页相位：黄体期，且天数继续累加（非第 1 天）
+      expect(model.currentPhase).not.toBeNull();
+      expect(model.currentPhase!.phase).toBe('luteal');
+      expect(model.currentPhase!.phaseDay).toBe(17);
+    });
+
+    it('补记了迟到的经期后逾期窗口清空（锚点前移，回归正常）', () => {
+      // 用户在 9/6 记录了经期 → 锚点移到 9/6，getMostRecentExpectedStart 返回 null
+      const withRecorded: CycleData[] = [
+        createCycle('2026-07-23', '2026-07-29'),
+        createCycle('2026-09-06', '2026-09-11'),
+      ];
+      const model = createCycleModel(delayedSettings(), withRecorded, [], createDate(2026, 9, 7));
+
+      expect(model.overduePeriodDateSet.size).toBe(0);
+    });
+  });
+});

@@ -1,4 +1,4 @@
-import { ComponentType, TouchEvent, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ComponentType, TouchEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   CalendarDays,
   ChevronDown,
@@ -37,7 +37,7 @@ import { getFlowLabel, getPainLevelLabel, moodOptions, weekdayCN, weekdayShortCN
 import { useReducedMotionPreference } from '@/hooks/useReducedMotionPreference';
 
 type IconComponent = ComponentType<{ className?: string }>;
-type CalendarLegendKind = CyclePhase | 'predicted';
+type CalendarLegendKind = CyclePhase | 'predicted' | 'overdue';
 
 interface CalendarPageProps {
   settings: Settings | null;
@@ -75,7 +75,8 @@ export function CalendarPage({
   const [animationKey, setAnimationKey] = useState(0);
   const [detailExpanded, setDetailExpanded] = useState(true);
   const logMap = useMemo(() => new Map(dailyLogs.map((log) => [log.date, log])), [dailyLogs]);
-  const periodDates = cycleModel?.periodDateSet || new Set<string>();
+  const periodDates = useMemo(() => cycleModel?.periodDateSet || new Set<string>(), [cycleModel?.periodDateSet]);
+  const overdueDates = useMemo(() => cycleModel?.overduePeriodDateSet || new Set<string>(), [cycleModel?.overduePeriodDateSet]);
   const todayStr = formatDate(new Date());
   const currentYear = currentMonth.getFullYear();
   const currentMonthIndex = currentMonth.getMonth();
@@ -331,15 +332,18 @@ export function CalendarPage({
               const selectedCell = dateStr === selectedDate;
               const isRecordedPeriod = periodDates.has(dateStr);
               const isPredictedPeriod = cycleModel?.predictedPeriodDateSet.has(dateStr) && !isRecordedPeriod;
+              const isOverduePeriod =
+                overdueDates.has(dateStr) && !isRecordedPeriod && !isPredictedPeriod && dateStr !== todayStr;
               const isOvulation = !useUnderlinePhaseStyle && phase === 'ovulation' && !isRecordedPeriod && current;
               const backgroundPhase =
-                !useUnderlinePhaseStyle && current && (phase === 'follicular' || phase === 'luteal') ? phase : null;
+                !useUnderlinePhaseStyle && current && !isOverduePeriod && (phase === 'follicular' || phase === 'luteal') ? phase : null;
               const underlinePhase =
                 useUnderlinePhaseStyle &&
                 current &&
                 !selectedCell &&
                 !isRecordedPeriod &&
                 !isPredictedPeriod &&
+                !isOverduePeriod &&
                 (phase === 'follicular' || phase === 'ovulation' || phase === 'luteal')
                   ? phase
                   : null;
@@ -363,6 +367,7 @@ export function CalendarPage({
                     selectedCell ? 'selected' : '',
                     isRecordedPeriod ? 'period' : '',
                     isPredictedPeriod ? 'predicted-period' : '',
+                    isOverduePeriod ? 'expected-overdue' : '',
                     isOvulation ? 'ovulation' : '',
                     backgroundPhase ? backgroundPhase : '',
                   ].join(' ')}
@@ -417,6 +422,7 @@ export function CalendarPage({
               text={lutealHelpText}
             />
             <PhaseHelpDot kind="predicted" title="预测经期" text="未来经期使用淡色虚线标记。" />
+            <PhaseHelpDot kind="overdue" title="逾期未到" text="预计经期已到日期却还没记录，用醒目虚线圈出，提醒你经期延迟、等待到来或补记。" />
           </div>
         </DialogContent>
       </Dialog>

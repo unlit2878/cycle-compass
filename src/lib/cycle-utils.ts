@@ -312,6 +312,7 @@ export function getCyclePhaseInfoForDate(
   let phase = isRecordedPeriod || isPredictedPeriod
     ? 'menstrual'
     : getCyclePhase(dayInCurrentCycle, safeCycleLength, periodLengthUsed);
+  let delayOverrideApplied = false;
 
   if (
     phase === 'menstrual' &&
@@ -335,11 +336,15 @@ export function getCyclePhaseInfoForDate(
 
     if (isInExpectedPeriodRange) {
       phase = 'luteal'; // 经期延迟，保持在黄体期等待
+      delayOverrideApplied = true;
     } else {
       phase = 'follicular';
     }
   }
-  const progress = getPhaseProgressFromCycleDay(dayInCurrentCycle, phase, safeCycleLength, periodLengthUsed);
+  // 经期延迟时当前周期尚未重置：黄体期天数要从真实的 dayInCycle 继续累加，
+  // 而不是用取模后的 dayInCurrentCycle（那会把"延迟等待中的黄体期"错算成第 1 天）。
+  const dayForPhaseProgress = delayOverrideApplied ? dayInCycle : dayInCurrentCycle;
+  const progress = getPhaseProgressFromCycleDay(dayForPhaseProgress, phase, safeCycleLength, periodLengthUsed);
 
   return {
     phase,

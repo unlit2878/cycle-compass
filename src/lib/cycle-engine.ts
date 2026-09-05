@@ -5,6 +5,7 @@ import {
   formatDate,
   getFertilityWindowForNextPeriodStart,
   getCyclePhaseInfoForDate,
+  getMostRecentExpectedStart,
   parseLocalDate,
   PhaseInfo,
 } from './cycle-utils';
@@ -75,6 +76,7 @@ export interface CycleModel {
   nextFertilityWindow: FertilityWindowInfo | null;
   periodDateSet: Set<string>;
   predictedPeriodDateSet: Set<string>;
+  overduePeriodDateSet: Set<string>;
   analytics: CycleAnalytics;
 }
 
@@ -311,6 +313,41 @@ function buildPredictedPeriodDateSet(
   return dates;
 }
 
+/**
+ * The expected-but-not-yet-recorded period window when the current cycle is
+ * overdue. While a period is late we must keep this window visible on the
+ * calendar (styled distinctly as "overdue"), instead of dropping it the way
+ * `buildPredictedPeriodDateSet` does when it advances past today. It is also
+ * kept separate from the future prediction set so an overdue day is never
+ * confused with a confirmed future prediction.
+ *
+ * Empty once the period is recorded: the anchor then moves forward and
+ * `getMostRecentExpectedStart` returns null, so the "overdue" state clears
+ * without any extra bookkeeping. This is the same expected-start that Home's
+ * "late N days" banner measures from, so all three surfaces stay consistent.
+ */
+function buildOverduePeriodDateSet(
+  lastPeriodStart: string | undefined,
+  cycleLength: number,
+  periodLength: number,
+  today: Date
+): Set<string> {
+  const dates = new Set<string>();
+  if (!lastPeriodStart) return dates;
+
+  const expectedStart = getMostRecentExpectedStart(lastPeriodStart, cycleLength, today);
+  if (!expectedStart) return dates;
+
+  const safePeriodLength = Math.max(1, Math.round(periodLength));
+  for (let day = 0; day < safePeriodLength; day++) {
+    const date = new Date(expectedStart);
+    date.setDate(date.getDate() + day);
+    dates.add(formatDate(date));
+  }
+
+  return dates;
+}
+
 export function createCycleModel(
   settings: Settings,
   cycles: CycleData[],
@@ -356,6 +393,12 @@ export function createCycleModel(
     effectivePeriodLength,
     currentDate
   );
+  const overduePeriodDateSet = buildOverduePeriodDateSet(
+    lastPeriodStart,
+    effectiveCycleLength,
+    effectivePeriodLength,
+    currentDate
+  );
 
   const periodLengths = periodLengthResult.lengths;
   const cycleLengths = cycleLengthResult.lengths;
@@ -376,6 +419,7 @@ export function createCycleModel(
     nextFertilityWindow,
     periodDateSet,
     predictedPeriodDateSet,
+    overduePeriodDateSet,
     analytics: {
       averageCycleLength: effectiveCycleLength,
       averagePeriodLength: effectivePeriodLength,

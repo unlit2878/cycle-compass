@@ -2314,6 +2314,13 @@
   background: var(--paper-rose-soft);
 }
 
+.calendar-day.expected-overdue {
+  border: 2px dashed hsl(var(--phase-menstrual) / 0.9);
+  color: hsl(var(--phase-menstrual));
+  background: var(--paper-rose-soft);
+  font-weight: 600;
+}
+
 .calendar-day.ovulation {
   color: hsl(var(--phase-ovulation));
   background: var(--paper-ovulation);
@@ -2449,6 +2456,7 @@
 
 .calendar-day.muted.period,
 .calendar-day.muted.predicted-period,
+.calendar-day.muted.expected-overdue,
 .calendar-day.muted.ovulation,
 .calendar-day.muted.follicular,
 .calendar-day.muted.luteal {
@@ -2465,6 +2473,14 @@
 .calendar-day.muted.predicted-period,
 .calendar-day.muted.predicted-period.selected {
   border: 1px dashed hsl(var(--phase-menstrual) / 0.52);
+  color: hsl(var(--phase-menstrual));
+  background: var(--paper-rose-soft);
+  box-shadow: none;
+}
+
+.calendar-day.muted.expected-overdue,
+.calendar-day.muted.expected-overdue.selected {
+  border: 2px dashed hsl(var(--phase-menstrual) / 0.9);
   color: hsl(var(--phase-menstrual));
   background: var(--paper-rose-soft);
   box-shadow: none;
@@ -2578,6 +2594,10 @@
 .legend-luteal { background: var(--paper-lavender); }
 .legend-predicted {
   border: 1px dashed hsl(var(--phase-menstrual) / 0.52);
+  background: var(--paper-rose-soft);
+}
+.legend-overdue {
+  border: 1px dashed hsl(var(--phase-menstrual) / 0.9);
   background: var(--paper-rose-soft);
 }
 
