@@ -2467,6 +2467,12 @@
   font-weight: 600;
 }
 
+/* 选中态已有绿色填充表达，再叠红色虚线环过于抢眼：选中时只藏环（保留边框占位防跳动） */
+.calendar-day.expected-overdue.selected,
+.calendar-day.muted.expected-overdue.selected {
+  border-color: transparent;
+}
+
 .calendar-day.ovulation {
   color: hsl(var(--phase-ovulation));
   background: var(--paper-ovulation);

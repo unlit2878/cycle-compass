@@ -326,8 +326,10 @@ export function CalendarPage({
               const selectedCell = dateStr === selectedDate;
               const isRecordedPeriod = periodDates.has(dateStr);
               const isPredictedPeriod = cycleModel?.predictedPeriodDateSet.has(dateStr) && !isRecordedPeriod;
+              // 逾期样式是日期自身属性，与选中无关：今天也在逾期窗口内，
+              // 不做排除——排除会让今天的样式随选中态漂移（选中=绿、未选中=普通底色）。
               const isOverduePeriod =
-                overdueDates.has(dateStr) && !isRecordedPeriod && !isPredictedPeriod && dateStr !== todayStr;
+                overdueDates.has(dateStr) && !isRecordedPeriod && !isPredictedPeriod;
               const isOvulation = !useUnderlinePhaseStyle && phase === 'ovulation' && !isRecordedPeriod && current;
               const backgroundPhase =
                 !useUnderlinePhaseStyle && current && !isOverduePeriod && (phase === 'follicular' || phase === 'luteal') ? phase : null;
