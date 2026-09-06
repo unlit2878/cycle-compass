@@ -1,10 +1,11 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
+  ArrowLeft,
   Ban,
   Bolt,
   CalendarMark as PeriodStartIcon,
-  CalendarX as PeriodEndIcon,
+  StopCircle as PeriodEndIcon,
   Check,
   Drop,
   Droplet,
@@ -14,6 +15,7 @@ import {
   HeartPulse as BreastPainIcon,
   Loader,
   FaceSmile,
+  Pen,
   Trash2,
   UserX3 as HeadacheIcon,
   AlertTriangle,
@@ -147,6 +149,8 @@ export function LoggingScreen({
   const [notes, setNotes] = useState(existingLog?.notes ?? '');
   const [deleting, setDeleting] = useState(false);
   const [deletePeriodDialogOpen, setDeletePeriodDialogOpen] = useState(false);
+  const [deleteScopeSheetOpen, setDeleteScopeSheetOpen] = useState(false);
+  const [deleteScope, setDeleteScope] = useState<'day' | 'period' | null>(null);
   const [deletingPeriod, setDeletingPeriod] = useState(false);
   const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const [savingFromPrompt, setSavingFromPrompt] = useState(false);
@@ -366,18 +370,17 @@ export function LoggingScreen({
     }
   };
 
-  const setMarkerFromUser = (marker: PeriodMarker) => {
-    if (
-      marker === 'start' &&
-      periodMarker === 'start' &&
-      visibleCycle?.id &&
-      visibleCycle.startDate === selectedDate &&
-      onDeletePeriod
-    ) {
-      setDeletePeriodDialogOpen(true);
-      return;
+  const handleScopeDelete = () => {
+    if (!deleteScope) return;
+    setDeleteScopeSheetOpen(false);
+    if (deleteScope === 'day') {
+      handleDeleteLog();
+    } else {
+      handleDeletePeriod();
     }
+  };
 
+  const setMarkerFromUser = (marker: PeriodMarker) => {
     setPeriodMarker((current) => (current === marker && !visibleCycle ? null : marker));
     setPeriodActionDirty(true);
   };
@@ -388,25 +391,9 @@ export function LoggingScreen({
       subtitle="记录每一个瞬间，更了解自己"
       decor="record"
       action={
-        <div className="record-header-actions">
-          <button type="button" className="soft-pill cancel-pill pressable" onClick={requestBack}>
-            取消
-          </button>
-          <button
-            type="button"
-            className="soft-pill save-pill pressable"
-            data-save-state={saveState}
-            disabled={saveState === 'loading' || saveState === 'success'}
-            onClick={handleSave}
-          >
-            {saveState === 'loading' && <Loader className="save-state-icon is-loading" aria-hidden="true" />}
-            {saveState === 'success' && <Check className="save-state-icon" aria-hidden="true" />}
-            {saveState === 'error' && <AlertTriangle className="save-state-icon" aria-hidden="true" />}
-            <span key={saveState} className="save-pill-label" aria-live="polite">
-              {getSaveLabel(saveState)}
-            </span>
-          </button>
-        </div>
+        <button type="button" className="round-action icon-pressable" onClick={requestBack} aria-label="返回">
+          <ArrowLeft className="h-5 w-5" />
+        </button>
       }
       className="record-screen"
     >
@@ -435,27 +422,32 @@ export function LoggingScreen({
             <span>此日记录</span>
             <small>{dateChanged ? `原记录：${formatDateCN(new Date(`${date}T12:00:00`))}` : '已保存过记录'}</small>
           </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button type="button" className="day-log-icon-button danger icon-pressable" aria-label="删除此日记录">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="record-confirm-dialog">
-              <AlertDialogHeader>
-                <AlertDialogTitle>删除此日记录？</AlertDialogTitle>
-                <AlertDialogDescription>
-                  将删除 {formatDateCN(new Date(`${date}T12:00:00`))} 的流量、症状、心情和备注。经期开始/结束记录不会被删除。
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="record-confirm-actions">
-                <AlertDialogCancel>取消</AlertDialogCancel>
-                <AlertDialogAction className="record-danger-action" onClick={handleDeleteLog} disabled={deleting}>
-                  {deleting ? '删除中...' : '删除'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {visibleCycle ? (
+            <small className="day-log-hint">删除请使用下方经期「删除」</small>
+          ) : (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button type="button" className="day-log-quiet pressable">
+                  <Trash2 className="day-log-quiet-icon" aria-hidden="true" />
+                  <span>删除此日记录</span>
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="record-confirm-dialog">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>删除此日记录？</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    将删除 {formatDateCN(new Date(`${date}T12:00:00`))} 的流量、症状、心情和备注。经期开始/结束记录不会被删除。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="record-confirm-actions">
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction className="record-danger-action" onClick={handleDeleteLog} disabled={deleting}>
+                    {deleting ? '删除中...' : '删除'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </section>
       )}
 
@@ -472,25 +464,45 @@ export function LoggingScreen({
           </div>
         )}
 
-        <div className="period-toggle">
+        <div className="period-toggle" role="group" aria-label="经期标记">
           <button
             type="button"
             className={`pressable ${periodMarker === 'start' ? 'selected' : ''}`}
+            aria-pressed={periodMarker === 'start'}
             onClick={() => setMarkerFromUser('start')}
           >
-            <PeriodStartIcon className="h-8 w-8" />
+            <PeriodStartIcon size={19} aria-hidden="true" />
             <span>{visibleCycle ? '更新开始' : '标记开始'}</span>
-            <small>{visibleCycle ? '将当前经期开始改为所选日期' : '记录经期第一天'}</small>
           </button>
           <button
             type="button"
-            className={`pressable ${periodMarker === 'end' ? 'selected muted' : ''}`}
+            className={`pressable ${periodMarker === 'end' ? 'selected' : ''}`}
+            aria-pressed={periodMarker === 'end'}
             onClick={() => setMarkerFromUser('end')}
           >
-            <PeriodEndIcon className="h-8 w-8" />
+            <PeriodEndIcon size={19} weight="Filled" aria-hidden="true" />
             <span>经期结束</span>
-            <small>{periodRangeText ? '结束上方显示的这段经期' : '记录经期最后一天'}</small>
           </button>
+          {visibleCycle?.id && onDeletePeriod && (
+            <>
+              <span className="spacer" aria-hidden="true" />
+              <button
+                type="button"
+                className="danger pressable"
+                onClick={() => {
+                  if (hasExistingLog) {
+                    setDeleteScope(null);
+                    setDeleteScopeSheetOpen(true);
+                    return;
+                  }
+                  setDeletePeriodDialogOpen(true);
+                }}
+              >
+                <Trash2 size={19} aria-hidden="true" />
+                <span>删除</span>
+              </button>
+            </>
+          )}
         </div>
 
         <OptionGrid label="流量" columns={5}>
@@ -610,6 +622,25 @@ export function LoggingScreen({
         <small>{notes.length}/200</small>
       </label>
 
+      <button
+        type="button"
+        className="log-fab pressable"
+        data-save-state={saveState}
+        disabled={saveState === 'loading' || saveState === 'success'}
+        onClick={handleSave}
+      >
+        {saveState === 'loading' ? (
+          <Loader className="save-state-icon is-loading" aria-hidden="true" />
+        ) : saveState === 'error' ? (
+          <AlertTriangle className="save-state-icon" aria-hidden="true" />
+        ) : (
+          <Check className="save-state-icon" aria-hidden="true" />
+        )}
+        <span key={saveState} className="log-fab-label" aria-live="polite">
+          {getSaveLabel(saveState)}
+        </span>
+      </button>
+
       <AlertDialog open={deletePeriodDialogOpen} onOpenChange={setDeletePeriodDialogOpen}>
         <AlertDialogContent className="record-confirm-dialog">
           <AlertDialogHeader>
@@ -630,6 +661,66 @@ export function LoggingScreen({
               }}
             >
               {deletingPeriod ? '删除中...' : '删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteScopeSheetOpen} onOpenChange={(open) => { setDeleteScopeSheetOpen(open); if (!open) setDeleteScope(null); }}>
+        <AlertDialogContent className="record-confirm-dialog record-scope-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除哪些记录？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {formatDateCN(new Date(`${date}T12:00:00`))} 这一天同时有当日记录和经期记录，请选择要删除的范围。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="scope-list">
+            <button
+              type="button"
+              className={`scope-option pressable ${deleteScope === 'day' ? 'selected' : ''}`}
+              aria-pressed={deleteScope === 'day'}
+              onClick={() => setDeleteScope('day')}
+            >
+              <span className="scope-icon scope-icon-pen">
+                <Pen className="scope-icon-svg" aria-hidden="true" />
+              </span>
+              <span className="scope-copy">
+                <strong>仅删除当日记录</strong>
+                <small>删除 {formatDateCN(new Date(`${date}T12:00:00`))} 的流量、疼痛、症状、心情和备注，经期标记保留。</small>
+              </span>
+              <span className="scope-check" aria-hidden="true">
+                <Check className="scope-check-svg" />
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`scope-option pressable ${deleteScope === 'period' ? 'selected' : ''}`}
+              aria-pressed={deleteScope === 'period'}
+              onClick={() => setDeleteScope('period')}
+            >
+              <span className="scope-icon scope-icon-period">
+                <Droplet className="scope-icon-svg" aria-hidden="true" />
+              </span>
+              <span className="scope-copy">
+                <strong>删除整段经期</strong>
+                <small>{visibleCycle ? `删除从 ${formatDateCN(new Date(`${visibleCycle.startDate}T12:00:00`))} 开始的整段经期标记，当天的记录内容保留。` : '删除这一段经期标记，当天的记录内容保留。'}</small>
+              </span>
+              <span className="scope-check" aria-hidden="true">
+                <Check className="scope-check-svg" />
+              </span>
+            </button>
+          </div>
+          <AlertDialogFooter className="record-confirm-actions">
+            <AlertDialogCancel>保留</AlertDialogCancel>
+            <AlertDialogAction
+              className={`record-danger-action ${deleteScope ? '' : 'record-danger-pending'}`}
+              disabled={!deleteScope || deleting || deletingPeriod}
+              onClick={(event) => {
+                event.preventDefault();
+                handleScopeDelete();
+              }}
+            >
+              {deleteScope === 'day' ? '删除当日记录' : deleteScope === 'period' ? '删除整段经期' : '选择要删除的范围'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
